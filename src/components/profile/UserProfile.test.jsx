@@ -4,12 +4,13 @@ import { render, screen, act, within } from '@testing-library/react';
 // The standings table fetches on its own and is covered by its own suite; this
 // page only has to PLACE it. Stubbing it keeps these assertions about layout
 // rather than about Supabase.
-const board = vi.hoisted(() => ({ onLeague: null }));
+const board = vi.hoisted(() => ({ onLeague: null, selfProfile: undefined }));
 vi.mock('../stats/LeaderboardSection', () => ({
   // Captures the upward callback so a test can play the role of a resolved
   // join without a Supabase client.
-  default: ({ onLeague }) => {
+  default: ({ onLeague, selfProfile }) => {
     board.onLeague = onLeague;
+    board.selfProfile = selfProfile;
     return <div data-testid="standings">standings</div>;
   },
 }));
@@ -207,6 +208,24 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(
       league.compareDocumentPosition(standings) & Node.DOCUMENT_POSITION_FOLLOWING
     ).toBeTruthy();
+  });
+
+  it('keeps the league card and its standings together as one unit', async () => {
+    render(<UserProfile user={USER} local={local} />);
+    await screen.findByTestId('standings');
+    const group = screen.getByTestId('profile-league-group');
+    expect(group).toContainElement(screen.getByTestId('profile-league'));
+    expect(group).toContainElement(screen.getByTestId('standings'));
+    // A tighter rhythm than the page's section gap: tier, then who is in it.
+    expect(group).toHaveStyle({ gap: `${SPACE[3]}px` });
+  });
+
+  it('hands the caller’s own profile to the standings for their row', async () => {
+    // The standings read carries handles only, so without this the learner's
+    // own row would show a generated avatar and a bare @handle.
+    render(<UserProfile user={USER} local={local} />);
+    await screen.findByRole('heading', { name: 'Sam Vimes' });
+    expect(board.selfProfile).toMatchObject({ display_name: 'Sam Vimes', handle: 'sam' });
   });
 
   it('demotes the detailed charts to a secondary section at the bottom', async () => {

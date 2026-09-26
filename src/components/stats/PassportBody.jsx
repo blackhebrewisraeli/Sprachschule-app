@@ -12,6 +12,7 @@ import { ACHIEVEMENTS } from '../../lib/gamification';
 import { Lock } from 'lucide-react';
 import Avatar from '../ui/Avatar';
 import StatusNote from '../ui/StatusNote';
+import BadgeIcon from '../gamification/BadgeIcon';
 import { profileName } from '../../lib/profile.js';
 
 // The Learning Passport — everything inside ProfileCard's dialog chrome.
@@ -201,8 +202,9 @@ export default function PassportBody({ profile, userId, isSelf = false }) {
                   <li
                     key={b.id}
                     data-badge={b.id}
-                    // The name is the accessible text; the emoji is decoration
-                    // beside it, so it must not be announced twice.
+                    // The name is the accessible text; the medal is decoration
+                    // beside it (BadgeIcon is aria-hidden), so it must not be
+                    // announced twice.
                     //
                     // badge-chip is a hover lift, gated on a fine pointer by the
                     // global sheet — a phone would otherwise latch the lifted
@@ -229,7 +231,7 @@ export default function PassportBody({ profile, userId, isSelf = false }) {
                       color: COLORS.ink,
                     }}
                   >
-                    <span aria-hidden="true">{b.icon}</span>
+                    <BadgeIcon id={b.id} size={FONT_SIZE.xl} />
                     {b.name}
                   </li>
                 ))}

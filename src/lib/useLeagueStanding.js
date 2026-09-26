@@ -3,9 +3,10 @@ import { getSupabase } from './auth.js';
 import { LEAGUES_ENABLED, fetchMyMembership, fetchProfile, fetchStandings } from './leagues.js';
 import { currentPeriodStart } from './leagueCountdown.js';
 import { zoneCounts } from './leagueZones.js';
+import { leagueWindow } from './leagueWindow.js';
 
-// The caller's live league standing for Home, as two cohort reads plus three
-// best-effort profile GETs for the compact podium, and no writes.
+// The caller's live league standing for Home, as two cohort reads plus up to
+// three best-effort profile GETs for the compact preview, and no writes.
 //
 // Why not reuse the leaderboard's fetch: LeaderboardSection calls joinLeague()
 // and refreshLeague() before reading, and both are WRITES — join can create a
@@ -28,7 +29,10 @@ import { zoneCounts } from './leagueZones.js';
 
 /**
  * @param {string|undefined} userId
- * @returns {{tier: number, rank: number, cohortSize: number, inDemotionZone: boolean, leaders: Array}|null}
+ * @returns {{tier: number, rank: number, cohortSize: number, inDemotionZone: boolean,
+ *   slots: Array<{rank: number, member: object|null}>}|null}
+ *   `slots` is always three places around the caller (see leagueWindow);
+ *   `member` is null for a place the cohort has not filled.
  */
 export function useLeagueStanding(userId) {
   const [standing, setStanding] = useState(null);
@@ -54,17 +58,17 @@ export function useLeagueStanding(userId) {
         if (cancelled) return;
 
         const cohortSize = rows.length;
-        const rank = rows.findIndex((r) => r.user_id === userId) + 1;
-        if (rank === 0) {
+        const placement = leagueWindow(rows, userId);
+        if (!placement) {
           setStanding(null);
           return;
         }
+        const { rank } = placement;
 
         const { demote } = zoneCounts(cohortSize);
-        const leaders = rows.slice(0, 3).map((row, index) => ({
-          ...row,
-          rank: index + 1,
-          profile: null,
+        const slots = placement.slots.map(({ rank: place, member }) => ({
+          rank: place,
+          member: member ? { ...member, profile: null } : null,
         }));
         const nextStanding = {
           // The tier rides along with the membership read — it costs nothing
@@ -76,24 +80,29 @@ export function useLeagueStanding(userId) {
           rank,
           cohortSize,
           inDemotionZone: demote > 0 && rank > cohortSize - demote,
-          leaders,
+          slots,
         };
 
         // Publish the standing immediately: missions and the league badge do
-        // not wait for avatar/name decoration. The three profile requests are
-        // independent best-effort reads; a missing passport leaves that row on
-        // its denormalised @handle instead of taking the whole Home hub down.
+        // not wait for avatar/name decoration. The profile requests — one per
+        // FILLED visible slot, never the whole cohort — are independent
+        // best-effort reads; a missing passport leaves that row on its
+        // denormalised @handle instead of taking the whole Home hub down.
         setStanding(nextStanding);
-        const enrichedLeaders = await Promise.all(
-          leaders.map(async (leader) => {
+        const enrichedSlots = await Promise.all(
+          slots.map(async (slot) => {
+            if (!slot.member) return slot;
             try {
-              return { ...leader, profile: await fetchProfile(leader.user_id) };
+              return {
+                ...slot,
+                member: { ...slot.member, profile: await fetchProfile(slot.member.user_id) },
+              };
             } catch {
-              return leader;
+              return slot;
             }
           })
         );
-        if (!cancelled) setStanding({ ...nextStanding, leaders: enrichedLeaders });
+        if (!cancelled) setStanding({ ...nextStanding, slots: enrichedSlots });
       } catch {
         // Best-effort: a failed league read must never break Home. The mission
         // just does not appear.

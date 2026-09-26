@@ -1,5 +1,5 @@
 import { it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 vi.mock('../../lib/auth.js', () => ({
@@ -17,6 +17,9 @@ vi.mock('../../lib/leagues.js', () => ({
 // the same zone logic the settle job uses.
 
 import LeaderboardSection from './LeaderboardSection.jsx';
+import { LEAGUE_ROW_COLUMNS } from '../league/leagueFormat';
+import { LEAGUE_SIZE } from '../../lib/leagueZones.js';
+import { RADIUS } from '../../lib/theme.js';
 import { useAuth } from '../../lib/auth.js';
 import { joinLeague, refreshLeague, fetchStandings } from '../../lib/leagues.js';
 
@@ -61,7 +64,7 @@ it('renders standings, a countdown, and the sparse note for a small league', asy
     { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
   ]);
   render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Rival')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
   expect(screen.getByRole('heading', { name: 'Rangliste' })).toBeTruthy();
   expect(screen.getByText(/Ends in/)).toBeTruthy();
   expect(screen.getByText(/still filling up/i)).toBeTruthy();
@@ -75,7 +78,7 @@ it('states no tier of its own — the league card above owns that', async () => 
   // reports its tier UPWARD now; printing one again would restore the bug.
   signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }], 2);
   const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Me')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   for (const tier of ['Bronze', 'Silver', 'Gold', 'Sapphire', 'Ruby']) {
     expect(container).not.toHaveTextContent(tier);
   }
@@ -122,11 +125,11 @@ it('does not re-join when the parent passes a fresh callback identity', async ()
   // replay join + refresh.
   signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }]);
   const { rerender } = render(<LeaderboardSection onSelectUser={() => {}} onLeague={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Me')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   expect(joinLeague).toHaveBeenCalledTimes(1);
 
   rerender(<LeaderboardSection onSelectUser={() => {}} onLeague={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Me')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   expect(joinLeague).toHaveBeenCalledTimes(1);
 });
 
@@ -139,7 +142,7 @@ it('shows promotion and relegation zone labels in a full league (no sparse note)
   }));
   signIn(rows);
   render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('User0')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@User0')).toBeTruthy());
   expect(screen.getByText(/Promotion/)).toBeTruthy();
   expect(screen.getByText(/Relegation/)).toBeTruthy();
   expect(screen.queryByText(/still filling up/i)).toBeNull();
@@ -161,7 +164,7 @@ it('puts every league row in the tab order, in standings order', async () => {
   const user = userEvent.setup();
   signIn(threeRows);
   render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Rival B')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Rival B')).toBeTruthy());
 
   const rows = screen.getAllByRole('button');
   expect(rows).toHaveLength(threeRows.length); // the denominator
@@ -182,7 +185,7 @@ it.each([
   const onSelectUser = vi.fn();
   signIn(threeRows);
   render(<LeaderboardSection onSelectUser={onSelectUser} />);
-  await waitFor(() => expect(screen.getByText('Rival A')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
 
   await user.tab();
   await user.tab(); // second row — 'a'
@@ -197,18 +200,20 @@ it('still selects a row on a mouse click', async () => {
   const onSelectUser = vi.fn();
   signIn(threeRows);
   render(<LeaderboardSection onSelectUser={onSelectUser} />);
-  await waitFor(() => expect(screen.getByText('Rival B')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Rival B')).toBeTruthy());
 
-  await user.click(screen.getByText('Rival B'));
+  await user.click(screen.getByText('@Rival B'));
   expect(onSelectUser).toHaveBeenCalledWith('b');
 });
 
 it('names each row for a screen reader from its rank, handle, and XP', async () => {
   signIn(threeRows);
   render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('Rival A')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
 
-  expect(screen.getByRole('button', { name: /2\.\s*Rival A\s*20 XP/ })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Rank 2: @Rival A, 20 XP' })).toBeTruthy();
+  // Your own row says so, in words as well as in the highlight.
+  expect(screen.getByRole('button', { name: 'Rank 1: @Me (Du), 30 XP' })).toBeTruthy();
 });
 
 // ── Error recovery ───────────────────────────────────────────────────────
@@ -273,4 +278,76 @@ it('shows loading feedback between two consecutive failures, not a frozen error'
 
   rejectSecond(new Error('boom again'));
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load your league.");
+});
+
+// ── The whole league, open seats included ────────────────────────────────
+
+it('lists every member and draws each unfilled seat up to the league size', async () => {
+  signIn([
+    { user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null },
+    { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
+  ]);
+  const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
+  await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
+
+  const members = container.querySelectorAll('[data-league-slot="member"]');
+  const open = container.querySelectorAll('[data-league-slot="empty"]');
+  expect(members).toHaveLength(2);
+  expect(open).toHaveLength(LEAGUE_SIZE - 2);
+  // Open seats continue the numbering after the last member.
+  expect(within(open[0]).getByLabelText('Rank 3')).toBeInTheDocument();
+  expect(within(open[open.length - 1]).getByLabelText(`Rank ${LEAGUE_SIZE}`)).toBeInTheDocument();
+  expect(screen.getByText(`${LEAGUE_SIZE - 2} freie Plätze`)).toBeInTheDocument();
+  // An open seat is not a person: nothing to press, no profile to open.
+  expect(screen.getAllByRole('button')).toHaveLength(2);
+});
+
+it('draws no open seats once the league is full', async () => {
+  const rows = Array.from({ length: LEAGUE_SIZE }, (_, i) => ({
+    user_id: i === 0 ? 'me' : `u${i}`,
+    handle: `User${i}`,
+    weekly_xp: 100 - i,
+    rank: null,
+  }));
+  signIn(rows);
+  const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
+  await waitFor(() => expect(screen.getByText('@User0')).toBeTruthy());
+
+  expect(container.querySelectorAll('[data-league-slot="member"]')).toHaveLength(LEAGUE_SIZE);
+  expect(container.querySelectorAll('[data-league-slot="empty"]')).toHaveLength(0);
+  expect(screen.queryByText(/freie Pl/)).toBeNull();
+});
+
+it('marks the learner’s own row and prints their own name from the page’s profile', async () => {
+  // The standings read carries handles only; the page already holds the
+  // caller's own profile row, so their row can show who they actually are.
+  signIn(threeRows);
+  const { container } = render(
+    <LeaderboardSection
+      onSelectUser={() => {}}
+      selfProfile={{ display_name: 'Sam Vimes', handle: 'Me', is_private: false }}
+    />
+  );
+  await waitFor(() => expect(screen.getByText('Sam Vimes')).toBeTruthy());
+
+  const mine = container.querySelectorAll('[data-me]');
+  expect(mine).toHaveLength(1);
+  expect(mine[0]).toHaveTextContent('Sam Vimes');
+  expect(within(mine[0]).getByTestId('league-row-you')).toBeInTheDocument();
+  // Nobody else borrows the caller's profile.
+  expect(screen.getByText('@Rival A')).toBeInTheDocument();
+});
+
+it('shares the Home table design: one panel, the same row grid', async () => {
+  signIn(threeRows);
+  render(<LeaderboardSection onSelectUser={() => {}} />);
+  await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
+
+  expect(screen.getByTestId('profile-leaderboard')).toHaveStyle({
+    borderRadius: `${RADIUS.lg}px`,
+    overflow: 'hidden',
+  });
+  for (const row of screen.getAllByRole('button')) {
+    expect(row).toHaveStyle({ gridTemplateColumns: LEAGUE_ROW_COLUMNS });
+  }
 });

@@ -35,8 +35,10 @@ import LeaderboardSection from '../stats/LeaderboardSection';
 // shows otherwise.
 //
 // READING ORDER, top to bottom: who you are → the numbers → your league →
-// the standings → the detailed charts. The charts used to open the tab, which
-// is why it read as an analytics dashboard rather than a profile.
+// the standings → the detailed charts, which StatsTab closes with the badges
+// and then the 12-month activity heatmap as the page's last element. The charts
+// used to open the tab, which is why it read as an analytics dashboard rather
+// than a profile.
 //
 // The identity block is a CARD, not a bare column. Five metric tiles used to be
 // the first thing with a border on the page, so the avatar and name floated
@@ -482,7 +484,13 @@ export default function UserProfile({
       {!wide ? practiceMetrics : null}
 
       {LEAGUES_ENABLED && (
-        <>
+        // The league card and its standings are ONE unit — the tier, then who
+        // is in it — so they sit on a tighter rhythm than the page's section
+        // gap, the same way the identity card groups a name with its counts.
+        <div
+          data-testid="profile-league-group"
+          style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: SPACE[3] }}
+        >
           {/* ── League ───────────────────────────────────────────
               ONE league display (spec §8). The leaderboard below used to print
               its own tier heading six pixels further down, sourced from the
@@ -496,9 +504,15 @@ export default function UserProfile({
               Bronze when there is nothing at all. */}
           <LeagueBadge tier={liveLeague?.tier ?? profile?.tier} />
 
-          {/* The full standings, in the main column — not behind a sub-tab. */}
-          <LeaderboardSection onSelectUser={onSelectUser} onLeague={setLiveLeague} />
-        </>
+          {/* The full standings, in the main column — not behind a sub-tab.
+              The caller's own profile rides along so their row shows their
+              real name and avatar; the standings read carries handles only. */}
+          <LeaderboardSection
+            onSelectUser={onSelectUser}
+            onLeague={setLiveLeague}
+            selfProfile={profile}
+          />
+        </div>
       )}
 
       {/* ── Secondary: the detailed charts ───────────────────────

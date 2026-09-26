@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import PassportBody from './PassportBody';
 import { ACHIEVEMENTS } from '../../lib/gamification';
 import { COLORS } from '../../lib/theme.js';
@@ -180,10 +180,13 @@ describe('PassportBody — badges', () => {
 
   // The emoji sits beside the name; announcing both would read as
   // "fire fire streak" to a screen reader.
-  it('hides the badge emoji from assistive tech', () => {
+  it('draws the badge medal, not the emoji, and hides it from assistive tech', () => {
     show({ achievements: [first.id] });
     const badge = document.querySelector(`[data-badge="${first.id}"]`);
-    expect(within(badge).getByText(first.icon)).toHaveAttribute('aria-hidden', 'true');
+    const medal = badge.querySelector(`svg[data-badge-icon="${first.id}"]`);
+    expect(medal).not.toBeNull();
+    expect(medal).toHaveAttribute('aria-hidden', 'true');
+    expect(badge).not.toHaveTextContent(first.icon);
   });
 });
 

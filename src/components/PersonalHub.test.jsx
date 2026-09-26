@@ -381,7 +381,7 @@ describe('PersonalHub', () => {
     }
   );
 
-  it.each([320, 375])('keeps the Top 3 widget in the full-width mobile stack at %spx', (width) => {
+  it.each([320, 375])('keeps the league widget in the full-width mobile stack at %spx', (width) => {
     setViewportWidth(width);
     render(
       <PersonalHub
@@ -392,17 +392,24 @@ describe('PersonalHub', () => {
         today={<div>today-slot</div>}
         league={{
           tier: 0,
-          leaders: [
+          rank: 1,
+          cohortSize: 1,
+          slots: [
             {
-              user_id: 'u-leader',
-              handle: 'very-long-fallback-handle-that-must-truncate',
-              weekly_xp: 1234567,
-              profile: {
-                display_name: 'A very long public display name that must truncate',
+              rank: 1,
+              member: {
+                user_id: 'u-leader',
                 handle: 'very-long-fallback-handle-that-must-truncate',
-                is_private: false,
+                weekly_xp: 1234567,
+                profile: {
+                  display_name: 'A very long public display name that must truncate',
+                  handle: 'very-long-fallback-handle-that-must-truncate',
+                  is_private: false,
+                },
               },
             },
+            { rank: 2, member: null },
+            { rank: 3, member: null },
           ],
         }}
       />

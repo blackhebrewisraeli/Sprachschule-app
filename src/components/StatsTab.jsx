@@ -71,7 +71,9 @@ function DashboardCard({ num, title, children, full = false }) {
 //
 // Now it is ONE page. UserProfile owns the identity, the metrics, the league
 // card and the standings; the detailed charts below are passed to it as
-// children and render last, as the secondary material they always were.
+// children and render last, as the secondary material they always were. The
+// page closes on the long view: badges, then the 12-month activity heatmap as
+// its very last element.
 //
 // Settings did NOT fold into the page. It stays a route (`#/settings`) whose
 // one door is the account sheet (#314) — this component still renders the
@@ -184,10 +186,6 @@ export default function StatsTab({
                   <Button onClick={onSignIn}>Sign in to sync →</Button>
                 </div>
               )}
-              <div style={{ marginTop: SPACE[5] }}>
-                <SectionLabel num="·" text="Badges" />
-                <BadgeGrid achievements={state.gamification?.achievements ?? {}} />
-              </div>
             </section>
 
             <section>
@@ -195,6 +193,11 @@ export default function StatsTab({
               <TodaySnapshot snap={snap} />
             </section>
 
+            {/* One card rhythm for everything below Today: same Surface, same
+                12px gutter, and the page ENDS on the long view — badges, then
+                the 12-month heatmap as the last element. Both are full-width
+                rows so the medals and the year each get the whole measure
+                instead of sharing a half-width cell with a chart. */}
             <div
               data-testid="profile-analytics-grid"
               style={{
@@ -205,25 +208,29 @@ export default function StatsTab({
                 minWidth: 0,
               }}
             >
-              <DashboardCard num="B" title="Last 12 months" full>
-                <Heatmap data={heatmap} mobile={mobile} />
-                <HeatmapLegend />
-              </DashboardCard>
-
-              <DashboardCard num="C" title="By section">
+              <DashboardCard num="B" title="By section">
                 <PerTabBars breakdown={perTab} />
               </DashboardCard>
 
-              <DashboardCard num="D" title="Accuracy by level">
+              <DashboardCard num="C" title="Accuracy by level">
                 <AccuracyByLevel byLevel={accByLevel} />
               </DashboardCard>
 
-              <DashboardCard num="E" title="Vocab stats">
+              <DashboardCard num="D" title="Vocab stats">
                 <VocabSrsWidget srs={srs} now={nowMs} />
               </DashboardCard>
 
-              <DashboardCard num="F" title="Review — tap to re-attempt">
+              <DashboardCard num="E" title="Review — tap to re-attempt">
                 <ReviewFeed items={review} onReview={onReview ?? (() => {})} />
+              </DashboardCard>
+
+              <DashboardCard num="F" title="Badges" full>
+                <BadgeGrid achievements={state.gamification?.achievements ?? {}} />
+              </DashboardCard>
+
+              <DashboardCard num="G" title="Last 12 months" full>
+                <Heatmap data={heatmap} mobile={mobile} />
+                <HeatmapLegend />
               </DashboardCard>
             </div>
           </div>

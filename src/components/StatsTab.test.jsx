@@ -148,19 +148,38 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
         .getAllByRole('region')
         .map((card) => card.getAttribute('aria-label'))
     ).toEqual([
-      'Last 12 months',
       'By section',
       'Accuracy by level',
       'Vocab stats',
       'Review — tap to re-attempt',
+      'Badges',
+      'Last 12 months',
     ]);
-    expect(screen.getByRole('region', { name: 'Last 12 months' })).toHaveStyle({
-      gridColumn: '1 / -1',
-    });
+    // The two long views each take the full measure rather than a half cell.
+    for (const name of ['Badges', 'Last 12 months']) {
+      expect(screen.getByRole('region', { name })).toHaveStyle({ gridColumn: '1 / -1' });
+    }
     for (const card of within(grid).getAllByRole('region')) {
       expect(card).toHaveStyle({ alignSelf: 'stretch' });
     }
   });
+
+  it.each([320, 375, 1280])(
+    'ends the page on the heatmap, with the badges directly above it, at %spx',
+    (width) => {
+      setViewportWidth(width);
+      render(<StatsTab user={USER} mobile={width < 640} />);
+      const regions = screen.getAllByRole('region');
+      // The very last section on the whole Profile page is the heatmap…
+      expect(regions.at(-1)).toHaveAttribute('aria-label', 'Last 12 months');
+      // …and the one immediately before it is Badges.
+      expect(regions.at(-2)).toHaveAttribute('aria-label', 'Badges');
+      const heatmap = regions.at(-1);
+      expect(heatmap.compareDocumentPosition(screen.getByText('stub-leaderboard'))).toBe(
+        Node.DOCUMENT_POSITION_PRECEDING
+      );
+    }
+  );
 
   it.each([320, 375, 719])('stacks analytics cards in one bounded column at %spx', (width) => {
     setViewportWidth(width);

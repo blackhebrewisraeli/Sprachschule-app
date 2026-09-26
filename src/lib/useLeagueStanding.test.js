@@ -85,7 +85,9 @@ describe('useLeagueStanding', () => {
       cohortSize: 25,
       inDemotionZone: true,
     });
-    expect(result.current.leaders).toHaveLength(3);
+    // Last place looks up: the two members above, then the caller.
+    expect(result.current.slots.map((s) => s.rank)).toEqual([23, 24, 25]);
+    expect(result.current.slots[2].member.user_id).toBe('me');
   });
 
   it('does not report the demotion zone for a mid-table member', async () => {
@@ -141,8 +143,14 @@ describe('useLeagueStanding', () => {
       rank: 1,
       cohortSize: 1,
       inDemotionZone: false,
-      leaders: [expect.objectContaining({ user_id: 'me', rank: 1 })],
     });
+    // Still three slots: the caller, then two open seats rather than a list
+    // that shrinks to one row.
+    expect(result.current.slots).toEqual([
+      { rank: 1, member: expect.objectContaining({ user_id: 'me' }) },
+      { rank: 2, member: null },
+      { rank: 3, member: null },
+    ]);
   });
 
   it('returns null when there is no membership for the current period', async () => {
@@ -233,8 +241,9 @@ describe('useLeagueStanding', () => {
     expect(seen.tables).toEqual(['league_members', 'league_members']);
   });
 
-  it('enriches only the top three rows and keeps private-profile metadata', async () => {
-    const standings = cohort(5, 5);
+  it('enriches only the three visible rows and keeps private-profile metadata', async () => {
+    // Caller is 3rd of 5, not last → the window is places 2, 3, 4.
+    const standings = cohort(5, 3);
     const { client } = fakeSupabase({
       membership: { league_id: 'L1', weekly_xp: 10, leagues: { tier: 2 } },
       standings,
@@ -258,16 +267,38 @@ describe('useLeagueStanding', () => {
 
     await waitFor(() => {
       expect(result.current).not.toBeNull();
-      expect(result.current.leaders).toHaveLength(3);
-      expect(result.current.leaders[2].profile).not.toBeNull();
+      expect(result.current.slots[2].member.profile).not.toBeNull();
     });
-    expect(result.current.leaders).toHaveLength(3);
-    expect(result.current.leaders.map((row) => row.user_id)).toEqual(['u1', 'u2', 'u3']);
-    expect(result.current.leaders[1].profile).toMatchObject({
+    expect(result.current.slots.map((s) => [s.rank, s.member.user_id])).toEqual([
+      [2, 'u2'],
+      [3, 'me'],
+      [4, 'u4'],
+    ]);
+    expect(result.current.slots[0].member.profile).toMatchObject({
       display_name: 'Name u2',
       is_private: true,
     });
+    // Never the whole cohort: one GET per visible row, and u1 / u5 untouched.
     expect(fetchSpy).toHaveBeenCalledTimes(3);
+    const asked = fetchSpy.mock.calls.map(([url]) =>
+      new URL(url, 'https://example.test').searchParams.get('userId')
+    );
+    expect(asked.sort()).toEqual(['me', 'u2', 'u4']);
+  });
+
+  it('fetches no profile for an open seat', async () => {
+    const { client } = fakeSupabase({
+      membership: { league_id: 'L1', weekly_xp: 10, leagues: { tier: 0 } },
+      standings: cohort(2, 1),
+    });
+    getSupabase.mockResolvedValue(client);
+
+    const useLeagueStanding = await loadHook();
+    const { result } = renderHook(() => useLeagueStanding('me'));
+
+    await waitFor(() => expect(result.current).not.toBeNull());
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+    expect(result.current.slots[2]).toEqual({ rank: 3, member: null });
   });
 
   it('reads only the caller row for the current league week, then the cohort', async () => {

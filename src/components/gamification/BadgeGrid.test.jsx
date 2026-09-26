@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import BadgeGrid from './BadgeGrid';
 import { ACHIEVEMENTS } from '../../lib/gamification';
 import { BORDER, FONT_SIZE, LINE_HEIGHT } from '../../lib/theme';
+import { activePack } from '../../packs';
 
 const tiles = () => screen.getAllByRole('listitem');
 
@@ -33,10 +34,28 @@ describe('BadgeGrid', () => {
     expect(tile.style.boxShadow).toBe('');
     expect(tile.style.border).toBe(BORDER.panel);
 
-    const [icon, name] = tile.children;
-    expect(icon.style.fontSize).toBe(`${FONT_SIZE['2xl']}px`);
-    expect(icon.style.lineHeight).toBe(String(LINE_HEIGHT.tight));
+    const [, name] = tile.children;
     expect(name.style.fontSize).toBe(`${FONT_SIZE.base}px`);
     expect(name.style.lineHeight).toBe(String(LINE_HEIGHT.snug));
+  });
+
+  it('draws each badge as its own medal, never as an emoji', () => {
+    render(<BadgeGrid achievements={Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, 1]))} />);
+    for (const [i, tile] of tiles().entries()) {
+      const a = ACHIEVEMENTS[i];
+      const medal = tile.firstElementChild;
+      expect(medal.tagName.toLowerCase()).toBe('svg');
+      expect(medal).toHaveAttribute('data-badge-icon', a.id);
+      // Decorative: the name beside it is the accessible text.
+      expect(medal).toHaveAttribute('aria-hidden', 'true');
+      expect(tile).not.toHaveTextContent(a.icon);
+    }
+  });
+
+  it('marks badge names with the pack language so long compounds hyphenate', () => {
+    render(<BadgeGrid achievements={{ [ACHIEVEMENTS[0].id]: 1 }} />);
+    const [, name] = tiles()[0].children;
+    expect(name).toHaveAttribute('lang', activePack.meta.locale);
+    expect(name.style.hyphens).toBe('auto');
   });
 });

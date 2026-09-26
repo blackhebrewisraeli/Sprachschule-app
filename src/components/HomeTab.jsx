@@ -19,7 +19,7 @@ import PlacementOfferBanner from './PlacementOfferBanner';
 //
 // Deliberately NOT a second Stats tab and NOT a Settings page: no accuracy
 // breakdown, heatmap, full 25-name roster, or account MANAGEMENT here. The
-// compact league badge and Top 3 preview are the narrow league glance; the
+// compact league badge and three-place preview are the narrow league glance; the
 // complete standings stay on the Profile tab. See
 // docs/superpowers/specs/2026-08-24-entry-flow-and-home-dashboard-design.md §7
 // for the original exclusion (E5), and the 2026-08-29 design §4.1 for the

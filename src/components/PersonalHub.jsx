@@ -358,9 +358,9 @@ function IdentityAvatar({ profile, userId }) {
   );
 }
 
-// A dedicated, bounded right column: identity, today's work, then Top 3.
-// Each module is a sibling, so another dashboard widget can be appended
-// without changing the outer grid or nesting it inside a task board.
+// A dedicated, bounded right column: identity, today's work, then the league
+// preview. Each module is a sibling, so another dashboard widget can be
+// appended without changing the outer grid or nesting it inside a task board.
 function RightColumn({ identityFacts, today, leaderboard }) {
   return (
     <Stack data-testid="home-identity-content" gap={2} style={BOUNDED_COLUMN}>
@@ -375,8 +375,8 @@ function RightColumn({ identityFacts, today, leaderboard }) {
   );
 }
 
-// Below bp.wide the standing tiles, today's boards and Top 3 drop under the
-// identity band instead of squeezing into the half-width text column.
+// Below bp.wide the standing tiles, today's boards and the league preview drop
+// under the identity band instead of squeezing into the half-width text column.
 function NarrowSections({ standing, today, leaderboard }) {
   return (
     <>
@@ -475,8 +475,15 @@ export default function PersonalHub({
       profile={profile}
     />
   );
-  const leaderboard = league?.leaders?.length ? (
-    <LeaderboardWidget leaders={league.leaders} />
+  // Three places around the learner, not a fixed top three — see
+  // leagueWindow for which three and why.
+  const leaderboard = league?.slots?.length ? (
+    <LeaderboardWidget
+      slots={league.slots}
+      rank={league.rank}
+      cohortSize={league.cohortSize}
+      userId={user?.id}
+    />
   ) : null;
 
   return (

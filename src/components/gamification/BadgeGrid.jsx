@@ -11,6 +11,8 @@ import {
   SPACE,
 } from '../../lib/theme';
 import StatusNote from '../ui/StatusNote';
+import BadgeIcon from './BadgeIcon';
+import { activePack } from '../../packs';
 
 /**
  * Tile floor, and the one number here that is a LAYOUT decision rather than a
@@ -25,7 +27,17 @@ import StatusNote from '../ui/StatusNote';
 const MIN_TILE = 104;
 
 /**
- * The badges a learner has EARNED, as tiles. Locked badges are not rendered:
+ * The drawn medal's size inside a tile. Large enough that a ribbon number
+ * reads at a glance, small enough that two tiles still fit at 320px.
+ */
+const MEDAL = 56;
+
+/**
+ * The badges a learner has EARNED, as tiles — each a drawn medal (BadgeIcon)
+ * over its name. They were emoji until the medal set replaced them: an emoji
+ * is whatever the OS font draws, so the wall never looked like one set.
+ *
+ * Locked badges are not rendered:
  * a wall of fifteen dashed outlines with one filled tile read as clutter, not
  * as a goal. Nothing earned yet shows an empty state instead of an empty grid.
  *
@@ -64,32 +76,34 @@ export default function BadgeGrid({ achievements }) {
           style={{
             minWidth: 0,
             display: 'grid',
-            gap: SPACE[1],
+            gap: SPACE[2],
             justifyItems: 'center',
             textAlign: 'center',
+            alignContent: 'start',
             padding: `${SPACE[3]}px ${SPACE[2]}px`,
             borderRadius: RADIUS.md,
             background: COLORS.card,
             border: BORDER.panel,
           }}
         >
+          <BadgeIcon id={a.id} size={MEDAL} />
           <span
-            aria-hidden="true"
-            style={{ fontSize: FONT_SIZE['2xl'], lineHeight: LINE_HEIGHT.tight }}
-          >
-            {a.icon}
-          </span>
-          <span
+            // Badge names are pack words ("Aufgabenmeister"). Declaring their
+            // language lets the browser hyphenate them at a syllable instead of
+            // snapping a long compound at whichever letter hits the tile edge.
+            lang={activePack.meta?.locale}
             style={{
               minWidth: 0,
+              hyphens: 'auto',
               fontFamily: FONTS.display,
               fontSize: FONT_SIZE.base,
               fontWeight: FONT_WEIGHT.semibold,
               lineHeight: LINE_HEIGHT.snug,
               color: COLORS.ink,
               // A two-word badge name wraps inside a 104px tile rather than
-              // widening it.
-              overflowWrap: 'anywhere',
+              // widening it; `break-word` is the last resort after hyphenation,
+              // where `anywhere` let it win over a proper syllable break.
+              overflowWrap: 'break-word',
             }}
           >
             {a.name}

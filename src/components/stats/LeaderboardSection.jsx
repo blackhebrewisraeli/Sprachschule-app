@@ -1,33 +1,15 @@
 import { useEffect, useRef, useState, Fragment } from 'react';
-import { Users, AlertTriangle } from 'lucide-react';
+import { Users, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
 import { useAuth, getSupabase } from '../../lib/auth.js';
 import { joinLeague, refreshLeague, fetchStandings, LEAGUES_ENABLED } from '../../lib/leagues.js';
-import { zoneCounts } from '../../lib/leagueZones.js';
+import { LEAGUE_SIZE, zoneCounts } from '../../lib/leagueZones.js';
 import { weekRemaining } from '../../lib/leagueCountdown.js';
-import { COLORS, RADIUS, SPACE } from '../../lib/theme.js';
+import { COLORS, FONTS, FONT_SIZE, SPACE } from '../../lib/theme.js';
 import StatusNote from '../ui/StatusNote';
+import { LeagueDivider, LeagueEmptyRow, LeaguePanel, LeagueRow } from '../league/LeagueTable';
+import { leagueCopy } from '../league/leagueFormat';
 
 const SPARSE_BELOW = 5; // show the "still filling up" note under this many members
-
-function ZoneLabel({ text, color }) {
-  return (
-    <li
-      aria-hidden="true"
-      style={{
-        borderTop: `2px solid ${color}`,
-        margin: `${SPACE[1]}px 0`,
-        padding: `${SPACE[1]}px ${SPACE[2]}px 0`,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        color,
-      }}
-    >
-      {text}
-    </li>
-  );
-}
 
 // The standings table.
 //
@@ -39,10 +21,19 @@ function ZoneLabel({ text, color }) {
 // through `onLeague` and the profile card renders it. One fetch, one tier, no
 // way for the page to contradict itself.
 //
+// It draws the SAME rows as Home's preview (league/LeagueTable), so the two
+// surfaces cannot drift into different pictures of one league again. Every
+// member is listed, and every seat the cohort has not filled yet — a league
+// holds LEAGUE_SIZE — is drawn as an open-seat row below them, so a new league
+// reads as "room to climb" rather than as a short, finished list.
+//
 // @param onLeague — called with {tier, leagueId, rank, cohortSize} once the
 //   standings resolve, and with null on failure. Optional: this section still
 //   renders standalone.
-export default function LeaderboardSection({ onSelectUser, onLeague }) {
+// @param selfProfile — the caller's own profile row, if the page has it. The
+//   standings read carries handles only, so without it every row — yours
+//   included — falls back to its @handle and generated avatar.
+export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile = null }) {
   const { user } = useAuth();
   const userId = user?.id;
   const [state, setState] = useState({ status: 'idle', league: null, rows: [] });
@@ -127,97 +118,68 @@ export default function LeaderboardSection({ onSelectUser, onLeague }) {
     return <p style={{ color: COLORS.mute, padding: SPACE[4] }}>Loading league…</p>;
   }
 
+  const copy = leagueCopy();
   const n = state.rows.length;
   // Promotion/relegation zones come from the SAME logic the settle job uses, so
   // the dividers reflect exactly who will advance/drop this week.
   const { promote, demote } = zoneCounts(n);
   const relegationStart = n - demote; // index of the first relegated row
+  const openSeats = Math.max(0, LEAGUE_SIZE - n);
   const countdown = weekRemaining(state.league.period_start);
 
   return (
-    <div style={{ padding: SPACE[4] }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'baseline',
-          marginBottom: SPACE[2],
-        }}
-      >
-        {/* "Rangliste", not "<Tier> League". The tier belongs to the league
-            card above this section and is stated once, there. */}
-        <h3 style={{ margin: 0, color: COLORS.ink }}>Rangliste</h3>
-        <span style={{ fontSize: 13, color: COLORS.mute }}>
-          {countdown.ended ? 'Settling soon' : `Ends in ${countdown.label}`}
-        </span>
-      </div>
-
-      <ol style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-        {state.rows.map((row, i) => {
-          const isMe = row.user_id === userId;
-          const showPromote = promote > 0 && promote < n && i === promote;
-          const showRelegate = demote > 0 && relegationStart > promote && i === relegationStart;
-          return (
-            <Fragment key={row.user_id}>
-              {showPromote && <ZoneLabel text="↑ Promotion" color={COLORS.green} />}
-              {showRelegate && <ZoneLabel text="↓ Relegation" color={COLORS.red} />}
-              <li style={{ padding: 0 }}>
-                {/* The row is a real <button>, not a clickable <li>: that is
-                    what puts it in the tab order and gives it Enter AND Space
-                    for free. It fills the list item so the whole row stays the
-                    click target. */}
-                <button
-                  type="button"
-                  // The app's one focus ring, from injectGlobalStyles. The
-                  // offset is inset because the rows are full-bleed inside the
-                  // list: an outset ring is clipped by the container edge and
-                  // overlaps the neighbouring row.
-                  data-ui="button"
-                  data-focus-inset=""
-                  onClick={() => onSelectUser(row.user_id)}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: SPACE[2],
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    textAlign: 'left',
-                    font: 'inherit',
-                    border: 'none',
-                    borderRadius: RADIUS.sm,
-                    cursor: 'pointer',
-                    padding: SPACE[2],
-                    background: isMe ? COLORS.paperDeep : 'transparent',
-                    fontWeight: isMe ? 700 : 400,
-                    color: COLORS.ink,
-                  }}
-                >
-                  {/* minWidth:0 lets a long handle ellipsize instead of
-                      widening the row past a 320px viewport. */}
-                  <span
-                    style={{
-                      minWidth: 0,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {i + 1}. <span>{row.handle}</span>
-                  </span>
-                  <span style={{ flexShrink: 0 }}>{row.weekly_xp} XP</span>
-                </button>
-              </li>
-            </Fragment>
-          );
-        })}
-      </ol>
-
-      {n < SPARSE_BELOW && (
-        <p style={{ margin: `${SPACE[3]}px 0 0`, fontSize: 13, color: COLORS.mute }}>
-          Your league is still filling up — more learners will join this week.
-        </p>
+    <LeaguePanel
+      testId="profile-leaderboard"
+      // "Rangliste", not "<Tier> League". The tier belongs to the league card
+      // above this section and is stated once, there.
+      title="Rangliste"
+      aside={countdown.ended ? 'Settling soon' : `Ends in ${countdown.label}`}
+      listLabel="League standings"
+      padding={SPACE[3]}
+      footer={
+        n < SPARSE_BELOW ? (
+          <p
+            style={{
+              margin: `${SPACE[3]}px ${SPACE[1]}px 0`,
+              fontFamily: FONTS.body,
+              fontSize: FONT_SIZE.base,
+              color: COLORS.mute,
+            }}
+          >
+            Your league is still filling up — more learners will join this week.
+          </p>
+        ) : null
+      }
+    >
+      {state.rows.map((row, i) => {
+        const isMe = row.user_id === userId;
+        const showPromote = promote > 0 && promote < n && i === promote;
+        const showRelegate = demote > 0 && relegationStart > promote && i === relegationStart;
+        return (
+          <Fragment key={row.user_id}>
+            {showPromote && <LeagueDivider text="Promotion" color={COLORS.green} icon={ArrowUp} />}
+            {showRelegate && (
+              <LeagueDivider text="Relegation" color={COLORS.red} icon={ArrowDown} />
+            )}
+            <LeagueRow
+              rank={i + 1}
+              member={isMe && selfProfile ? { ...row, profile: selfProfile } : row}
+              isMe={isMe}
+              onSelect={() => onSelectUser(row.user_id)}
+              copy={copy}
+            />
+          </Fragment>
+        );
+      })}
+      {openSeats > 0 && (
+        <LeagueDivider
+          text={copy.leaderboardOpenSeats?.(openSeats) ?? `${openSeats} open`}
+          color={COLORS.mute}
+        />
       )}
-    </div>
+      {Array.from({ length: openSeats }, (_, k) => (
+        <LeagueEmptyRow key={`open-${n + k + 1}`} rank={n + k + 1} copy={copy} />
+      ))}
+    </LeaguePanel>
   );
 }

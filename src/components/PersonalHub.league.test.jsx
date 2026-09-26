@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 
 // LEAGUES_ENABLED is read from import.meta.env at module load, and a developer
 // machine has a populated .env while CI does not — so a test that inherited the
@@ -78,7 +78,7 @@ describe('PersonalHub — league at a glance', () => {
     expect(screen.queryByTestId('league-badge-compact')).toBeNull();
   });
 
-  it('appends a Top 3 preview without bringing the full roster to Home', () => {
+  it('appends a three-place preview without bringing the full roster to Home', () => {
     render(
       <PersonalHub
         user={USER}
@@ -88,12 +88,20 @@ describe('PersonalHub — league at a glance', () => {
           tier: 2,
           rank: 4,
           cohortSize: 25,
-          leaders: [
+          slots: [
             {
-              user_id: 'leader',
-              handle: 'winner',
-              weekly_xp: 500,
-              profile: { display_name: 'Winner', handle: 'winner', is_private: false },
+              rank: 3,
+              member: {
+                user_id: 'above',
+                handle: 'winner',
+                weekly_xp: 500,
+                profile: { display_name: 'Winner', handle: 'winner', is_private: false },
+              },
+            },
+            { rank: 4, member: { user_id: USER.id, handle: 'sam', weekly_xp: 400, profile: null } },
+            {
+              rank: 5,
+              member: { user_id: 'below', handle: 'next', weekly_xp: 300, profile: null },
             },
           ],
         }}
@@ -102,7 +110,10 @@ describe('PersonalHub — league at a glance', () => {
     expect(screen.getByTestId('home-identity-content')).toContainElement(
       screen.getByTestId('home-leaderboard-widget')
     );
-    expect(screen.getByRole('list', { name: /top 3 leaderboard/i })).toBeInTheDocument();
+    // Three places around the learner — not the full roster.
+    const list = screen.getByRole('list', { name: /league places around you/i });
+    expect(within(list).getAllByRole('listitem')).toHaveLength(3);
+    expect(within(list).getByTestId('league-row-you')).toBeInTheDocument();
     expect(screen.queryByText('Rangliste')).not.toBeInTheDocument();
   });
 });

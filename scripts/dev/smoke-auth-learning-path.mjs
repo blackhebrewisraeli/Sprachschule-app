@@ -1095,12 +1095,16 @@ async function stepOpenLeagues(page) {
     );
   }
 
-  // Rank order: the widget numbers rows itself, so read the rendered text
-  // rather than trusting the fixture's own `rank` column.
+  // Rank order: the widget numbers rows itself, so read the rendered rank
+  // bubble rather than trusting the fixture's own `rank` column. The caller's
+  // row is the one the table marks as theirs (`data-me` on its list item) —
+  // weight alone no longer identifies it, because the gold first-place row is
+  // set bold too.
   const rendered = await rowButtons.evaluateAll((els) =>
     els.map((el) => ({
       text: (el.innerText || '').replace(/\s+/g, ' ').trim(),
-      bold: Number(getComputedStyle(el).fontWeight) >= 700,
+      rank: (el.querySelector('[aria-label^="Rank "]')?.textContent || '').trim(),
+      mine: el.parentElement?.hasAttribute('data-me') ?? false,
       tag: el.tagName,
     }))
   );
@@ -1121,22 +1125,23 @@ async function stepOpenLeagues(page) {
     }
   }
   for (let i = 0; i < rendered.length; i += 1) {
-    if (!rendered[i].text.startsWith(`${i + 1}.`)) {
+    if (rendered[i].rank !== String(i + 1)) {
       throw new Error(
-        `smoke-auth-learning-path: row ${i + 1} is numbered "${rendered[i].text.slice(0, 12)}".`
+        `smoke-auth-learning-path: row ${i + 1} is numbered "${rendered[i].rank}" ` +
+          `("${rendered[i].text.slice(0, 20)}").`
       );
     }
   }
 
   // The caller's own row is the 4th in the fixture and must be the marked one.
-  const mine = rendered.filter((r) => r.bold);
+  const mine = rendered.filter((r) => r.mine);
   if (mine.length !== 1 || !mine[0].text.includes('Smoke')) {
     throw new Error(
       `smoke-auth-learning-path: expected exactly one highlighted row (the caller's), ` +
         `got ${mine.length}.`
     );
   }
-  if (!rendered[3].bold) {
+  if (!rendered[3].mine) {
     throw new Error("smoke-auth-learning-path: the highlighted row is not the caller's rank 4.");
   }
 
@@ -1153,9 +1158,11 @@ async function stepOpenLeagues(page) {
         `(promote=${promote}, demote=${demote}) — resize it so both dividers render.`
     );
   }
+  // The arrows are icons now (the zone colour lives on them and on the rules,
+  // not on the label text), so match the label word.
   for (const [label, re] of [
-    ['↑ Promotion', /↑\s*Promotion/i],
-    ['↓ Relegation', /↓\s*Relegation/i],
+    ['Promotion', /^Promotion$/i],
+    ['Relegation', /^Relegation$/i],
   ]) {
     if (
       !(await page
