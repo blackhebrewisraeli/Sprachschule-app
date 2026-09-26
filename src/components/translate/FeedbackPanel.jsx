@@ -4,7 +4,6 @@ import {
   FONTS,
   FONT_SIZE,
   FONT_WEIGHT,
-  LETTER_SPACING,
   SPACE,
   RADIUS,
   SHADOW,
@@ -15,13 +14,19 @@ import {
 // (paperDeep) / wrong (red). Shows the canonical answer when not fully correct.
 // xp + mult: when provided and verdict is correct/almost, shows a +N XP ×M🔥
 // flourish (mult badge omitted when mult === 1).
+//
+// Gold fill needs accentOn; mode-flipping ink fails on gold in dark mode.
+// Anything that is not correct/almost reads as wrong.
+const VERDICT_LOOK = {
+  correct: { bg: COLORS.gold, fg: COLORS.accentOn, label: '✓ Correct' },
+  almost: { bg: COLORS.paperDeep, fg: COLORS.ink, label: '≈ Almost' },
+  wrong: { bg: COLORS.red, fg: COLORS.paper, label: '✗ Not quite' },
+};
+
 export default function FeedbackPanel({ verdict, correctText, note, xp, mult, onNext }) {
   const isCorrect = verdict === 'correct';
   const isAlmost = verdict === 'almost';
-  const bg = isCorrect ? COLORS.gold : isAlmost ? COLORS.paperDeep : COLORS.red;
-  // Gold fill needs accentOn; mode-flipping ink fails on gold in dark mode.
-  const fg = isCorrect ? COLORS.accentOn : isAlmost ? COLORS.ink : COLORS.paper;
-  const label = isCorrect ? '✓ CORRECT' : isAlmost ? '≈ ALMOST' : '✗ NOT QUITE';
+  const { bg, fg, label } = VERDICT_LOOK[verdict] ?? VERDICT_LOOK.wrong;
   const showCorrectText = !isCorrect && correctText;
   const showFlourish = (isCorrect || isAlmost) && xp > 0;
   return (
@@ -32,15 +37,15 @@ export default function FeedbackPanel({ verdict, correctText, note, xp, mult, on
         boxShadow: SHADOW.card,
         background: bg,
         color: fg,
-        padding: SPACE[5],
+        padding: SPACE[6],
         marginTop: SPACE[4],
       }}
     >
       <div
         style={{
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          letterSpacing: LETTER_SPACING.caps,
+          fontFamily: FONTS.body,
+          fontSize: FONT_SIZE.lg,
+          fontWeight: FONT_WEIGHT.bold,
           marginBottom: SPACE[2],
         }}
       >
@@ -61,11 +66,14 @@ export default function FeedbackPanel({ verdict, correctText, note, xp, mult, on
       )}
       {showCorrectText && (
         <div
+          lang="de"
           style={{
             fontFamily: FONTS.display,
-            fontSize: FONT_SIZE.xl,
-            fontWeight: FONT_WEIGHT.semibold,
-            marginBottom: SPACE[2],
+            fontSize: FONT_SIZE['3xl'],
+            fontWeight: FONT_WEIGHT.medium,
+            lineHeight: 1.25,
+            overflowWrap: 'anywhere',
+            marginBottom: SPACE[3],
           }}
         >
           {correctText}
@@ -75,8 +83,8 @@ export default function FeedbackPanel({ verdict, correctText, note, xp, mult, on
         <div
           style={{
             fontFamily: FONTS.body,
-            fontStyle: 'italic',
-            fontSize: FONT_SIZE.base,
+            fontSize: FONT_SIZE.md,
+            lineHeight: 1.5,
             opacity: 0.85,
             marginBottom: SPACE[4],
           }}

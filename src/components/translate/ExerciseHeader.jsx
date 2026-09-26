@@ -1,39 +1,118 @@
-import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, SPACE } from '../../lib/theme';
+import {
+  COLORS,
+  FONTS,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  LETTER_SPACING,
+  RADIUS,
+  SPACE,
+  TRANSITION,
+} from '../../lib/theme';
 
-// The "A1 — WORD TILES · Exercise 3 / 10" header above each exercise. `label`
-// is the input mode on screen (translate/scaffold.js), whose captions reuse
-// LEVEL_MODES so a level's default reads the same here as in the switchers.
-export default function ExerciseHeader({ level, label, idx, total }) {
+const SEGMENT_HEIGHT = 6;
+
+// 'current' | 'correct' | 'missed' | 'ahead' for segment `i` when `idx` is on screen.
+function segmentState(i, idx, correctAt) {
+  if (i === idx) return 'current';
+  if (i > idx) return 'ahead';
+  return correctAt.has(i) ? 'correct' : 'missed';
+}
+
+const SEGMENT_COLOR = {
+  current: COLORS.ink,
+  ahead: COLORS.track,
+  correct: COLORS.gold,
+  missed: COLORS.mute,
+};
+
+// Where the learner is in the set of ten, above each exercise: the level, the
+// position in words, how many landed, and one segment per sentence — gold for
+// a sentence answered right, muted for one missed or skipped, ink for the one
+// on screen. The segments are decoration for the sentence beside them, so they
+// stay out of the accessibility tree.
+//
+// `aside` is the report-a-problem flag, kept on the header's baseline.
+export default function ExerciseHeader({ level, idx, total, correctAt = new Set(), aside = null }) {
+  const right = [...correctAt].filter((i) => i < idx).length;
   return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: SPACE[4],
-      }}
-    >
-      <span
+    <div style={{ marginBottom: SPACE[5] }}>
+      <div
         style={{
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          letterSpacing: LETTER_SPACING.caps,
-          color: COLORS.red,
-          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          gap: SPACE[3],
+          minWidth: 0,
+          marginBottom: SPACE[3],
         }}
       >
-        {label ? `${level.toUpperCase()} — ${label.toUpperCase()}` : ''}
-      </span>
-      <span
+        <span
+          data-testid="translate-level"
+          style={{
+            flexShrink: 0,
+            fontFamily: FONTS.mono,
+            fontSize: FONT_SIZE.ipa,
+            fontWeight: FONT_WEIGHT.bold,
+            letterSpacing: LETTER_SPACING.wide,
+            lineHeight: 1,
+            padding: `${SPACE[1]}px ${SPACE[2]}px`,
+            borderRadius: RADIUS.pill,
+            background: COLORS.ink,
+            color: COLORS.paper,
+          }}
+        >
+          {level.toUpperCase()}
+        </span>
+        <span
+          style={{
+            flex: '1 1 auto',
+            minWidth: 0,
+            fontFamily: FONTS.body,
+            fontSize: FONT_SIZE.base,
+            fontWeight: FONT_WEIGHT.semibold,
+            color: COLORS.ink,
+          }}
+        >
+          Exercise {idx + 1} of {total}
+        </span>
+        {idx > 0 ? (
+          <span
+            style={{
+              flexShrink: 0,
+              fontFamily: FONTS.body,
+              fontSize: FONT_SIZE.sm,
+              color: COLORS.inkSoft,
+            }}
+          >
+            {right} correct
+          </span>
+        ) : null}
+        {aside}
+      </div>
+      <div
+        aria-hidden="true"
+        data-testid="translate-progress"
         style={{
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          letterSpacing: LETTER_SPACING.wider,
-          color: COLORS.mute,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${total}, minmax(0, 1fr))`,
+          gap: SPACE[1],
         }}
       >
-        Exercise {idx + 1} / {total}
-      </span>
+        {Array.from({ length: total }, (_, i) => {
+          const state = segmentState(i, idx, correctAt);
+          return (
+            <span
+              key={i}
+              data-state={state}
+              style={{
+                height: SEGMENT_HEIGHT,
+                borderRadius: RADIUS.pill,
+                background: SEGMENT_COLOR[state],
+                transition: TRANSITION.slow,
+              }}
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }

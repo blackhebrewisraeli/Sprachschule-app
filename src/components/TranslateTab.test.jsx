@@ -3,7 +3,13 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TranslateTab from './TranslateTab';
 import { setUserLevel } from '../lib/levelPref';
-import { INPUT_MODES } from '../lib/chatInputModes';
+
+// The level chip plus the pressed mode button say what Translate is showing —
+// the pair the old "A1 — WORD TILES" header printed as one caption.
+function expectTranslate(level, mode) {
+  expect(screen.getByTestId('translate-level')).toHaveTextContent(level);
+  expect(screen.getByRole('button', { name: mode, pressed: true })).toBeInTheDocument();
+}
 
 // Each level renders a different exercise component off a differently shaped
 // row (A1 `words`, A2 `template`, B1 free text), so a `level` that has moved
@@ -44,20 +50,20 @@ describe('TranslateTab — remounted per level, as the caller keys it', () => {
   it('renders the new level header immediately after the switch', () => {
     setUserLevel('a1');
     const { rerender } = render(<TranslateTab key="a1" level="a1" />);
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
+    expectTranslate('A1', 'Word tiles');
     setUserLevel('a2');
     rerender(<TranslateTab key="a2" level="a2" />);
-    expect(screen.getByText(/A2 — FILL THE BLANKS/)).toBeInTheDocument();
-    expect(screen.queryByText(/A1 — WORD TILES/)).toBeNull();
+    expectTranslate('A2', 'Fill the blanks');
+    expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('A1');
   });
 
   it('starts every level at exercise 1 of the set', () => {
     setUserLevel('a1');
     const { rerender } = render(<TranslateTab key="a1" level="a1" />);
-    expect(screen.getByText(/Exercise 1 \/ 10/)).toBeInTheDocument();
+    expect(screen.getByText(/Exercise 1 of 10/)).toBeInTheDocument();
     setUserLevel('b1');
     rerender(<TranslateTab key="b1" level="b1" />);
-    expect(screen.getByText(/Exercise 1 \/ 10/)).toBeInTheDocument();
+    expect(screen.getByText(/Exercise 1 of 10/)).toBeInTheDocument();
   });
 
   // Positive control: without it, a green suite above proves nothing if the
@@ -65,7 +71,7 @@ describe('TranslateTab — remounted per level, as the caller keys it', () => {
   it('renders a mode header at all', () => {
     setUserLevel('b1');
     render(<TranslateTab level="b1" />);
-    expect(screen.getByText(/B1 — FREE TYPING/)).toBeInTheDocument();
+    expectTranslate('B1', 'Free typing');
   });
 
   // Mounting each level standalone is what a keyed remount actually does.
@@ -85,21 +91,21 @@ describe('TranslateTab — classified CEFR gates the mode', () => {
 
   it('renders A1 tiles when classified A1 even if the prop asks for B1', () => {
     render(<TranslateTab level="b1" />);
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
-    expect(screen.queryByText(/B1 — FREE TYPING/)).toBeNull();
+    expectTranslate('A1', 'Word tiles');
+    expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('B1');
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
   it('renders A1 tiles when classified A1 even if the prop asks for A2 blanks', () => {
     render(<TranslateTab level="a2" />);
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
-    expect(screen.queryByText(/A2 — FILL THE BLANKS/)).toBeNull();
+    expectTranslate('A1', 'Word tiles');
+    expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('A2');
   });
 
   it('lets a classified B1 learner run free typing', () => {
     setUserLevel('b1');
     render(<TranslateTab level="b1" />);
-    expect(screen.getByText(/B1 — FREE TYPING/)).toBeInTheDocument();
+    expectTranslate('B1', 'Free typing');
   });
 });
 
@@ -109,17 +115,17 @@ describe('TranslateTab — input mode toggle', () => {
     setUserLevel('a1');
   });
 
-  const modeSelect = () => screen.getByRole('combobox', { name: 'Input mode' });
-  const prompt = () => screen.getByText('TRANSLATE TO GERMAN').nextSibling.textContent;
+  const pickMode = (name) => userEvent.click(screen.getByRole('button', { name }));
+  const prompt = () => screen.getByTestId('translate-prompt').textContent;
 
   it('lets an A1 learner move from word tiles to free typing on the same sentence', async () => {
     render(<TranslateTab level="a1" />);
     const before = prompt();
     expect(screen.getByRole('group', { name: 'Word bank' })).toBeInTheDocument();
 
-    await userEvent.selectOptions(modeSelect(), 'Free typing');
+    await pickMode('Free typing');
 
-    expect(screen.getByText(/A1 — FREE TYPING/)).toBeInTheDocument();
+    expectTranslate('A1', 'Free typing');
     expect(screen.getByRole('textbox', { name: 'Your German translation' })).toBeInTheDocument();
     expect(prompt()).toBe(before);
   });
@@ -127,15 +133,15 @@ describe('TranslateTab — input mode toggle', () => {
   it('offers a B1 learner the gap modes on B1 sentences', async () => {
     setUserLevel('b1');
     render(<TranslateTab level="b1" />);
-    await userEvent.selectOptions(modeSelect(), 'Type the word');
-    expect(screen.getByText(/B1 — TYPE THE WORD/)).toBeInTheDocument();
+    await pickMode('Type the word');
+    expectTranslate('B1', 'Type the word');
     expect(screen.getByRole('textbox', { name: 'Missing word' })).toBeInTheDocument();
   });
 
   it('switches to free typing from the word bank’s "Type instead"', async () => {
     render(<TranslateTab level="a1" />);
     await userEvent.click(screen.getByRole('button', { name: 'Type instead' }));
-    expect(modeSelect()).toHaveValue(INPUT_MODES.FREE_TEXT);
+    expect(screen.getByRole('button', { name: 'Free typing', pressed: true })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'Your German translation' })).toBeInTheDocument();
   });
 });

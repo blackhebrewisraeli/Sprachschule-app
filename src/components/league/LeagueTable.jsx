@@ -254,7 +254,7 @@ export function LeagueEmptyRow({ rank, copy = leagueCopy() }) {
 
 /**
  * A labelled rule between two parts of the table: the promotion and relegation
- * cut-offs, and where the open seats begin. Decorative — the rows carry the
+ * cut-offs. Decorative — the rows carry the
  * information — so it stays out of the list's item count.
  *
  * The zone colour is on the rules and the arrow, NOT on the label. The label

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MissionBoard from './MissionBoard';
 import ErrorBoundary from './ErrorBoundary';
-import { FONTS, FONT_SIZE, SPACE } from '../lib/theme';
+import { FONTS, FONT_SIZE, LINE_HEIGHT, SPACE } from '../lib/theme';
 
 const due = { id: 'srs-due', count: 12, tab: 'vocab', priority: 0 };
 const goal = { id: 'goal-remaining', count: 30, tab: 'chat', priority: 2 };
@@ -17,10 +17,10 @@ describe('MissionBoard', () => {
     expect(rows[1]).toHaveTextContent(/30 XP/i);
   });
 
-  it('packs each row with compact padding instead of a tile inset', () => {
+  it('gives each row room to breathe — three stops of vertical air, four inline', () => {
     render(<MissionBoard missions={[due]} />);
     expect(screen.getByRole('button')).toHaveStyle({
-      padding: `${SPACE[1]}px ${SPACE[2]}px`,
+      padding: `${SPACE[3]}px ${SPACE[4]}px`,
     });
   });
 
@@ -47,10 +47,15 @@ describe('MissionBoard', () => {
       minWidth: '0',
       overflowWrap: 'anywhere',
     });
-    expect(screen.getByTestId('mission-copy')).toHaveStyle({ lineHeight: '1.3' });
+    expect(screen.getByTestId('mission-copy')).toHaveStyle({
+      fontFamily: FONTS.body,
+      fontSize: `${FONT_SIZE.md}px`,
+      lineHeight: String(LINE_HEIGHT.normal),
+    });
     expect(screen.getByTestId('mission-destination')).toHaveStyle({
-      marginTop: '0',
-      lineHeight: '1.2',
+      marginTop: `${SPACE[1]}px`,
+      fontFamily: FONTS.body,
+      lineHeight: String(LINE_HEIGHT.snug),
     });
   });
 

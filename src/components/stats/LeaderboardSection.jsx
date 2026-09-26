@@ -2,11 +2,11 @@ import { useEffect, useRef, useState, Fragment } from 'react';
 import { Users, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
 import { useAuth, getSupabase } from '../../lib/auth.js';
 import { joinLeague, refreshLeague, fetchStandings, LEAGUES_ENABLED } from '../../lib/leagues.js';
-import { LEAGUE_SIZE, zoneCounts } from '../../lib/leagueZones.js';
+import { zoneCounts } from '../../lib/leagueZones.js';
 import { weekRemaining } from '../../lib/leagueCountdown.js';
 import { COLORS, FONTS, FONT_SIZE, SPACE } from '../../lib/theme.js';
 import StatusNote from '../ui/StatusNote';
-import { LeagueDivider, LeagueEmptyRow, LeaguePanel, LeagueRow } from '../league/LeagueTable';
+import { LeagueDivider, LeaguePanel, LeagueRow } from '../league/LeagueTable';
 import { leagueCopy } from '../league/leagueFormat';
 
 const SPARSE_BELOW = 5; // show the "still filling up" note under this many members
@@ -22,10 +22,10 @@ const SPARSE_BELOW = 5; // show the "still filling up" note under this many memb
 // way for the page to contradict itself.
 //
 // It draws the SAME rows as Home's preview (league/LeagueTable), so the two
-// surfaces cannot drift into different pictures of one league again. Every
-// member is listed, and every seat the cohort has not filled yet — a league
-// holds LEAGUE_SIZE — is drawn as an open-seat row below them, so a new league
-// reads as "room to climb" rather than as a short, finished list.
+// surfaces cannot drift into different pictures of one league again. Only the
+// members who are actually in the league are listed — no open-seat rows for the
+// places a young cohort has not filled (Home's three-row glance still pads, the
+// full standings do not).
 //
 // @param onLeague — called with {tier, leagueId, rank, cohortSize} once the
 //   standings resolve, and with null on failure. Optional: this section still
@@ -124,7 +124,6 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
   // the dividers reflect exactly who will advance/drop this week.
   const { promote, demote } = zoneCounts(n);
   const relegationStart = n - demote; // index of the first relegated row
-  const openSeats = Math.max(0, LEAGUE_SIZE - n);
   const countdown = weekRemaining(state.league.period_start);
 
   return (
@@ -171,15 +170,6 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
           </Fragment>
         );
       })}
-      {openSeats > 0 && (
-        <LeagueDivider
-          text={copy.leaderboardOpenSeats?.(openSeats) ?? `${openSeats} open`}
-          color={COLORS.mute}
-        />
-      )}
-      {Array.from({ length: openSeats }, (_, k) => (
-        <LeagueEmptyRow key={`open-${n + k + 1}`} rank={n + k + 1} copy={copy} />
-      ))}
     </LeaguePanel>
   );
 }
