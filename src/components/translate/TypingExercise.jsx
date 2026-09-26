@@ -4,7 +4,8 @@ import {
   COLORS,
   FONTS,
   FONT_SIZE,
-  LETTER_SPACING,
+  FONT_WEIGHT,
+  BORDER,
   SPACE,
   RADIUS,
   SHADOW,
@@ -93,17 +94,18 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
         <>
           <div
             style={{
-              fontFamily: FONTS.mono,
-              fontSize: FONT_SIZE.tag,
-              letterSpacing: LETTER_SPACING.caps,
+              fontFamily: FONTS.body,
+              fontSize: FONT_SIZE.sm,
+              fontWeight: FONT_WEIGHT.semibold,
               color: COLORS.mute,
               marginBottom: SPACE[2],
             }}
           >
-            YOUR GERMAN TRANSLATION
+            Your German
           </div>
           <textarea
             aria-label="Your German translation"
+            lang="de"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && (e.metaKey || e.ctrlKey) && check()}
@@ -112,13 +114,13 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
               width: '100%',
               boxSizing: 'border-box',
               minHeight: 120,
-              padding: SPACE[4],
-              border: 'none',
-              borderRadius: RADIUS.md,
+              padding: `${SPACE[4]}px ${SPACE[5]}px`,
+              border: BORDER.panel,
+              borderRadius: RADIUS.lg,
               boxShadow: SHADOW.inset,
               background: COLORS.card,
               fontFamily: FONTS.display,
-              fontSize: FONT_SIZE.xl,
+              fontSize: FONT_SIZE['2xl'],
               resize: 'vertical',
               color: COLORS.ink,
               lineHeight: 1.5,

@@ -31,6 +31,5 @@ export const IDENTITY = {
   leaderboardXp: (xp) => `${Number(xp ?? 0).toLocaleString('en-GB')} XP`,
   leaderboardYou: 'Du',
   leaderboardEmptySlot: 'Freier Platz',
-  leaderboardOpenSeats: (count) => `${count} freie ${count === 1 ? 'Platz' : 'Plätze'}`,
   anonymousHandle: '@anonym',
 };

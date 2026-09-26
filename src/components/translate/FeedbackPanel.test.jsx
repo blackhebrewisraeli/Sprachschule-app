@@ -8,7 +8,7 @@ describe('FeedbackPanel', () => {
     render(
       <FeedbackPanel verdict="correct" correctText="Ich bin müde" note="Nice." onNext={() => {}} />
     );
-    expect(screen.getByText('✓ CORRECT')).toBeInTheDocument();
+    expect(screen.getByText('✓ Correct')).toBeInTheDocument();
     // Fully correct → the canonical answer is not echoed back.
     expect(screen.queryByText('Ich bin müde')).not.toBeInTheDocument();
     expect(screen.getByText('Nice.')).toBeInTheDocument();
@@ -18,13 +18,13 @@ describe('FeedbackPanel', () => {
     render(
       <FeedbackPanel verdict="almost" correctText="Ich bin müde" note="Typo." onNext={() => {}} />
     );
-    expect(screen.getByText('≈ ALMOST')).toBeInTheDocument();
+    expect(screen.getByText('≈ Almost')).toBeInTheDocument();
     expect(screen.getByText('Ich bin müde')).toBeInTheDocument();
   });
 
   it('renders the wrong variant with the canonical answer', () => {
     render(<FeedbackPanel verdict="wrong" correctText="Ich bin müde" onNext={() => {}} />);
-    expect(screen.getByText('✗ NOT QUITE')).toBeInTheDocument();
+    expect(screen.getByText('✗ Not quite')).toBeInTheDocument();
     expect(screen.getByText('Ich bin müde')).toBeInTheDocument();
   });
 

@@ -1,15 +1,15 @@
-import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, SPACE } from '../lib/theme';
+import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, SPACE } from '../lib/theme';
 import { Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
 import StatusNote from './ui/StatusNote';
 import { activePack } from '../packs';
 import { ListChecks } from 'lucide-react';
 
-// Compact row padding for Home list pills. InteractiveCard's default SPACE[4]
-// (16) is a deck-tile inset; on a full-width mission/quest row that reads as
-// empty vertical padding. A one-stop vertical inset hugs the two text lines;
-// the wider inline inset keeps the icon and copy comfortably separated.
-const ROW_PADDING = `${SPACE[1]}px ${SPACE[2]}px`;
+// Row padding for Home's mission/quest pills. The earlier one-stop (4px)
+// vertical inset hugged the two text lines so tightly that the rows read as
+// cramped; three stops of vertical air and four of inline give the copy room
+// without growing into InteractiveCard's full deck-tile inset.
+const ROW_PADDING = `${SPACE[3]}px ${SPACE[4]}px`;
 
 const BOUNDED_BOARD = {
   width: '100%',
@@ -54,7 +54,7 @@ export default function MissionBoard({ missions = [], onGo }) {
       ) : (
         // A real list, so a screen reader announces how many tasks are open.
         <ul style={{ ...BOUNDED_BOARD, listStyle: 'none', margin: 0, padding: 0 }}>
-          <Stack gap={1} as="div" style={BOUNDED_BOARD}>
+          <Stack gap={2} as="div" style={BOUNDED_BOARD}>
             {missions.map((mission) => {
               const entry = copy[mission.id];
               if (!entry) return null;
@@ -78,11 +78,14 @@ export default function MissionBoard({ missions = [], onGo }) {
                         // viewport instead of letting the text shrink.
                         gridTemplateColumns: 'auto minmax(0, 1fr)',
                         alignItems: 'start',
-                        columnGap: SPACE[2],
+                        columnGap: SPACE[3],
                         ...BOUNDED_BOARD,
                       }}
                     >
-                      <span aria-hidden="true" style={{ fontSize: FONT_SIZE.md }}>
+                      <span
+                        aria-hidden="true"
+                        style={{ fontSize: FONT_SIZE.lg, lineHeight: LINE_HEIGHT.normal }}
+                      >
                         {entry.icon}
                       </span>
                       <div style={{ minWidth: 0 }}>
@@ -92,8 +95,9 @@ export default function MissionBoard({ missions = [], onGo }) {
                             display: 'block',
                             minWidth: 0,
                             fontFamily: FONTS.body,
-                            fontSize: FONT_SIZE.base,
-                            lineHeight: 1.3,
+                            fontSize: FONT_SIZE.md,
+                            fontWeight: FONT_WEIGHT.medium,
+                            lineHeight: LINE_HEIGHT.normal,
                             color: COLORS.ink,
                             overflowWrap: 'anywhere',
                           }}
@@ -105,10 +109,11 @@ export default function MissionBoard({ missions = [], onGo }) {
                           aria-hidden="true"
                           style={{
                             display: 'block',
-                            marginTop: 0,
-                            fontFamily: FONTS.mono,
-                            fontSize: FONT_SIZE.tag,
-                            lineHeight: 1.2,
+                            marginTop: SPACE[1],
+                            fontFamily: FONTS.body,
+                            fontSize: FONT_SIZE.sm,
+                            fontWeight: FONT_WEIGHT.semibold,
+                            lineHeight: LINE_HEIGHT.snug,
                             color: COLORS.mute,
                           }}
                         >

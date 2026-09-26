@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import QuestBoard from './QuestBoard';
 import { activePack } from '../packs';
-import { FONTS, FONT_SIZE, SPACE } from '../lib/theme';
+import { FONTS, FONT_SIZE, LINE_HEIGHT, SPACE } from '../lib/theme';
 
 const quest = (over = {}) => ({
   id: 'answer-cards',
@@ -33,10 +33,10 @@ describe('QuestBoard', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
   });
 
-  it('packs each row with compact padding instead of a tile inset', () => {
+  it('gives each row room to breathe — three stops of vertical air, four inline', () => {
     render(<QuestBoard quests={[quest()]} />);
     expect(screen.getByRole('button')).toHaveStyle({
-      padding: `${SPACE[1]}px ${SPACE[2]}px`,
+      padding: `${SPACE[3]}px ${SPACE[4]}px`,
     });
   });
 
@@ -68,10 +68,15 @@ describe('QuestBoard', () => {
       minWidth: '0',
       overflowWrap: 'anywhere',
     });
-    expect(screen.getByTestId('quest-copy')).toHaveStyle({ lineHeight: '1.3' });
+    expect(screen.getByTestId('quest-copy')).toHaveStyle({
+      fontFamily: FONTS.body,
+      fontSize: `${FONT_SIZE.md}px`,
+      lineHeight: String(LINE_HEIGHT.normal),
+    });
     expect(screen.getByTestId('quest-progress')).toHaveStyle({
-      marginTop: '0',
-      lineHeight: '1.2',
+      marginTop: `${SPACE[1]}px`,
+      fontFamily: FONTS.body,
+      lineHeight: String(LINE_HEIGHT.snug),
     });
   });
 

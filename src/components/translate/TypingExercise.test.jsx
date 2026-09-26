@@ -40,7 +40,7 @@ describe('TypingExercise', () => {
     const grading = screen.getByRole('button', { name: 'GRADING...' });
     expect(grading).toBeDisabled();
     resolveGrade(grade('correct'));
-    expect(await screen.findByText('✓ CORRECT')).toBeInTheDocument();
+    expect(await screen.findByText('✓ Correct')).toBeInTheDocument();
   });
 
   it('calls onCorrect on a "correct" verdict', async () => {
@@ -51,7 +51,7 @@ describe('TypingExercise', () => {
     );
     await userEvent.type(screen.getByRole('textbox'), 'Ich bin müde');
     await userEvent.click(screen.getByRole('button', { name: /CHECK/ }));
-    expect(await screen.findByText('✓ CORRECT')).toBeInTheDocument();
+    expect(await screen.findByText('✓ Correct')).toBeInTheDocument();
     expect(onCorrect).toHaveBeenCalledTimes(1);
     expect(callClaude).toHaveBeenCalledWith(expect.any(String), expect.any(String), [], {
       endpoint: 'grade',
@@ -67,7 +67,7 @@ describe('TypingExercise', () => {
     );
     await userEvent.type(screen.getByRole('textbox'), 'Ich bin mude');
     await userEvent.click(screen.getByRole('button', { name: /CHECK/ }));
-    expect(await screen.findByText('≈ ALMOST')).toBeInTheDocument();
+    expect(await screen.findByText('≈ Almost')).toBeInTheDocument();
     expect(screen.getByText('Ich bin müde')).toBeInTheDocument();
     expect(onCorrect).toHaveBeenCalledTimes(1);
   });
@@ -80,7 +80,7 @@ describe('TypingExercise', () => {
     );
     await userEvent.type(screen.getByRole('textbox'), 'Hund');
     await userEvent.click(screen.getByRole('button', { name: /CHECK/ }));
-    expect(await screen.findByText('✗ NOT QUITE')).toBeInTheDocument();
+    expect(await screen.findByText('✗ Not quite')).toBeInTheDocument();
     expect(onCorrect).not.toHaveBeenCalled();
   });
 
@@ -92,7 +92,7 @@ describe('TypingExercise', () => {
     );
     await userEvent.type(screen.getByRole('textbox'), 'Ich bin müde');
     await userEvent.click(screen.getByRole('button', { name: /CHECK/ }));
-    expect(await screen.findByText('✗ NOT QUITE')).toBeInTheDocument();
+    expect(await screen.findByText('✗ Not quite')).toBeInTheDocument();
     expect(screen.getByText('Could not grade — check your connection.')).toBeInTheDocument();
     expect(onCorrect).not.toHaveBeenCalled();
   });

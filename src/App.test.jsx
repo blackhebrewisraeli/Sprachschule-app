@@ -1406,6 +1406,13 @@ describe('placement suggestion after 500 XP', () => {
 
 // The level lives in App state and is prop-drilled into every practice tab, so
 // "the header switched it" and "the tabs re-rendered" are two separate claims.
+// The level chip plus the pressed mode button say what Translate is showing —
+// the pair the old "A1 — WORD TILES" header printed as one caption.
+function expectTranslate(level, mode) {
+  expect(screen.getByTestId('translate-level')).toHaveTextContent(level);
+  expect(screen.getByRole('button', { name: mode, pressed: true })).toBeInTheDocument();
+}
+
 describe('level coordination', () => {
   beforeEach(() => {
     // Shimmed here rather than inherited: this block passed only because an
@@ -1460,7 +1467,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
+    expectTranslate('A1', 'Word tiles');
 
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
@@ -1473,8 +1480,8 @@ describe('level coordination', () => {
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
 
-    expect(screen.getByText(/B1 — FREE TYPING/)).toBeInTheDocument();
-    expect(screen.queryByText(/A1 — WORD TILES/)).toBeNull();
+    expectTranslate('B1', 'Free typing');
+    expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('A1');
     expect(chip()).toHaveTextContent('B1');
   });
 
@@ -1484,8 +1491,8 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
-    expect(screen.queryByText(/B1 — FREE TYPING/)).toBeNull();
+    expectTranslate('A1', 'Word tiles');
+    expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('B1');
     expect(screen.queryByRole('textbox')).toBeNull();
 
     await user.click(chip());
@@ -1510,13 +1517,17 @@ describe('level coordination', () => {
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
     await user.click(screen.getByRole('button', { name: /skip/i }));
-    expect(screen.getByText(/Exercise 2 \/ 10/)).toBeInTheDocument();
+    expect(screen.getByText(/Exercise 2 of 10/)).toBeInTheDocument();
 
     await user.click(chip());
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
 
-    expect(screen.getByText(/exercise 2 of 10/i)).toBeInTheDocument();
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
+    // The confirm names the set at stake; scoped to the sheet, since the
+    // Translate header now reads "Exercise 2 of 10" too.
+    expect(
+      within(screen.getByRole('dialog', { name: 'Status' })).getByText(/exercise 2 of 10/i)
+    ).toBeInTheDocument();
+    expectTranslate('A1', 'Word tiles');
 
     await user.click(screen.getByRole('button', { name: /^retake$/i }));
     expect(screen.getByRole('heading', { name: /find your level/i })).toBeInTheDocument();
@@ -1535,8 +1546,8 @@ describe('level coordination', () => {
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
     await user.click(screen.getByRole('button', { name: /keep going/i }));
 
-    expect(screen.getByText(/A1 — WORD TILES/)).toBeInTheDocument();
-    expect(screen.getByText(/Exercise 2 \/ 10/)).toBeInTheDocument();
+    expectTranslate('A1', 'Word tiles');
+    expect(screen.getByText(/Exercise 2 of 10/)).toBeInTheDocument();
     expect(localStorage.getItem('deutsch-level')).toBe('a1');
   });
 
@@ -1546,7 +1557,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    expect(screen.getByText(/Exercise 1 \/ 10/)).toBeInTheDocument();
+    expect(screen.getByText(/Exercise 1 of 10/)).toBeInTheDocument();
 
     await user.click(chip());
     await user.click(screen.getByRole('button', { name: /retake placement/i }));

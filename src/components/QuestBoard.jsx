@@ -1,12 +1,11 @@
-import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, RADIUS, SPACE } from '../lib/theme';
+import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, RADIUS, SPACE } from '../lib/theme';
 import { Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
 import { activePack } from '../packs';
 
-// Compact row padding — same recipe as MissionBoard. InteractiveCard's default
-// SPACE[4] is a tile inset; on a full-width quest row it is empty height. A
-// one-stop vertical inset keeps the copy, ratio, and bar visually snug.
-const ROW_PADDING = `${SPACE[1]}px ${SPACE[2]}px`;
+// Row padding — same recipe as MissionBoard: three stops of vertical air so the
+// copy, ratio and bar are not pressed against the pill's edge.
+const ROW_PADDING = `${SPACE[3]}px ${SPACE[4]}px`;
 
 const BOUNDED_BOARD = {
   width: '100%',
@@ -53,7 +52,7 @@ export default function QuestBoard({ quests = [], onGo }) {
       </h2>
 
       <ul style={{ ...BOUNDED_BOARD, listStyle: 'none', margin: 0, padding: 0 }}>
-        <Stack gap={1} as="div" style={BOUNDED_BOARD}>
+        <Stack gap={2} as="div" style={BOUNDED_BOARD}>
           {quests.map((quest) => {
             const entry = copy[quest.id];
             if (!entry) return null;
@@ -83,11 +82,14 @@ export default function QuestBoard({ quests = [], onGo }) {
                       // viewport instead of letting the text shrink.
                       gridTemplateColumns: 'auto minmax(0, 1fr)',
                       alignItems: 'start',
-                      columnGap: SPACE[2],
+                      columnGap: SPACE[3],
                       ...BOUNDED_BOARD,
                     }}
                   >
-                    <span aria-hidden="true" style={{ fontSize: FONT_SIZE.md }}>
+                    <span
+                      aria-hidden="true"
+                      style={{ fontSize: FONT_SIZE.lg, lineHeight: LINE_HEIGHT.normal }}
+                    >
                       {quest.done ? '✅' : entry.icon}
                     </span>
                     <div style={{ minWidth: 0 }}>
@@ -97,8 +99,9 @@ export default function QuestBoard({ quests = [], onGo }) {
                           display: 'block',
                           minWidth: 0,
                           fontFamily: FONTS.body,
-                          fontSize: FONT_SIZE.base,
-                          lineHeight: 1.3,
+                          fontSize: FONT_SIZE.md,
+                          fontWeight: FONT_WEIGHT.medium,
+                          lineHeight: LINE_HEIGHT.normal,
                           color: quest.done ? COLORS.mute : COLORS.ink,
                           textDecoration: quest.done ? 'line-through' : 'none',
                           overflowWrap: 'anywhere',
@@ -111,10 +114,11 @@ export default function QuestBoard({ quests = [], onGo }) {
                         data-testid="quest-progress"
                         style={{
                           display: 'block',
-                          marginTop: 0,
-                          fontFamily: FONTS.mono,
-                          fontSize: FONT_SIZE.tag,
-                          lineHeight: 1.2,
+                          marginTop: SPACE[1],
+                          fontFamily: FONTS.body,
+                          fontSize: FONT_SIZE.sm,
+                          fontWeight: FONT_WEIGHT.semibold,
+                          lineHeight: LINE_HEIGHT.snug,
                           color: quest.done ? COLORS.green : COLORS.mute,
                         }}
                       >
@@ -130,8 +134,8 @@ export default function QuestBoard({ quests = [], onGo }) {
                   <div
                     aria-hidden="true"
                     style={{
-                      marginTop: SPACE[1],
-                      height: 4,
+                      marginTop: SPACE[2],
+                      height: 6,
                       borderRadius: RADIUS.pill,
                       background: COLORS.track,
                       overflow: 'hidden',

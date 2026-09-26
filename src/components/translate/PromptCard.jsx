@@ -1,47 +1,46 @@
-import {
-  COLORS,
-  FONTS,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  LETTER_SPACING,
-  SPACE,
-  RADIUS,
-  SHADOW,
-} from '../../lib/theme';
+import { CARD, COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, SPACE } from '../../lib/theme';
 
-// The English sentence the learner must translate to German.
-export default function PromptCard({ text }) {
+// The English sentence the learner must translate to German — the one large
+// thing on the Translate screen. Set in the display serif at reading size so
+// the sentence, not the chrome around it, is what the eye lands on. `lang="en"`
+// because every other line of German on this screen is the learner's.
+export default function PromptCard({ text, mobile = false }) {
   return (
     <div
       style={{
-        borderRadius: RADIUS.lg,
-        boxShadow: SHADOW.card,
-        background: COLORS.paper,
-        padding: `${SPACE[5]}px ${SPACE[6]}px`,
-        marginBottom: SPACE[4],
+        ...CARD.base,
+        padding: mobile ? `${SPACE[5]}px ${SPACE[5]}px` : `${SPACE[6]}px ${SPACE[8]}px`,
+        marginBottom: SPACE[5],
       }}
     >
-      <div
+      <p
         style={{
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          letterSpacing: LETTER_SPACING.caps,
+          margin: `0 0 ${SPACE[3]}px`,
+          fontFamily: FONTS.body,
+          fontSize: FONT_SIZE.sm,
+          fontWeight: FONT_WEIGHT.semibold,
           color: COLORS.mute,
-          marginBottom: SPACE[2],
         }}
       >
-        TRANSLATE TO GERMAN
-      </div>
-      <div
+        Translate into German
+      </p>
+      <p
+        lang="en"
+        data-testid="translate-prompt"
         style={{
+          margin: 0,
           fontFamily: FONTS.display,
-          fontSize: FONT_SIZE['2xl'],
-          fontWeight: FONT_WEIGHT.semibold,
-          lineHeight: 1.3,
+          fontSize: mobile ? FONT_SIZE['3xl'] : FONT_SIZE['3xl'] + 8,
+          fontWeight: FONT_WEIGHT.medium,
+          letterSpacing: '-0.01em',
+          lineHeight: 1.2,
+          textWrap: 'balance',
+          overflowWrap: 'anywhere',
+          color: COLORS.ink,
         }}
       >
         {text}
-      </div>
+      </p>
     </div>
   );
 }

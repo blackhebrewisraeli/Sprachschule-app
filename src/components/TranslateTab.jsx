@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Sparkles } from 'lucide-react';
-import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, SPACE, BORDER } from '../lib/theme';
+import { COLORS, FONTS, FONT_SIZE, SPACE } from '../lib/theme';
 import { activePack } from '../packs';
 const {
   A1: TRANSLATE_SENTENCES_A1,
@@ -15,7 +15,7 @@ import PromptCard from './translate/PromptCard';
 import ScaffoldExercise from './translate/ScaffoldExercise';
 import ModePicker from './translate/ModePicker';
 import TypingExercise from './translate/TypingExercise';
-import { TRANSLATE_MODES, defaultMode, toScaffold } from './translate/scaffold';
+import { defaultMode, toScaffold } from './translate/scaffold';
 import { INPUT_MODES } from '../lib/chatInputModes';
 import { generateMoreSentences } from './translate/generateSentences';
 import { useDirtySession } from '../lib/sessionGuard';
@@ -29,11 +29,13 @@ const BANK_MAP = {
   b1: TRANSLATE_SENTENCES_B1,
 };
 
-// mobile prop accepted for API consistency; TranslateTab layout is already single-column
+// One centred reading column — the same axis as the centred Hero above it —
+// so on a wide screen the exercise sits under its title instead of hugging the
+// left edge. `mobile` only tightens the prompt card and folds the mode track.
 //
 // LIFECYCLE CONTRACT: this component does NOT reset itself when `level`
 // changes. The caller keys it by level (see App.jsx) so a switch mounts a
-// fresh instance — `exercises`, `idx` and `score` all initialise from the new
+// fresh instance — `exercises`, `idx` and `correctAt` all initialise from the new
 // bank in one go, with no window where a new `level` is paired with the old
 // bank. That window is not cosmetic: the banks are differently shaped per
 // level, so a mismatched pair throws inside the exercise components.
@@ -41,7 +43,7 @@ const BANK_MAP = {
 // instance is therefore a bug at the call site, not here.
 export default function TranslateTab({
   level = 'a1',
-  mobile: _mobile = false,
+  mobile = false,
   reviewTarget = null,
   onReviewConsumed,
 }) {
@@ -51,7 +53,8 @@ export default function TranslateTab({
   const practiceLevel = clampMode(level, getUserLevel());
   const [exercises, setExercises] = useState(() => shuffle(BANK_MAP[practiceLevel] ?? BANK_MAP.a1));
   const [idx, setIdx] = useState(0);
-  const [score, setScore] = useState(0);
+  // Exercise indices answered right (or "almost"), for the progress strip.
+  const [correctAt, setCorrectAt] = useState(() => new Set());
   const [generating, setGenerating] = useState(false);
   // How much help the learner wants: seeded by level, then theirs to change.
   // Kept across exercises; a switch mid-exercise re-renders the same sentence.
@@ -72,9 +75,8 @@ export default function TranslateTab({
   const exercise = exercises[idx];
   const scaffold = toScaffold(exercise);
   const shown = scaffold ? mode : INPUT_MODES.FREE_TEXT;
-  const modeLabel = TRANSLATE_MODES.find((m) => m.key === shown).label;
 
-  const handleCorrect = () => setScore((s) => s + 1);
+  const handleCorrect = () => setCorrectAt((prev) => new Set(prev).add(idx));
 
   const handleNext = useCallback(async () => {
     const next = idx + 1;
@@ -83,11 +85,10 @@ export default function TranslateTab({
       try {
         const more = await generateMoreSentences(practiceLevel);
         setExercises((prev) => [...prev, ...more]);
-        setScore(0);
       } catch {
         setExercises(shuffle(BANK_MAP[practiceLevel] ?? BANK_MAP.a1));
         setIdx(0);
-        setScore(0);
+        setCorrectAt(new Set());
         setGenerating(false);
         return;
       }
@@ -98,6 +99,10 @@ export default function TranslateTab({
 
   const SET_SIZE = 10;
   const setIdx_ = idx % SET_SIZE;
+  const setStart = idx - setIdx_;
+  const correctInSet = new Set(
+    [...correctAt].filter((i) => i >= setStart && i < setStart + SET_SIZE).map((i) => i - setStart)
+  );
 
   // Switching level restarts the set, so tell the guard when there is
   // something to restart. Nothing here is persisted — no XP is awarded and
@@ -108,17 +113,27 @@ export default function TranslateTab({
   if (generating) {
     return (
       <div
+        role="status"
         style={{
-          padding: SPACE[8],
+          padding: `${SPACE[16]}px ${SPACE[4]}px`,
           textAlign: 'center',
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.base,
-          letterSpacing: LETTER_SPACING.widest,
           color: COLORS.mute,
         }}
       >
-        <Sparkles size={24} style={{ marginBottom: SPACE[4], color: COLORS.accentFg }} />
-        <div>GENERATING NEW EXERCISES...</div>
+        <Sparkles size={28} aria-hidden="true" style={{ color: COLORS.accentFg }} />
+        <p
+          style={{
+            margin: `${SPACE[4]}px 0 ${SPACE[1]}px`,
+            fontFamily: FONTS.display,
+            fontSize: FONT_SIZE['2xl'],
+            color: COLORS.ink,
+          }}
+        >
+          Writing new sentences…
+        </p>
+        <p style={{ margin: 0, fontFamily: FONTS.body, fontSize: FONT_SIZE.base }}>
+          A fresh set of ten at your level is on its way.
+        </p>
       </div>
     );
   }
@@ -126,56 +141,37 @@ export default function TranslateTab({
   return (
     <div>
       <Hero
+        align="center"
         kicker="Section 05"
         title="Übersetzen"
         sub="The app gives you a sentence. You translate it — from word tiles up to free typing. Your level picks the start; switch any time."
       />
-      <div style={{ marginTop: SPACE[8], maxWidth: 760 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: SPACE[2] }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ExerciseHeader
-              level={practiceLevel}
-              label={modeLabel}
-              idx={setIdx_}
-              total={SET_SIZE}
+      <div style={{ marginTop: SPACE[8], marginInline: 'auto', maxWidth: 720 }}>
+        <ExerciseHeader
+          level={practiceLevel}
+          idx={setIdx_}
+          total={SET_SIZE}
+          correctAt={correctInSet}
+          // itemId is the English prompt: these rows carry no id of their own
+          // (the review feed already keys them by `en`). itemLabel is the
+          // expected German, which is what triage needs to judge a "the AI
+          // marked me wrong" report — and is never rendered, since at B1 it is
+          // exactly what the learner is being asked to type.
+          aside={
+            <FeedbackButton
+              context={{
+                surface: 'translate',
+                level: practiceLevel,
+                itemId: exercise.en,
+                itemLabel: exercise.de ?? null,
+              }}
             />
-          </div>
-          {/* itemId is the English prompt: these rows carry no id of their own
-            (the review feed already keys them by `en`). itemLabel is the
-            expected German, which is what triage needs to judge a "the AI
-            marked me wrong" report — and is never rendered, since at B1 it is
-            exactly what the learner is being asked to type. */}
-          <FeedbackButton
-            context={{
-              surface: 'translate',
-              level: practiceLevel,
-              itemId: exercise.en,
-              itemLabel: exercise.de ?? null,
-            }}
-          />
-        </div>
+          }
+        />
 
-        <div
-          style={{
-            height: 4,
-            background: COLORS.paperDeep,
-            border: BORDER.standard,
-            marginBottom: SPACE[5],
-          }}
-        >
-          <div
-            style={{
-              height: '100%',
-              background: COLORS.gold,
-              width: `${Math.min((score / SET_SIZE) * 100, 100)}%`,
-              transition: 'width 0.4s ease',
-            }}
-          />
-        </div>
+        <PromptCard text={exercise.en} mobile={mobile} />
 
-        <PromptCard text={exercise.en} />
-
-        <ModePicker value={mode} onChange={setMode} />
+        <ModePicker value={shown} onChange={setMode} locked={!scaffold} mobile={mobile} />
 
         {shown === INPUT_MODES.FREE_TEXT ? (
           <TypingExercise

@@ -46,7 +46,7 @@ describe('ScaffoldExercise — word bank', () => {
     }
     await check();
     expect(onCorrect).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('✓ CORRECT')).toBeInTheDocument();
+    expect(screen.getByText('✓ Correct')).toBeInTheDocument();
   });
 
   it('shows the German on a wrong assembly and never calls onCorrect', async () => {
@@ -56,7 +56,7 @@ describe('ScaffoldExercise — word bank', () => {
     }
     await check();
     expect(onCorrect).not.toHaveBeenCalled();
-    expect(screen.getByText('✗ NOT QUITE')).toBeInTheDocument();
+    expect(screen.getByText('✗ Not quite')).toBeInTheDocument();
     expect(screen.getByText('Ich bin müde.')).toBeInTheDocument();
   });
 
@@ -82,7 +82,7 @@ describe('ScaffoldExercise — gap modes', () => {
     await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Missing word' }), 'habe');
     await check();
     expect(onCorrect).not.toHaveBeenCalled();
-    expect(screen.getByText('✗ NOT QUITE')).toBeInTheDocument();
+    expect(screen.getByText('✗ Not quite')).toBeInTheDocument();
   });
 
   // Typed words are compared case-folded, as the old A2 blanks were: a

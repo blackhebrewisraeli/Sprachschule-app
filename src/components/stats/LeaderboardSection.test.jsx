@@ -280,9 +280,9 @@ it('shows loading feedback between two consecutive failures, not a frozen error'
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load your league.");
 });
 
-// ── The whole league, open seats included ────────────────────────────────
+// ── Only real members, never placeholder seats ────────────────────────────
 
-it('lists every member and draws each unfilled seat up to the league size', async () => {
+it('lists only the members in the league — no open-seat rows for unfilled places', async () => {
   signIn([
     { user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null },
     { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
@@ -290,32 +290,11 @@ it('lists every member and draws each unfilled seat up to the league size', asyn
   const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
 
-  const members = container.querySelectorAll('[data-league-slot="member"]');
-  const open = container.querySelectorAll('[data-league-slot="empty"]');
-  expect(members).toHaveLength(2);
-  expect(open).toHaveLength(LEAGUE_SIZE - 2);
-  // Open seats continue the numbering after the last member.
-  expect(within(open[0]).getByLabelText('Rank 3')).toBeInTheDocument();
-  expect(within(open[open.length - 1]).getByLabelText(`Rank ${LEAGUE_SIZE}`)).toBeInTheDocument();
-  expect(screen.getByText(`${LEAGUE_SIZE - 2} freie Plätze`)).toBeInTheDocument();
-  // An open seat is not a person: nothing to press, no profile to open.
-  expect(screen.getAllByRole('button')).toHaveLength(2);
-});
-
-it('draws no open seats once the league is full', async () => {
-  const rows = Array.from({ length: LEAGUE_SIZE }, (_, i) => ({
-    user_id: i === 0 ? 'me' : `u${i}`,
-    handle: `User${i}`,
-    weekly_xp: 100 - i,
-    rank: null,
-  }));
-  signIn(rows);
-  const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
-  await waitFor(() => expect(screen.getByText('@User0')).toBeTruthy());
-
-  expect(container.querySelectorAll('[data-league-slot="member"]')).toHaveLength(LEAGUE_SIZE);
+  // A two-member cohort is two rows, far short of LEAGUE_SIZE.
+  expect(LEAGUE_SIZE).toBeGreaterThan(2);
+  expect(container.querySelectorAll('[data-league-slot="member"]')).toHaveLength(2);
   expect(container.querySelectorAll('[data-league-slot="empty"]')).toHaveLength(0);
-  expect(screen.queryByText(/freie Pl/)).toBeNull();
+  expect(screen.queryByText(/Freier Platz|freie Pl/)).toBeNull();
 });
 
 it('marks the learner’s own row and prints their own name from the page’s profile', async () => {
