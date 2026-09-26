@@ -14,13 +14,19 @@ import {
 // (paperDeep) / wrong (red). Shows the canonical answer when not fully correct.
 // xp + mult: when provided and verdict is correct/almost, shows a +N XP ×M🔥
 // flourish (mult badge omitted when mult === 1).
+//
+// Gold fill needs accentOn; mode-flipping ink fails on gold in dark mode.
+// Anything that is not correct/almost reads as wrong.
+const VERDICT_LOOK = {
+  correct: { bg: COLORS.gold, fg: COLORS.accentOn, label: '✓ Correct' },
+  almost: { bg: COLORS.paperDeep, fg: COLORS.ink, label: '≈ Almost' },
+  wrong: { bg: COLORS.red, fg: COLORS.paper, label: '✗ Not quite' },
+};
+
 export default function FeedbackPanel({ verdict, correctText, note, xp, mult, onNext }) {
   const isCorrect = verdict === 'correct';
   const isAlmost = verdict === 'almost';
-  const bg = isCorrect ? COLORS.gold : isAlmost ? COLORS.paperDeep : COLORS.red;
-  // Gold fill needs accentOn; mode-flipping ink fails on gold in dark mode.
-  const fg = isCorrect ? COLORS.accentOn : isAlmost ? COLORS.ink : COLORS.paper;
-  const label = isCorrect ? '✓ Correct' : isAlmost ? '≈ Almost' : '✗ Not quite';
+  const { bg, fg, label } = VERDICT_LOOK[verdict] ?? VERDICT_LOOK.wrong;
   const showCorrectText = !isCorrect && correctText;
   const showFlourish = (isCorrect || isAlmost) && xp > 0;
   return (

@@ -15,7 +15,8 @@ import { TRANSLATE_MODES } from './scaffold';
  * the word, type the word, or free typing — as one segmented track, so every
  * option is visible at once instead of hidden behind a native select.
  *
- * Pressed buttons in a labelled group, the same contract SegmentedPicker uses;
+ * Pressed buttons in a labelled <fieldset> (a native group, which Sonar prefers
+ * to role="group"), the same pressed-button contract SegmentedPicker uses;
  * `data-ui` gives each one the app's focus ring. On a phone the track is a 2×2
  * grid rather than four labels squeezed (or wrapped 3+1) into a 320px row.
  *
@@ -24,15 +25,18 @@ import { TRANSLATE_MODES } from './scaffold';
  */
 export default function ModePicker({ value, onChange, locked = false, mobile = false }) {
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label="Input mode"
       style={{
+        // A fieldset's default min-inline-size is min-content, which would let
+        // four labels push a 320px page wider than the viewport.
+        minWidth: 0,
+        margin: 0,
+        marginBottom: SPACE[4],
         display: 'grid',
         gridTemplateColumns: `repeat(${mobile ? 2 : TRANSLATE_MODES.length}, minmax(0, 1fr))`,
         gap: SPACE[1],
         padding: SPACE[1],
-        marginBottom: SPACE[4],
         background: COLORS.paperDeep,
         border: BORDER.panel,
         borderRadius: RADIUS.lg,
@@ -70,6 +74,6 @@ export default function ModePicker({ value, onChange, locked = false, mobile = f
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

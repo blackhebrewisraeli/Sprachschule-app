@@ -112,9 +112,9 @@ export default function TranslateTab({
 
   if (generating) {
     return (
-      <div
-        role="status"
+      <output
         style={{
+          display: 'block',
           padding: `${SPACE[16]}px ${SPACE[4]}px`,
           textAlign: 'center',
           color: COLORS.mute,
@@ -134,7 +134,7 @@ export default function TranslateTab({
         <p style={{ margin: 0, fontFamily: FONTS.body, fontSize: FONT_SIZE.base }}>
           A fresh set of ten at your level is on its way.
         </p>
-      </div>
+      </output>
     );
   }
 

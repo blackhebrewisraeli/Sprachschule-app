@@ -11,11 +11,19 @@ import {
 
 const SEGMENT_HEIGHT = 6;
 
-function segmentColor(i, idx, correctAt) {
-  if (i === idx) return COLORS.ink;
-  if (i > idx) return COLORS.track;
-  return correctAt.has(i) ? COLORS.gold : COLORS.mute;
+// 'current' | 'correct' | 'missed' | 'ahead' for segment `i` when `idx` is on screen.
+function segmentState(i, idx, correctAt) {
+  if (i === idx) return 'current';
+  if (i > idx) return 'ahead';
+  return correctAt.has(i) ? 'correct' : 'missed';
 }
+
+const SEGMENT_COLOR = {
+  current: COLORS.ink,
+  ahead: COLORS.track,
+  correct: COLORS.gold,
+  missed: COLORS.mute,
+};
 
 // Where the learner is in the set of ten, above each exercise: the level, the
 // position in words, how many landed, and one segment per sentence — gold for
@@ -89,18 +97,21 @@ export default function ExerciseHeader({ level, idx, total, correctAt = new Set(
           gap: SPACE[1],
         }}
       >
-        {Array.from({ length: total }, (_, i) => (
-          <span
-            key={i}
-            data-state={i === idx ? 'current' : i < idx && correctAt.has(i) ? 'correct' : undefined}
-            style={{
-              height: SEGMENT_HEIGHT,
-              borderRadius: RADIUS.pill,
-              background: segmentColor(i, idx, correctAt),
-              transition: TRANSITION.slow,
-            }}
-          />
-        ))}
+        {Array.from({ length: total }, (_, i) => {
+          const state = segmentState(i, idx, correctAt);
+          return (
+            <span
+              key={i}
+              data-state={state}
+              style={{
+                height: SEGMENT_HEIGHT,
+                borderRadius: RADIUS.pill,
+                background: SEGMENT_COLOR[state],
+                transition: TRANSITION.slow,
+              }}
+            />
+          );
+        })}
       </div>
     </div>
   );
