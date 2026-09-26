@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import TranslateTab from './TranslateTab';
 import { setUserLevel } from '../lib/levelPref';
+import { INPUT_MODES } from '../lib/chatInputModes';
 
 // Each level renders a different exercise component off a differently shaped
 // row (A1 `words`, A2 `template`, B1 free text), so a `level` that has moved
@@ -98,5 +100,42 @@ describe('TranslateTab — classified CEFR gates the mode', () => {
     setUserLevel('b1');
     render(<TranslateTab level="b1" />);
     expect(screen.getByText(/B1 — FREE TYPING/)).toBeInTheDocument();
+  });
+});
+
+describe('TranslateTab — input mode toggle', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setUserLevel('a1');
+  });
+
+  const modeSelect = () => screen.getByRole('combobox', { name: 'Input mode' });
+  const prompt = () => screen.getByText('TRANSLATE TO GERMAN').nextSibling.textContent;
+
+  it('lets an A1 learner move from word tiles to free typing on the same sentence', async () => {
+    render(<TranslateTab level="a1" />);
+    const before = prompt();
+    expect(screen.getByRole('group', { name: 'Word bank' })).toBeInTheDocument();
+
+    await userEvent.selectOptions(modeSelect(), 'Free typing');
+
+    expect(screen.getByText(/A1 — FREE TYPING/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Your German translation' })).toBeInTheDocument();
+    expect(prompt()).toBe(before);
+  });
+
+  it('offers a B1 learner the gap modes on B1 sentences', async () => {
+    setUserLevel('b1');
+    render(<TranslateTab level="b1" />);
+    await userEvent.selectOptions(modeSelect(), 'Type the word');
+    expect(screen.getByText(/B1 — TYPE THE WORD/)).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Missing word' })).toBeInTheDocument();
+  });
+
+  it('switches to free typing from the word bank’s "Type instead"', async () => {
+    render(<TranslateTab level="a1" />);
+    await userEvent.click(screen.getByRole('button', { name: 'Type instead' }));
+    expect(modeSelect()).toHaveValue(INPUT_MODES.FREE_TEXT);
+    expect(screen.getByRole('textbox', { name: 'Your German translation' })).toBeInTheDocument();
   });
 });

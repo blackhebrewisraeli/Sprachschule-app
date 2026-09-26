@@ -1,5 +1,6 @@
-import { Mic, MicOff, ArrowRight, LayoutGrid } from 'lucide-react';
+import { Mic, MicOff, LayoutGrid } from 'lucide-react';
 import { COLORS, FONT_BODY, RADIUS, SHADOW } from '../../lib/theme';
+import SendButton from './SendButton';
 
 // Bottom input bar: mic toggle, text field, send button.
 // All behavior (speech recognition, sending) lives in the parent and is passed
@@ -90,29 +91,7 @@ export default function ChatInput({
           color: COLORS.ink,
         }}
       />
-      <button
-        type="button"
-        data-ui="button"
-        data-focus-on-dark=""
-        onClick={() => onSend()}
-        disabled={!canSend}
-        aria-label="Send chat message"
-        style={{
-          width: 40,
-          height: 40,
-          flexShrink: 0,
-          padding: 0,
-          background: canSend ? COLORS.green : COLORS.mute,
-          color: COLORS.paper,
-          border: 'none',
-          borderRadius: RADIUS.md,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ArrowRight size={18} aria-hidden="true" />
-      </button>
+      <SendButton canSend={canSend} onClick={() => onSend()} />
     </div>
   );
 }

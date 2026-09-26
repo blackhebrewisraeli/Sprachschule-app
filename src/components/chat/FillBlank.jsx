@@ -1,20 +1,11 @@
 import { useState } from 'react';
-import { BORDER, COLORS, FONTS, FONT_SIZE, RADIUS, SPACE } from '../../lib/theme';
+import { COLORS, FIELD, FONTS, FONT_SIZE, SPACE } from '../../lib/theme';
 import { gapParts } from '../../lib/chatInputModes';
 import { shuffle } from '../../lib/utils';
-import ScaffoldActions from './ScaffoldActions';
+import ScaffoldComposer from './ScaffoldComposer';
 
-// 16px, not md: iOS zooms the page when a focused field is under 16px.
-const gapStyle = {
-  fontFamily: FONTS.body,
-  fontSize: FONT_SIZE.lg,
-  color: COLORS.ink,
-  background: COLORS.surface,
-  border: BORDER.panel,
-  borderRadius: RADIUS.md,
-  padding: `${SPACE[1]}px ${SPACE[2]}px`,
-  margin: `0 ${SPACE[1]}px`,
-};
+// FIELD is 16px, not md: iOS zooms the page when a focused field is under 16px.
+const gapStyle = { ...FIELD, margin: `0 ${SPACE[1]}px` };
 
 /**
  * Fill-in-the-blank composer for the two middle scaffold stages: the AI's
@@ -22,7 +13,14 @@ const gapStyle = {
  * distractors in a native select; `typed` asks for it. Either way the whole
  * sentence goes through the shared onSend and the AI grades it like any turn.
  */
-export default function FillBlank({ mode, scaffold, thinking, onSend, onSwitchToTyping }) {
+export default function FillBlank({
+  mode,
+  scaffold,
+  thinking,
+  onSend,
+  onSwitchToTyping,
+  sendLabel,
+}) {
   const [options] = useState(() => shuffle([scaffold.answer, ...scaffold.distractors]));
   const [word, setWord] = useState('');
   const { before, after } = gapParts(scaffold);
@@ -35,15 +33,11 @@ export default function FillBlank({ mode, scaffold, thinking, onSend, onSwitchTo
   };
 
   return (
-    <div
-      style={{
-        borderTop: `1px solid ${COLORS.border}`,
-        padding: SPACE[3],
-        background: COLORS.paperDeep,
-        display: 'grid',
-        gap: SPACE[3],
-        minWidth: 0,
-      }}
+    <ScaffoldComposer
+      canSend={canSend}
+      onSend={send}
+      onSwitchToTyping={onSwitchToTyping}
+      sendLabel={sendLabel}
     >
       <div
         role="group"
@@ -87,7 +81,6 @@ export default function FillBlank({ mode, scaffold, thinking, onSend, onSwitchTo
         )}
         {after}
       </div>
-      <ScaffoldActions canSend={canSend} onSend={send} onSwitchToTyping={onSwitchToTyping} />
-    </div>
+    </ScaffoldComposer>
   );
 }

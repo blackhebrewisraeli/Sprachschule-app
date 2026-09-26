@@ -197,25 +197,36 @@ export function deckPrompts({ prompts, topic }) {
 }
 
 /**
- * Fresh translation exercises when a level's sentence bank runs out. The user
- * message differs per level because each level renders a different exercise
- * component, and each needs its own JSON shape.
+ * Scenes a generated translation batch is set in, so a batch reads like a
+ * situation rather than five unrelated textbook lines. English and
+ * language-blind: they steer the content, the pack supplies the language.
+ */
+export const SENTENCE_TOPICS = Object.freeze([
+  'travel: at the airport, the train station and the hotel',
+  'daily life: morning routine, chores and errands',
+  'computer science: programming, debugging and computers at work',
+  'football: watching a match, the fans and the results',
+  'a rock concert: tickets, the band and the crowd',
+  'ordering food at a restaurant with strict dietary requests (no vegetables, no onions, no pickles)',
+  'shopping for clothes and asking about sizes',
+  'at the doctor: symptoms and appointments',
+  'weekend plans with friends',
+  'the weather and the seasons',
+]);
+
+/**
+ * Fresh translation exercises when a level's sentence bank runs out. One JSON
+ * shape at every level — Chat's `next` suggestion — because every mode
+ * renders from it: the word bank from `de`, the gap modes from `blank`.
  *
- * @param {{ prompts: Prompts, level: string }} args
+ * @param {{ prompts: Prompts, level: string, topic: string }} args
  * @returns {{ system: string, user: string }}
  */
-export function sentencePrompts({ prompts, level }) {
+export function sentencePrompts({ prompts, level, topic }) {
   const { targetLanguage, exercises } = prompts;
-
-  const user =
-    level === 'b1'
-      ? `Generate 5 English sentences for translation into ${targetLanguage} at B1 level. Return: [{"en":"...","de":"...","note":"grammar concept"}]`
-      : level === 'a2'
-        ? `Generate 5 English sentences for fill-in-the-blank ${targetLanguage} exercises at A2 level. Each must have 1-2 blanks targeting articles or prepositions. Return: [{"en":"...","de":"...","template":"${targetLanguage} with ___ for blanks","blanks":[{"word":"correct","distractors":["wrong1","wrong2"]}],"note":"..."}]`
-        : `Generate 5 simple English sentences for word-tile ${targetLanguage} translation at A1 level. Return: [{"en":"...","de":"...","words":["${targetLanguage}","tokens","in","order"],"distractors":["wrong1","wrong2"],"note":"..."}]`;
 
   return {
     system: `You generate ${targetLanguage} translation exercises for ${exercises[level]} learners. Respond ONLY with valid JSON array, no markdown.`,
-    user,
+    user: `Generate 5 English sentences for translation into ${targetLanguage} at ${level.toUpperCase()} level, all set in this scene: ${topic}. Make them varied and specific to the scene, not generic. Return: [{"en":"the English sentence","de":"its ${targetLanguage} translation","blank":"exactly one word copied from de that is worth practising (not a name)","distractors":["two plausible wrong alternatives for blank, same word class"],"note":"the grammar concept"}]`,
   };
 }

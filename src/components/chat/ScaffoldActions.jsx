@@ -1,11 +1,17 @@
-import { ArrowRight, Keyboard } from 'lucide-react';
-import { COLORS, FONTS, FONT_SIZE, RADIUS, SPACE } from '../../lib/theme';
+import { Keyboard } from 'lucide-react';
+import { COLORS, FONTS, FONT_SIZE, SPACE } from '../../lib/theme';
+import SendButton from './SendButton';
 
 /**
  * The action row every scaffolded composer shares: the escape hatch to free
  * typing, and send. One component so WordBank and FillBlank cannot drift.
  */
-export default function ScaffoldActions({ canSend, onSend, onSwitchToTyping }) {
+export default function ScaffoldActions({
+  canSend,
+  onSend,
+  onSwitchToTyping,
+  sendLabel = 'Send chat message',
+}) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: SPACE[2] }}>
       <button
@@ -27,28 +33,7 @@ export default function ScaffoldActions({ canSend, onSend, onSwitchToTyping }) {
       >
         <Keyboard size={FONT_SIZE.lg} aria-hidden="true" /> Type instead
       </button>
-      <button
-        type="button"
-        data-ui="button"
-        data-focus-on-dark=""
-        onClick={onSend}
-        disabled={!canSend}
-        aria-label="Send chat message"
-        style={{
-          width: 40,
-          height: 40,
-          padding: 0,
-          background: canSend ? COLORS.green : COLORS.mute,
-          color: COLORS.paper,
-          border: 'none',
-          borderRadius: RADIUS.md,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <ArrowRight size={18} aria-hidden="true" />
-      </button>
+      <SendButton canSend={canSend} onClick={onSend} label={sendLabel} />
     </div>
   );
 }

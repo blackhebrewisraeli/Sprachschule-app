@@ -379,6 +379,21 @@ export const BUTTON = {
 
 export const btnSecondary = BUTTON.secondary;
 
+// A native form field (select or text input) set in body text. 16px — FONT_SIZE
+// lg, not md — because iOS zooms the page when a focused field is under 16px.
+// Chat's fill-in-the-blank gap and Translate's mode picker each spelled this
+// out; one recipe keeps the two fields identical and out of SonarCloud's
+// duplication count.
+export const FIELD = {
+  fontFamily: FONTS.body,
+  fontSize: FONT_SIZE.lg,
+  color: COLORS.ink,
+  background: COLORS.surface,
+  border: BORDER.panel,
+  borderRadius: RADIUS.md,
+  padding: `${SPACE[1]}px ${SPACE[2]}px`,
+};
+
 export const CARD = {
   base: {
     background: COLORS.surface,

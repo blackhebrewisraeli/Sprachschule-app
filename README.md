@@ -39,7 +39,7 @@ gamification, secure cross-device sync, and AI where it genuinely helps.**
 | 💬 **Guided conversation**                  | An AI tutor sets level-aware scenarios, responds in character, and explains corrections.    |
 | 🔤 **Alphabet & listening**                 | German speech synthesis, confusable-letter quizzes, and a browsable pronunciation grid.     |
 | 🧠 **Vocabulary & SRS**                     | Practice, browse, and generate decks — preset, lexicon, grammar, and custom — on Leitner.   |
-| ✍️ **Adaptive translation**                 | A1 word tiles, A2 fill-in-the-blank drills, and meaning-aware B1 grading.                   |
+| ✍️ **Adaptive translation**                 | Word tiles, pick-the-word, type-the-word, or free typing with AI grading — your call.       |
 | 🎮 **Motivation that respects the learner** | XP, streak freezes, achievements, daily quests, and optional weekly leagues.                |
 
 |                          Vocabulary practice                          |

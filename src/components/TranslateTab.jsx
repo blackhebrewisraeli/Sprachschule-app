@@ -12,9 +12,11 @@ import { Hero } from './UI';
 import ExerciseHeader from './translate/ExerciseHeader';
 import FeedbackButton from './FeedbackButton';
 import PromptCard from './translate/PromptCard';
-import TileExercise from './translate/TileExercise';
-import BlankExercise from './translate/BlankExercise';
+import ScaffoldExercise from './translate/ScaffoldExercise';
+import ModePicker from './translate/ModePicker';
 import TypingExercise from './translate/TypingExercise';
+import { TRANSLATE_MODES, defaultMode, toScaffold } from './translate/scaffold';
+import { INPUT_MODES } from '../lib/chatInputModes';
 import { generateMoreSentences } from './translate/generateSentences';
 import { useDirtySession } from '../lib/sessionGuard';
 import { clampMode } from '../lib/levelGate';
@@ -51,6 +53,9 @@ export default function TranslateTab({
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
   const [generating, setGenerating] = useState(false);
+  // How much help the learner wants: seeded by level, then theirs to change.
+  // Kept across exercises; a switch mid-exercise re-renders the same sentence.
+  const [mode, setMode] = useState(() => defaultMode(practiceLevel));
 
   // Pick up review targets handed in from the Stats Review feed.
   // App no longer rewrites classification to match the item; a leftover B1
@@ -65,6 +70,9 @@ export default function TranslateTab({
   }, [reviewTarget, practiceLevel, exercises, onReviewConsumed]);
 
   const exercise = exercises[idx];
+  const scaffold = toScaffold(exercise);
+  const shown = scaffold ? mode : INPUT_MODES.FREE_TEXT;
+  const modeLabel = TRANSLATE_MODES.find((m) => m.key === shown).label;
 
   const handleCorrect = () => setScore((s) => s + 1);
 
@@ -120,12 +128,17 @@ export default function TranslateTab({
       <Hero
         kicker="Section 05"
         title="Übersetzen"
-        sub="The app gives you a sentence. You translate it. Three modes depending on your level."
+        sub="The app gives you a sentence. You translate it — from word tiles up to free typing. Your level picks the start; switch any time."
       />
       <div style={{ marginTop: SPACE[8], maxWidth: 760 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: SPACE[2] }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <ExerciseHeader level={practiceLevel} idx={setIdx_} total={SET_SIZE} />
+            <ExerciseHeader
+              level={practiceLevel}
+              label={modeLabel}
+              idx={setIdx_}
+              total={SET_SIZE}
+            />
           </div>
           {/* itemId is the English prompt: these rows carry no id of their own
             (the review feed already keys them by `en`). itemLabel is the
@@ -162,31 +175,26 @@ export default function TranslateTab({
 
         <PromptCard text={exercise.en} />
 
-        {practiceLevel === 'a1' && (
-          <TileExercise
-            key={idx}
-            exercise={exercise}
-            level={practiceLevel}
-            onCorrect={handleCorrect}
-            onSkip={handleNext}
-          />
-        )}
-        {practiceLevel === 'a2' && (
-          <BlankExercise
-            key={idx}
-            exercise={exercise}
-            level={practiceLevel}
-            onCorrect={handleCorrect}
-            onSkip={handleNext}
-          />
-        )}
-        {practiceLevel === 'b1' && (
+        <ModePicker value={mode} onChange={setMode} />
+
+        {shown === INPUT_MODES.FREE_TEXT ? (
           <TypingExercise
             key={idx}
             exercise={exercise}
             level={practiceLevel}
             onCorrect={handleCorrect}
             onSkip={handleNext}
+          />
+        ) : (
+          <ScaffoldExercise
+            key={`${idx}-${shown}`}
+            exercise={exercise}
+            scaffold={scaffold}
+            mode={shown}
+            level={practiceLevel}
+            onCorrect={handleCorrect}
+            onSkip={handleNext}
+            onSwitchToTyping={() => setMode(INPUT_MODES.FREE_TEXT)}
           />
         )}
       </div>

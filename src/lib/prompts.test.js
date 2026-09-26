@@ -9,6 +9,7 @@ import {
   graderSystemPrompt,
   deckPrompts,
   sentencePrompts,
+  SENTENCE_TOPICS,
 } from './prompts';
 
 const prompts = {
@@ -214,22 +215,41 @@ describe('deckPrompts', () => {
 });
 
 describe('sentencePrompts', () => {
+  const topic = SENTENCE_TOPICS[0];
+
   it('uses the pack exercise focus for the level', () => {
-    expect(sentencePrompts({ prompts, level: 'a2' }).system).toContain(
+    expect(sentencePrompts({ prompts, level: 'a2', topic }).system).toContain(
       'A2 elementary (focus on articles and prepositions)'
     );
   });
 
-  it('asks for the tile shape at a1, blanks at a2, and plain pairs at b1', () => {
-    expect(sentencePrompts({ prompts, level: 'a1' }).user).toContain('"words"');
-    expect(sentencePrompts({ prompts, level: 'a2' }).user).toContain('"blanks"');
-    expect(sentencePrompts({ prompts, level: 'b1' }).user).toContain('"note":"grammar concept"');
+  it('sets the batch in the given scene', () => {
+    expect(sentencePrompts({ prompts, level: 'a1', topic: 'a rock concert' }).user).toContain(
+      'scene: a rock concert'
+    );
+  });
+
+  // Every Translate mode renders from one row shape, so every level asks for it.
+  it.each(['a1', 'a2', 'b1'])('asks for the scaffold shape at %s', (level) => {
+    const { user } = sentencePrompts({ prompts, level, topic });
+    for (const key of ['"en"', '"de"', '"blank"', '"distractors"', '"note"']) {
+      expect(user).toContain(key);
+    }
+    expect(user).toContain(`${level.toUpperCase()} level`);
   });
 
   it('never emits the literal string undefined at any level', () => {
     for (const level of ['a1', 'a2', 'b1']) {
-      const { system, user } = sentencePrompts({ prompts, level });
+      const { system, user } = sentencePrompts({ prompts, level, topic });
       expect(system + user).not.toContain('undefined');
     }
+  });
+});
+
+describe('SENTENCE_TOPICS', () => {
+  it('offers varied, non-empty, distinct scenes', () => {
+    expect(SENTENCE_TOPICS.length).toBeGreaterThanOrEqual(6);
+    expect(new Set(SENTENCE_TOPICS).size).toBe(SENTENCE_TOPICS.length);
+    for (const t of SENTENCE_TOPICS) expect(t.trim()).not.toBe('');
   });
 });

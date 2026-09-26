@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BORDER, COLORS, FONTS, FONT_SIZE, RADIUS, SHADOW, SPACE } from '../../lib/theme';
-import ScaffoldActions from './ScaffoldActions';
+import ScaffoldComposer from './ScaffoldComposer';
 
 // Fisher–Yates. Tiles carry their ORIGINAL index as identity, so a sentence
 // with a repeated word ("die … die") still has two distinct tiles.
@@ -38,7 +38,7 @@ const tileStyle = {
  * parent (mocked today, AI-generated later) and sending goes through the same
  * onSend the free-text input uses.
  */
-export default function WordBank({ words, thinking, onSend, onSwitchToTyping }) {
+export default function WordBank({ words, thinking, onSend, onSwitchToTyping, sendLabel }) {
   const [bank] = useState(() => jumble(words));
   const [placed, setPlaced] = useState([]);
   const placedIds = new Set(placed.map((t) => t.id));
@@ -52,15 +52,11 @@ export default function WordBank({ words, thinking, onSend, onSwitchToTyping }) 
   };
 
   return (
-    <div
-      style={{
-        borderTop: `1px solid ${COLORS.border}`,
-        padding: SPACE[3],
-        background: COLORS.paperDeep,
-        display: 'grid',
-        gap: SPACE[3],
-        minWidth: 0,
-      }}
+    <ScaffoldComposer
+      canSend={canSend}
+      onSend={send}
+      onSwitchToTyping={onSwitchToTyping}
+      sendLabel={sendLabel}
     >
       {/* The sentence being built. A live region so each placement is heard. */}
       <div
@@ -131,8 +127,6 @@ export default function WordBank({ words, thinking, onSend, onSwitchToTyping }) 
           );
         })}
       </fieldset>
-
-      <ScaffoldActions canSend={canSend} onSend={send} onSwitchToTyping={onSwitchToTyping} />
-    </div>
+    </ScaffoldComposer>
   );
 }
