@@ -368,4 +368,19 @@ describe('league identities (?leagueId=)', () => {
     expect(db.from).toHaveBeenCalledTimes(2);
     expect(db.rpc).not.toHaveBeenCalled();
   });
+
+  it('answers a failed read with a 500, never a partial list', async () => {
+    requireAuth.mockResolvedValue(USER);
+    const { db } = leagueDb([USER.userId]);
+    const profiles = db.from;
+    db.from = vi.fn((table) => {
+      const q = profiles(table);
+      if (table === 'profiles') q.in = vi.fn(async () => ({ data: null, error: new Error('x') }));
+      return q;
+    });
+    serviceClient.mockReturnValue(db);
+    const res = createRes();
+    await handler(leagueReq('L1'), res);
+    expect(res.statusCode).toBe(500);
+  });
 });
