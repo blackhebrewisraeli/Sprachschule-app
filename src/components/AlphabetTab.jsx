@@ -132,7 +132,10 @@ export default function AlphabetTab({
 
   return (
     <div>
+      {/* Centred like Vocab and Translate: one axis for every practice tab's
+          title and its mode switch. The letter grid below is full measure. */}
       <Hero
+        align="center"
         kicker="Section 03"
         title="Das Alphabet"
         sub="Browse all letters or test your ear — can you identify what you heard?"
@@ -146,6 +149,8 @@ export default function AlphabetTab({
           boxShadow: SHADOW.card,
           overflow: 'hidden',
           width: 'fit-content',
+          marginLeft: 'auto',
+          marginRight: 'auto',
           // The rhythm rule: the gap between a tab's Hero and its first
           // content block is SPACE[8]. Alphabet was the only tab that
           // disagreed (spec §3.5, §4.3).

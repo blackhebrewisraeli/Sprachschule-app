@@ -1130,14 +1130,18 @@ async function stubAccountNetwork(page) {
     r.fulfill(json({ league_id: 'audit-league', tier: 2, period_start: monday.toISOString() }))
   );
   await page.route('**/api/v1/league/refresh', (r) => r.fulfill(json({ ok: true })));
+  // `?leagueId=` is the standings' one identity read for every row (an array);
+  // `?userId=` is a single passport, for the profile card.
   await page.route('**/api/v1/league/profile*', (r) =>
     r.fulfill(
-      json({
-        handle: 'Auditor',
-        tier: 2,
-        total_xp: 4200,
-        longest_streak: 31,
-      })
+      new URL(r.request().url()).searchParams.has('leagueId')
+        ? json([])
+        : json({
+            handle: 'Auditor',
+            tier: 2,
+            total_xp: 4200,
+            longest_streak: 31,
+          })
     )
   );
 
@@ -1277,6 +1281,16 @@ async function auditSignedIn(page, mode) {
     );
   } catch {
     rowsRendered = false;
+  }
+  // The standings are folded behind a participants row, closed until pressed.
+  // Open it the way a learner does, so the rows are measured on the surface
+  // they are actually seen on rather than inside a closed <details>.
+  if (rowsRendered) {
+    await page.evaluate(() => {
+      const fold = document.querySelector('[data-testid="league-panel-disclosure"]');
+      if (fold && !fold.open) fold.querySelector('summary')?.click();
+    });
+    await page.waitForTimeout(200);
   }
   out.push(...(await page.evaluate(collectFindings, 'Leagues/signed-in')));
 

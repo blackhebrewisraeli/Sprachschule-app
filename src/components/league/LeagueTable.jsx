@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import { Trophy, UserPlus } from 'lucide-react';
+import { useId, useState } from 'react';
+import { ChevronDown, Trophy, UserPlus, Users } from 'lucide-react';
 import {
   BORDER,
   COLORS,
@@ -298,6 +298,12 @@ export function LeagueDivider({ text, color = COLORS.mute, icon: Icon = null }) 
  * The recessed panel both tables sit on: trophy + title on the left, an
  * optional fact on the right (Home: your place; Profile: the countdown), then
  * the ordered list of rows.
+ *
+ * `summary` folds the list (and its footer) behind a disclosure row, closed
+ * until pressed: `{ closed, open }` are its label in each state, `count` the
+ * number beside it. A native <details>, as DeckPicker and PracticeLane already
+ * use — keyboard- and screen-reader-operable, expanded state announced, for
+ * free. Home's three-row glance passes none and is unchanged.
  */
 export function LeaguePanel({
   title,
@@ -306,9 +312,30 @@ export function LeaguePanel({
   testId,
   padding = SPACE[2],
   footer = null,
+  summary = null,
   children,
 }) {
   const headingId = useId();
+  const [open, setOpen] = useState(false);
+  const list = (
+    <>
+      <ol
+        aria-label={listLabel}
+        style={{
+          listStyle: 'none',
+          margin: 0,
+          padding: 0,
+          minWidth: 0,
+          display: 'grid',
+          gridTemplateColumns: 'minmax(0, 1fr)',
+          gap: SPACE[1],
+        }}
+      >
+        {children}
+      </ol>
+      {footer}
+    </>
+  );
   return (
     <section
       data-testid={testId}
@@ -361,21 +388,55 @@ export function LeaguePanel({
         ) : null}
       </div>
 
-      <ol
-        aria-label={listLabel}
-        style={{
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          minWidth: 0,
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1fr)',
-          gap: SPACE[1],
-        }}
-      >
-        {children}
-      </ol>
-      {footer}
+      {summary ? (
+        <details
+          data-testid="league-panel-disclosure"
+          onToggle={(e) => setOpen(e.currentTarget.open)}
+          style={{ minWidth: 0 }}
+        >
+          <summary
+            data-ui="button"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: SPACE[2],
+              minWidth: 0,
+              // A summary is the tap target, so it gets a thumb-sized one.
+              minHeight: SPACE[12],
+              boxSizing: 'border-box',
+              padding: `${SPACE[1]}px ${SPACE[3]}px`,
+              marginBottom: open ? SPACE[2] : 0,
+              background: COLORS.surface,
+              border: BORDER.panel,
+              borderRadius: RADIUS.md,
+              cursor: 'pointer',
+              listStyle: 'none',
+              fontFamily: FONTS.body,
+              fontSize: FONT_SIZE.base,
+              fontWeight: FONT_WEIGHT.bold,
+              color: COLORS.ink,
+            }}
+          >
+            <Users size={FONT_SIZE.md} color={COLORS.inkSoft} aria-hidden="true" />
+            <span style={{ ...TRUNCATE, flex: '1 1 auto' }}>
+              {open ? summary.open : summary.closed}
+            </span>
+            {summary.count != null ? <span style={XP_TEXT}>{summary.count}</span> : null}
+            <ChevronDown
+              size={FONT_SIZE.lg}
+              aria-hidden="true"
+              style={{
+                flexShrink: 0,
+                color: COLORS.mute,
+                transform: open ? 'rotate(180deg)' : 'none',
+              }}
+            />
+          </summary>
+          {list}
+        </details>
+      ) : (
+        list
+      )}
     </section>
   );
 }
