@@ -1064,11 +1064,12 @@ async function stepOpenLeagues(page) {
   });
 
   // The soft-failure surfaces. Wait for the table rather than asserting on a
-  // still-loading widget.
+  // still-loading widget. The standings are folded behind a participants row
+  // ("Teilnehmer anzeigen · N", a native <details>) that is closed until
+  // pressed, so what appears first is that row, not the league rows.
   const errorLine = page.getByText(/Couldn.t load your league/i);
-  const rowButtons = page.locator('li > button');
+  const fold = page.getByTestId('league-panel-disclosure');
   const deadline = Date.now() + 15000;
-  let count = 0;
   while (Date.now() < deadline) {
     if (await errorLine.isVisible().catch(() => false)) {
       throw new Error(
@@ -1076,8 +1077,7 @@ async function stepOpenLeagues(page) {
           'fixture did not satisfy join → refresh → standings, so no row is measurable.'
       );
     }
-    count = await rowButtons.count();
-    if (count >= LEAGUE_ROWS) break;
+    if (await fold.isVisible().catch(() => false)) break;
     await page.waitForTimeout(250);
   }
   if (
@@ -1088,6 +1088,29 @@ async function stepOpenLeagues(page) {
   ) {
     throw new Error('smoke-auth-learning-path: leagues never left the loading state.');
   }
+  if (!(await fold.isVisible().catch(() => false))) {
+    throw new Error(
+      'smoke-auth-learning-path: the standings never showed their participants row — a ' +
+        `${LEAGUE_ROWS}-member league should always draw it.`
+    );
+  }
+  if (await fold.evaluate((el) => el.open)) {
+    throw new Error('smoke-auth-learning-path: the standings should start folded, and were open.');
+  }
+
+  // Open it the way a learner does — by clicking the summary — and prove it
+  // opened, so a fold that stops responding fails HERE, by name, rather than
+  // as "no XP figure" read off rows nobody can see.
+  await fold.locator('summary').click();
+  if (!(await fold.evaluate((el) => el.open))) {
+    throw new Error('smoke-auth-learning-path: clicking the participants row did not open it.');
+  }
+  // Scoped to the fold, so a list button elsewhere on the page cannot pad the
+  // count, and waited on VISIBLE — attached-but-folded rows are what this
+  // step read the first time the fold landed.
+  const rowButtons = fold.locator('li > button');
+  await rowButtons.first().waitFor({ state: 'visible', timeout: 5000 });
+  const count = await rowButtons.count();
   if (count !== LEAGUE_ROWS) {
     throw new Error(
       `smoke-auth-learning-path: leagues showed ${count} row(s), expected the fixture's ` +
