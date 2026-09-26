@@ -16,6 +16,16 @@ describe('AlphabetTab', () => {
     localStorage.clear();
   });
 
+  // Same axis as Vocab and Translate: the title and the mode switch sit on the
+  // page's centre line instead of hugging its left edge on a wide screen.
+  it('centres the section title and the mode switch, like the other practice tabs', () => {
+    render(<AlphabetTab level="a1" />);
+    const hero = screen.getByRole('heading', { level: 1, name: 'Das Alphabet' }).parentElement;
+    expect(hero).toHaveStyle({ textAlign: 'center', display: 'flex', alignItems: 'center' });
+    const toggle = screen.getByRole('button', { name: '🎧 Quiz' }).parentElement;
+    expect(toggle).toHaveStyle({ width: 'fit-content', marginLeft: 'auto', marginRight: 'auto' });
+  });
+
   describe('quiz mode (default)', () => {
     it('starts in quiz mode with a replay button and the first group options', () => {
       render(<AlphabetTab level="a1" />);

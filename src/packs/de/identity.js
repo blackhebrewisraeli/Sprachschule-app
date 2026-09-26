@@ -31,5 +31,8 @@ export const IDENTITY = {
   leaderboardXp: (xp) => `${Number(xp ?? 0).toLocaleString('en-GB')} XP`,
   leaderboardYou: 'Du',
   leaderboardEmptySlot: 'Freier Platz',
+  // The Profile standings' disclosure row, closed and open.
+  leaderboardShowMembers: 'Teilnehmer anzeigen',
+  leaderboardHideMembers: 'Teilnehmer ausblenden',
   anonymousHandle: '@anonym',
 };

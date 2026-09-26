@@ -66,6 +66,46 @@ export function publicAchievements(settingsData) {
     .map(([id]) => id);
 }
 
+/**
+ * Who everyone in one league is — name, handle, avatar — in ONE read, for the
+ * Profile standings' rows.
+ *
+ * The standings read carries handles only, and `profiles` is own-row under
+ * RLS, so without this a row could show a league-mate's uploaded avatar only
+ * after the passport below was opened for them. Calling that passport once
+ * per row would work, but it is seven queries per person; a cohort of 25 is
+ * 175 queries to paint 25 faces.
+ *
+ * The gate is league membership, which is exactly who the "read my league
+ * rows" policy (20260627000000) already lets read these members' handles. The
+ * fields are the passport's identity half and nothing more — no XP, streak or
+ * badges — and a private learner's name rides along as the passport ships it,
+ * because leagueDisplayName is what decides to lead with the handle.
+ *
+ * A query mode on this file rather than a new file: the deployment is at the
+ * 12-function Hobby cap (see api/v1/social.js).
+ */
+async function leagueIdentities(res, db, callerId, leagueId) {
+  try {
+    const { data: members, error } = await db
+      .from('league_members')
+      .select('user_id')
+      .eq('league_id', leagueId);
+    if (error) throw error;
+    const ids = (members ?? []).map((m) => m.user_id);
+    if (!ids.includes(callerId)) return sendError(res, 'forbidden', 'Not in your league.');
+
+    const { data: profiles, error: profileError } = await db
+      .from('profiles')
+      .select('user_id, display_name, handle, avatar_path, is_private')
+      .in('user_id', ids);
+    if (profileError) throw profileError;
+    return res.status(200).json(profiles ?? []);
+  } catch {
+    return sendError(res, 'server_error', 'Failed to load profiles.');
+  }
+}
+
 async function handler(req, res) {
   if (req.method !== 'GET') return sendError(res, 'method_not_allowed', 'Method not allowed');
 
@@ -77,10 +117,13 @@ async function handler(req, res) {
   }
 
   const target = req.query?.userId;
-  if (!target) return sendError(res, 'bad_request', 'Missing userId.');
+  const leagueId = req.query?.leagueId;
+  if (!target && !leagueId) return sendError(res, 'bad_request', 'Missing userId or leagueId.');
 
   const db = serviceClient();
   if (!db) return sendError(res, 'server_error', 'Server is not configured.');
+
+  if (leagueId) return leagueIdentities(res, db, auth.userId, leagueId);
 
   const period = currentPeriodStart();
 

@@ -12,6 +12,7 @@ vi.mock('../../lib/leagues.js', () => ({
   joinLeague: vi.fn(),
   refreshLeague: vi.fn(),
   fetchStandings: vi.fn(),
+  fetchLeagueProfiles: vi.fn(),
 }));
 // leagueZones + leagueCountdown are pure — left un-mocked so the UI exercises
 // the same zone logic the settle job uses.
@@ -21,12 +22,25 @@ import { LEAGUE_ROW_COLUMNS } from '../league/leagueFormat';
 import { LEAGUE_SIZE } from '../../lib/leagueZones.js';
 import { RADIUS } from '../../lib/theme.js';
 import { useAuth } from '../../lib/auth.js';
-import { joinLeague, refreshLeague, fetchStandings } from '../../lib/leagues.js';
+import {
+  joinLeague,
+  refreshLeague,
+  fetchStandings,
+  fetchLeagueProfiles,
+} from '../../lib/leagues.js';
 
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
+
+// The smallest cohort that still draws a table: a learner alone in their
+// league gets no section at all.
+const pair = [
+  { user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null },
+  { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
+];
 
 // This week's Monday (UTC), matching the server's currentPeriodStart. Computed
 // at run time so the countdown ("Ends in …") is always active — a hardcoded
@@ -76,7 +90,7 @@ it('states no tier of its own — the league card above owns that', async () => 
   // while the card above it read the profile row's stored tier. Across a
   // settle those are different numbers, printed six pixels apart. This section
   // reports its tier UPWARD now; printing one again would restore the bug.
-  signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }], 2);
+  signIn(pair, 2);
   const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   for (const tier of ['Bronze', 'Silver', 'Gold', 'Sapphire', 'Ruby']) {
@@ -123,7 +137,7 @@ it('does not re-join when the parent passes a fresh callback identity', async ()
   // hands this component a new function every render; if that identity were in
   // the effect's dependency list, every re-render of the profile page would
   // replay join + refresh.
-  signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }]);
+  signIn(pair);
   const { rerender } = render(<LeaderboardSection onSelectUser={() => {}} onLeague={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   expect(joinLeague).toHaveBeenCalledTimes(1);
@@ -238,7 +252,7 @@ it('refetches when Retry is pressed', async () => {
     handle: 'Me',
   });
   refreshLeague.mockResolvedValue({ weekly_xp: 0 });
-  fetchStandings.mockResolvedValue([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }]);
+  fetchStandings.mockResolvedValue(pair);
 
   render(<LeaderboardSection onSelectUser={() => {}} />);
   await user.click(await screen.findByRole('button', { name: 'Retry' }));
@@ -329,4 +343,81 @@ it('shares the Home table design: one panel, the same row grid', async () => {
   for (const row of screen.getAllByRole('button')) {
     expect(row).toHaveStyle({ gridTemplateColumns: LEAGUE_ROW_COLUMNS });
   }
+});
+
+// ── Folded behind a summary row; absent for a league of one ───────────────
+
+it('draws nothing when the learner is the only member, but still reports the league', async () => {
+  const onLeague = vi.fn();
+  signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }], 1);
+  const { container } = render(<LeaderboardSection onSelectUser={() => {}} onLeague={onLeague} />);
+  // The league card above still needs the tier and rank.
+  await waitFor(() =>
+    expect(onLeague).toHaveBeenCalledWith({ tier: 1, leagueId: 'L1', rank: 1, cohortSize: 1 })
+  );
+  expect(container).toBeEmptyDOMElement();
+  // No faces to fetch for a table nobody sees.
+  expect(fetchLeagueProfiles).not.toHaveBeenCalled();
+});
+
+it('starts folded behind a participants row that opens and closes the list', async () => {
+  const user = userEvent.setup();
+  signIn(threeRows);
+  render(<LeaderboardSection onSelectUser={() => {}} />);
+  const details = await screen.findByTestId('league-panel-disclosure');
+  const summary = details.querySelector('summary');
+
+  expect(details.open).toBe(false);
+  expect(summary).toHaveTextContent('Teilnehmer anzeigen');
+  expect(summary).toHaveTextContent(String(threeRows.length));
+  // The rows live INSIDE the fold, so closing it hides every one of them.
+  expect(within(details).getAllByRole('listitem').length).toBeGreaterThanOrEqual(threeRows.length);
+
+  await user.click(summary);
+  expect(details.open).toBe(true);
+  expect(summary).toHaveTextContent('Teilnehmer ausblenden');
+
+  await user.click(summary);
+  expect(details.open).toBe(false);
+  expect(summary).toHaveTextContent('Teilnehmer anzeigen');
+});
+
+// ── Every row shows its member's face, not only the popup ──────────────────
+
+it("draws each member's uploaded avatar and name on their row, from one league read", async () => {
+  vi.stubEnv('VITE_SUPABASE_URL', 'https://db.example');
+  signIn(pair);
+  fetchLeagueProfiles.mockResolvedValue([
+    { user_id: 'x', display_name: 'Anna Rival', handle: 'Rival', avatar_path: 'x/face.webp' },
+    { user_id: 'me', display_name: 'Server Me', handle: 'Me', avatar_path: null },
+  ]);
+  const { container } = render(
+    <LeaderboardSection
+      onSelectUser={() => {}}
+      selfProfile={{ display_name: 'Sam Vimes', handle: 'Me', avatar_path: 'me/new.webp' }}
+    />
+  );
+  await waitFor(() => expect(screen.getByText('Anna Rival')).toBeTruthy());
+  expect(fetchLeagueProfiles).toHaveBeenCalledTimes(1);
+  expect(fetchLeagueProfiles).toHaveBeenCalledWith('L1');
+
+  const [mine, rival] = [
+    container.querySelector('[data-me]'),
+    container.querySelector('[data-league-slot="member"]:not([data-me])'),
+  ];
+  const rivalFace = rival.querySelector('img');
+  expect(rivalFace).toHaveAttribute('data-avatar', 'image');
+  expect(rivalFace.getAttribute('src')).toContain('x/face.webp');
+  // The page's own profile still wins for your row — it can be fresher.
+  expect(mine).toHaveTextContent('Sam Vimes');
+  expect(mine.querySelector('img').getAttribute('src')).toContain('me/new.webp');
+});
+
+it('keeps the table on handles when the league identity read fails', async () => {
+  signIn(pair);
+  fetchLeagueProfiles.mockRejectedValue(new Error('403'));
+  render(<LeaderboardSection onSelectUser={() => {}} />);
+  await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
+  expect(fetchLeagueProfiles).toHaveBeenCalled();
+  expect(screen.queryByRole('alert')).toBeNull();
 });

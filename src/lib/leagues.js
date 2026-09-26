@@ -35,6 +35,17 @@ export async function fetchProfile(userId) {
   return res.json();
 }
 
+// Every member's public identity (name, handle, avatar path) for one league, in
+// one GET — what the Profile standings draw their rows from. Resolves an array
+// of profile rows keyed by `user_id`.
+export async function fetchLeagueProfiles(leagueId) {
+  const token = await getAccessToken();
+  const url = apiUrl(`/api/v1/league/profile?leagueId=${encodeURIComponent(leagueId)}`);
+  const res = await fetch(url, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`league profiles failed: ${res.status}`);
+  return res.json();
+}
+
 export async function updateHandle(body) {
   const token = await getAccessToken();
   const res = await fetch(apiUrl('/api/v1/league/handle'), {

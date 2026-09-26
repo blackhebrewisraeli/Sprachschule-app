@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState, Fragment } from 'react';
 import { Users, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
 import { useAuth, getSupabase } from '../../lib/auth.js';
-import { joinLeague, refreshLeague, fetchStandings, LEAGUES_ENABLED } from '../../lib/leagues.js';
+import {
+  joinLeague,
+  refreshLeague,
+  fetchStandings,
+  fetchLeagueProfiles,
+  LEAGUES_ENABLED,
+} from '../../lib/leagues.js';
 import { zoneCounts } from '../../lib/leagueZones.js';
 import { weekRemaining } from '../../lib/leagueCountdown.js';
 import { COLORS, FONTS, FONT_SIZE, SPACE } from '../../lib/theme.js';
@@ -27,12 +33,16 @@ const SPARSE_BELOW = 5; // show the "still filling up" note under this many memb
 // places a young cohort has not filled (Home's three-row glance still pads, the
 // full standings do not).
 //
+// The list is folded behind a "show participants" row, closed until pressed,
+// and the section is not drawn at all while the learner is the league's only
+// member: a table of one is not standings.
+//
 // @param onLeague — called with {tier, leagueId, rank, cohortSize} once the
 //   standings resolve, and with null on failure. Optional: this section still
 //   renders standalone.
-// @param selfProfile — the caller's own profile row, if the page has it. The
-//   standings read carries handles only, so without it every row — yours
-//   included — falls back to its @handle and generated avatar.
+// @param selfProfile — the caller's own profile row, if the page has it. It
+//   wins over the league identity read for your own row, so a name or avatar
+//   you just changed shows here before that read catches up.
 export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile = null }) {
   const { user } = useAuth();
   const userId = user?.id;
@@ -84,6 +94,25 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
         });
         // Reward claiming lives in the app-load useLeagueRewards hook so winners
         // are credited even without opening this tab.
+
+        // Faces second. The standings read carries handles only, so every row
+        // would otherwise be an identicon until its passport was opened. One
+        // read for the whole cohort, and best-effort: a failure leaves the
+        // (already true) rows on their handles rather than erroring the table.
+        if (rows.length > 1) {
+          try {
+            const profiles = await fetchLeagueProfiles(league.league_id);
+            if (cancelled) return;
+            const byId = new Map((profiles ?? []).map((p) => [p.user_id, p]));
+            setState({
+              status: 'ready',
+              league,
+              rows: rows.map((r) => ({ ...r, profile: byId.get(r.user_id) ?? null })),
+            });
+          } catch {
+            // Rows stay on @handle + identicon.
+          }
+        }
       } catch {
         if (cancelled) return;
         setState({ status: 'error', league: null, rows: [] });
@@ -118,8 +147,11 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
     return <p style={{ color: COLORS.mute, padding: SPACE[4] }}>Loading league…</p>;
   }
 
-  const copy = leagueCopy();
   const n = state.rows.length;
+  // Only you in the league: nothing to compare against, so no section.
+  if (n <= 1) return null;
+
+  const copy = leagueCopy();
   // Promotion/relegation zones come from the SAME logic the settle job uses, so
   // the dividers reflect exactly who will advance/drop this week.
   const { promote, demote } = zoneCounts(n);
@@ -135,6 +167,11 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
       aside={countdown.ended ? 'Settling soon' : `Ends in ${countdown.label}`}
       listLabel="League standings"
       padding={SPACE[3]}
+      summary={{
+        closed: copy.leaderboardShowMembers ?? 'View league participants',
+        open: copy.leaderboardHideMembers ?? 'Hide league participants',
+        count: n,
+      }}
       footer={
         n < SPARSE_BELOW ? (
           <p

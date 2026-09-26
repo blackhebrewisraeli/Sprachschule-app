@@ -305,3 +305,82 @@ describe('GET /api/v1/league/profile — the passport', () => {
     expect(db.rpc).not.toHaveBeenCalled();
   });
 });
+
+// ── ?leagueId= : every member's identity in one read ─────────────────────────
+
+describe('league identities (?leagueId=)', () => {
+  const leagueReq = (leagueId) => ({
+    method: 'GET',
+    query: { leagueId },
+    headers: { authorization: 'Bearer t' },
+  });
+
+  // Records what each table was asked for, so a test can tell "returned the
+  // members' identities" apart from "returned whatever the mock held".
+  const leagueDb = (memberIds) => {
+    const asked = {};
+    const from = vi.fn((table) => {
+      const q = {
+        select: vi.fn((cols) => {
+          asked[table] = { ...asked[table], cols };
+          return q;
+        }),
+        eq: vi.fn((col, val) => {
+          asked[table] = { ...asked[table], eq: [col, val] };
+          return Promise.resolve({ data: memberIds.map((user_id) => ({ user_id })), error: null });
+        }),
+        in: vi.fn((col, vals) => {
+          asked[table] = { ...asked[table], in: [col, vals] };
+          return Promise.resolve({
+            data: vals.map((user_id) => ({ user_id, handle: `h-${user_id}`, avatar_path: null })),
+            error: null,
+          });
+        }),
+      };
+      return q;
+    });
+    return { db: { from, rpc: vi.fn() }, asked };
+  };
+
+  it('refuses a league the caller is not in, before reading any profile', async () => {
+    requireAuth.mockResolvedValue(USER);
+    const { db, asked } = leagueDb(['a', 'b']);
+    serviceClient.mockReturnValue(db);
+    const res = createRes();
+    await handler(leagueReq('L1'), res);
+    expect(res.statusCode).toBe(403);
+    expect(asked.profiles).toBeUndefined();
+  });
+
+  it("returns the identity half of every member's passport, and nothing else", async () => {
+    requireAuth.mockResolvedValue(USER);
+    const { db, asked } = leagueDb(['a', USER.userId, 'b']);
+    serviceClient.mockReturnValue(db);
+    const res = createRes();
+    await handler(leagueReq('L1'), res);
+
+    expect(res.statusCode).toBe(200);
+    expect(asked.league_members.eq).toEqual(['league_id', 'L1']);
+    expect(asked.profiles.in).toEqual(['user_id', ['a', USER.userId, 'b']]);
+    expect(asked.profiles.cols).toBe('user_id, display_name, handle, avatar_path, is_private');
+    expect(res.body.map((p) => p.user_id)).toEqual(['a', USER.userId, 'b']);
+    // One read per table — not the seven-query passport once per member.
+    expect(db.from).toHaveBeenCalledTimes(2);
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it('answers a failed read with a 500, never a partial list', async () => {
+    requireAuth.mockResolvedValue(USER);
+    const { db } = leagueDb([USER.userId]);
+    const profiles = db.from;
+    db.from = vi.fn((table) => {
+      const q = profiles(table);
+      if (table === 'profiles') q.in = vi.fn(async () => ({ data: null, error: new Error('x') }));
+      return q;
+    });
+    serviceClient.mockReturnValue(db);
+    const res = createRes();
+    await handler(leagueReq('L1'), res);
+    expect(res.statusCode).toBe(500);
+  });
+});
