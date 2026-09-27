@@ -4,12 +4,14 @@
 
 # Deutsch· — German practice with engineering depth
 
-**An offline-first German-learning PWA that blends focused practice, deterministic
-gamification, secure cross-device sync, and AI where it genuinely helps.**
+**An offline-first German-learning app — on the web and as native iOS and
+Android builds — that blends focused practice, deterministic gamification,
+secure cross-device sync, and AI where it genuinely helps.**
 
 [![Live demo](https://img.shields.io/badge/Live_demo-Open_app-D62828?style=for-the-badge)](https://deutsch-app-dusky.vercel.app)
 [![CI](https://img.shields.io/github/actions/workflow/status/blackhebrewisraeli/deutsch-app/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/blackhebrewisraeli/deutsch-app/actions/workflows/ci.yml)
 [![React 18](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Capacitor 8](https://img.shields.io/badge/Capacitor_8-iOS_%2B_Android-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)](https://capacitorjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres_%2B_Auth_%2B_Storage-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel)](https://vercel.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5C518?style=for-the-badge)](./LICENSE)
@@ -21,26 +23,29 @@ gamification, secure cross-device sync, and AI where it genuinely helps.**
 
 ![Deutsch· — the Home dashboard](docs/images/home-dashboard.png)
 
-<sub>Six surfaces, an offline CEFR placement test, and considerably more thought about merge semantics than a language app has any right to contain.</sub>
+<sub>Six tabs, one codebase on three platforms, and considerably more thought about merge semantics than a language app has any right to contain.</sub>
 
 </div>
 
 > [!NOTE]
-> **Accounts are optional.** Placement, lessons, vocabulary, speech, SRS,
-> progress, streaks, and quests all work locally. Signing in adds cross-device
-> sync, leagues, and a portable profile; generative features require the server
-> API.
+> **Accounts are optional.** Lessons, vocabulary, speech, SRS, progress,
+> streaks, and quests all work locally, with no sign-up. Signing in
+> (passwordless: an email link or Google) adds cross-device sync, weekly
+> leagues, a followable profile, and quest tokens; generative features require
+> the server API.
 
 ## ✨ What learners get
 
-| Experience                                  | What it does                                                                                |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| 🧭 **Offline placement**                    | Nine questions drawn from the course itself place you at A1, A2, or B1 — no account, no AI. |
-| 💬 **Guided conversation**                  | An AI tutor sets level-aware scenarios, responds in character, and explains corrections.    |
-| 🔤 **Alphabet & listening**                 | German speech synthesis, confusable-letter quizzes, and a browsable pronunciation grid.     |
-| 🧠 **Vocabulary & SRS**                     | Practice, browse, and generate decks — preset, lexicon, grammar, and custom — on Leitner.   |
-| ✍️ **Adaptive translation**                 | Word tiles, pick-the-word, type-the-word, or free typing with AI grading — your call.       |
-| 🎮 **Motivation that respects the learner** | XP, streak freezes, achievements, daily quests, and optional weekly leagues.                |
+| Experience                                  | What it does                                                                                                                                        |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💬 **Scene-based conversation**             | The AI opens a scene in character — a barista, an airport check-in agent — caps sentence length by CEFR level, and corrects you inline.             |
+| 🪜 **Scaffolding that fades**               | Chat and Translate share one input ladder: word bank, choose the word, type the word, free typing. Start where your level puts you; switch anytime. |
+| 🧠 **Vocabulary & SRS**                     | Leitner review over preset, lexicon, grammar-drill, interest-topic, and custom AI-generated decks, plus a Travel Basics phrasebook.                 |
+| 🔤 **Alphabet & listening**                 | German speech synthesis, confusable-letter quizzes, and a browsable pronunciation grid.                                                             |
+| 🧭 **Optional placement**                   | Start at A1 straight away, or take nine offline questions to place at A1, A2, or B1. The app suggests it again at 500 XP.                           |
+| 🎮 **Motivation that respects the learner** | XP, streak freezes, earned-only badges, daily quests that pay tokens, and optional weekly leagues.                                                  |
+| 👥 **Social, opt-in**                       | Pick a handle, find people, follow them, and choose whether your profile is public or private.                                                      |
+| 🤖 **Your choice of model**                 | Fast, Balanced, or Capable (Haiku, Sonnet, Opus), or let the router pick per request.                                                               |
 
 |                          Vocabulary practice                          |
 | :-------------------------------------------------------------------: |
@@ -51,24 +56,29 @@ gamification, secure cross-device sync, and AI where it genuinely helps.**
 <details open>
 <summary><strong>🔌 Offline-first sync that understands different kinds of data</strong></summary>
 
-The browser's `localStorage` is the offline authority; Supabase is an optional
-cross-device layer. Reconciliation happens client-side before PostgREST upserts,
-so each state slice gets semantics that fit its data instead of one risky
-"newest blob wins" rule.
+The device's `localStorage` is the offline authority; Supabase is an optional
+cross-device layer. Reconciliation happens client-side, so each state slice
+gets semantics that fit its data instead of one risky "newest blob wins" rule.
 
-| State slice                  | Merge strategy                                 | Why                                                                                      |
-| ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| Daily stats                  | **Additive delta** from a synced baseline      | Repeated syncs stay idempotent without losing offline activity.                          |
-| SRS cards                    | **Per-card LWW** on `lastReviewed`             | Reviewing one card should not overwrite another card's state.                            |
-| Settings                     | **Whole-record LWW**, with explicit carve-outs | Ordinary preferences share a clock; special data does not.                               |
-| CEFR level                   | **Independent LWW clock**                      | A newer unrelated setting cannot roll B1 back to A1.                                     |
-| Learned words & deck mastery | **Union merge**                                | Learning on either device remains learned.                                               |
-| Custom decks                 | **Per-deck LWW + tombstones**                  | Offline deletion competes with edits by timestamp instead of resurrecting removed decks. |
+| State slice                  | Merge strategy                                 | Why                                                                                                 |
+| ---------------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Daily stats & XP             | **Server-owned event log**                     | Each answer queues locally with its own ID; one idempotent RPC applies it. The client never writes. |
+| SRS cards                    | **Per-card LWW** on `lastReviewed`             | Reviewing one card should not overwrite another card's state.                                       |
+| Settings                     | **Whole-record LWW**, with explicit carve-outs | Ordinary preferences share a clock; special data does not.                                          |
+| CEFR level                   | **Independent LWW clock**                      | A newer unrelated setting cannot roll B1 back to A1.                                                |
+| Learned words & deck mastery | **Union merge**                                | Learning on either device remains learned.                                                          |
+| Custom decks                 | **Per-deck LWW + tombstones**                  | Offline deletion competes with edits by timestamp instead of resurrecting removed decks.            |
 
-Deck deletion is the interesting edge case. An upsert-only system cannot express
-absence, so a stale device would recreate a deleted deck. Deutsch· keeps a
-timestamped tombstone; the same per-deck LWW comparison then decides whether an
-edit or deletion is newer.
+Daily stats are the strictest case. Every XP reader — streaks, lifetime XP,
+league standings — sums one table, so clients may read it but never write it.
+Offline answers wait in a durable queue; on reconcile the client rebuilds each
+day as _server rows + unflushed queue_, so an answer is neither lost nor
+counted twice, and a browser cannot mint XP.
+
+Deck deletion is the other interesting edge case. An upsert-only system cannot
+express absence, so a stale device would recreate a deleted deck. Deutsch·
+keeps a timestamped tombstone; the same per-deck LWW comparison then decides
+whether an edit or deletion is newer.
 
 → [Offline-First Sync Model](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Offline-First-Sync-Model) in the wiki.
 
@@ -80,8 +90,8 @@ edit or deletion is newer.
 Three daily quests are derived—not stored—from a stable seed:
 
 ```js
-seed = hash(`${userId ?? 'guest'}:${todayKey}`);
-quests = pickQuestGroups(seed, 3);
+seed = seedFor(userId, todayKey); // hash(`${userId ?? 'guest'}:${todayKey}`)
+quests = pickQuests(QUEST_CATALOGUE, seed, 3);
 progress = readExistingDailyCounters(todayKey);
 ```
 
@@ -93,8 +103,11 @@ previous seven days**, excluding today, then apply per-quest multipliers. A
 single heroic study binge cannot make tomorrow miserable, and today's progress
 cannot move today's goalposts.
 
-Quests intentionally award achievements rather than XP. League XP stays tied to
-actual graded practice, protecting the balance of a small, real learning loop.
+A finished quest pays **tokens, never XP**. The balance is a server-side
+ledger: the `award_tokens` RPC picks the amount, caps it per day, and is
+idempotent on `(reason, key)` with the key `todayKey:questId` — so a quest pays
+once, however many devices claim it. League XP stays tied to actual graded
+practice.
 
 </details>
 
@@ -102,37 +115,38 @@ actual graded practice, protecting the balance of a small, real learning loop.
 
 ```mermaid
 flowchart LR
-    subgraph Browser["Browser · works offline"]
-        UI["React 18 UI"]
-        Local[("localStorage\nSRS · stats · progress")]
-        SW["PWA service worker"]
+    subgraph Client["Web PWA · iOS · Android — works offline"]
+        UI["React 18 UI\n(Capacitor shell on native)"]
+        Local[("localStorage\nSRS · stats · progress queue")]
+        SW["Service worker (web)"]
         UI <--> Local
         UI <--> SW
     end
 
     subgraph Vercel["Vercel"]
-        API["Versioned serverless API\nai · content · progress\nleague · account"]
+        API["Versioned serverless API\nai · content · progress · league\nsocial · account · admin"]
     end
 
     subgraph Supabase["Supabase"]
-        Auth["Auth"]
+        Auth["Auth · email link + OAuth"]
         DB[("Postgres + RLS")]
         Storage[("Avatar Storage")]
     end
 
-    AI["Anthropic"]
+    AI["Anthropic\nHaiku · Sonnet · Opus"]
 
-    UI -->|"lessons · progress · leagues · AI"| API
+    UI -->|"lessons · progress events · leagues · social · AI"| API
     API --> AI
-    API -->|"RPC · the only progress writer"| DB
-    UI -.->|"optional signed-in sync via PostgREST"| DB
+    API -->|"RPC · the only XP writer"| DB
+    UI -.->|"signed-in sync: SRS · settings · decks · tokens"| DB
     UI -.-> Auth
     UI -.-> Storage
 ```
 
 > Learner-progress merges stay in pure client-side functions — deterministic,
-> testable, and usable before the network returns. Server-side progress writes
-> go through a single Postgres RPC, so the database has exactly one writer.
+> testable, and usable before the network returns. Every XP-bearing write goes
+> through one Postgres RPC behind `POST /api/v1/progress/events`, so the
+> database has exactly one writer for the numbers leagues are decided on.
 
 ## ⚡ Quick start
 
@@ -148,18 +162,30 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173). The offline-first learning
 flows work with no Supabase, Vercel, or Anthropic credentials at all.
 
-| Command            | Purpose                          |
-| ------------------ | -------------------------------- |
-| `npm run dev`      | Start the Vite UI                |
-| `npm run dev:full` | Start Vite plus Vercel functions |
-| `npm test`         | Run the main Vitest suite        |
-| `npm run lint`     | Run ESLint                       |
+| Command                | Purpose                                                      |
+| ---------------------- | ------------------------------------------------------------ |
+| `npm run dev`          | Start the Vite UI                                            |
+| `npm run dev:full`     | Start Vite plus the Vercel functions (AI, leagues, social)   |
+| `npm test`             | Run the main Vitest suite                                    |
+| `npm run lint`         | Run ESLint                                                   |
+| `npm run format:check` | Check Prettier formatting                                    |
+| `npm run test:rls`     | Run the RLS policy suite (needs Docker + `supabase start`)   |
+| `npm run build:mobile` | Build against production and sync into `ios/` and `android/` |
 
 Accounts, sync, leagues, avatars, and the AI endpoints each need a little more
 setup — local Supabase via Docker, a few `VITE_*` flags, and an
 `ANTHROPIC_API_KEY`. The full matrix, every npm script, and the usual
 "why is sync doing nothing locally?" answer live in
 **[Local Development](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Local-Development)**.
+
+### 📱 Native apps
+
+`ios/` and `android/` are committed Capacitor 8 projects that wrap the same web
+bundle. Every push to `main` builds an iOS simulator app and an Android debug
+APK in CI. For signed builds, auth deep links, and store copy, see
+[`docs/NATIVE_BUILD.md`](./docs/NATIVE_BUILD.md),
+[`docs/MOBILE_AUTH_SETUP.md`](./docs/MOBILE_AUTH_SETUP.md), and
+[`docs/store-metadata/`](./docs/store-metadata/).
 
 ## 📚 Where to learn more
 
@@ -176,8 +202,9 @@ Deep documentation lives in the **[project wiki](https://github.com/blackhebrewi
 | [Contributing & Quality](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Contributing-and-Quality)             | Testing philosophy, conventions, and the PR flow                |
 
 Versioned material stays in the repository, where it is reviewed alongside the
-code it describes: API contracts in [`docs/api/`](./docs/api/), and design specs
-and implementation plans in [`docs/superpowers/`](./docs/superpowers/).
+code it describes: API contracts in [`docs/api/`](./docs/api/), design specs
+and implementation plans in [`docs/superpowers/`](./docs/superpowers/), and
+deliberately deferred work in [`docs/BACKLOG.md`](./docs/BACKLOG.md).
 
 ## 🤝 Contributing
 
@@ -189,8 +216,9 @@ for the testing philosophy behind them.
 
 ## 📄 License
 
-Released under the [MIT License](./LICENSE). Vocabulary sources and attribution
-are documented separately in [`CONTENT_LICENSE.md`](./CONTENT_LICENSE.md).
+Released under the [MIT License](./LICENSE). Vocabulary sources — Wiktionary,
+Tatoeba, the Leipzig Corpora Collection, and the Wikivoyage phrasebook — and
+their attribution are documented in [`CONTENT_LICENSE.md`](./CONTENT_LICENSE.md).
 
 <div align="center">
 
