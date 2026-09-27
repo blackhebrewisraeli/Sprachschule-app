@@ -49,4 +49,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Android 13+ runtime permission for showing push notifications. The
+         plugin asks for it when the learner turns the Settings switch on, and
+         Android refuses to prompt for a permission the manifest does not
+         declare. Declared here rather than relying on the Firebase SDK's
+         manifest to bring it in. See docs/MOBILE_PUSH_SETUP.md. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

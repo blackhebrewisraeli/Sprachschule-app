@@ -88,6 +88,7 @@ import {
 } from './lib/auth';
 import { signOutAndReset } from './lib/clearUserState';
 import { isNativeApp, hideLaunchScreen } from './lib/nativeApp';
+import { resumePushRegistration } from './lib/pushNotifications';
 import { SYNC_ENABLED, start, stop, markDirty, loadRemoteDaily } from './lib/sync';
 import { startProgressFlush, stopProgressFlush, scheduleFlush } from './lib/progressQueue';
 import { setLevelBoostEnabled } from './lib/xpEntitlement';
@@ -662,6 +663,13 @@ export default function App() {
     const onProgress = () => markDirty();
     window.addEventListener('deutsch:progress', onProgress);
     return () => window.removeEventListener('deutsch:progress', onProgress);
+  }, [user?.id]);
+
+  // Push tokens rotate without warning and only surface on the next register(),
+  // so a device already opted in re-registers on each signed-in launch. Never
+  // prompts, never throws, and does nothing on the web or before opt-in.
+  useEffect(() => {
+    if (user?.id) void resumePushRegistration(user.id);
   }, [user?.id]);
 
   // Progress RPC flush is gated on a JWT, not VITE_SYNC_ENABLED. Sync off

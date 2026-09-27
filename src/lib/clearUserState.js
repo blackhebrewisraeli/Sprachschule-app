@@ -4,6 +4,11 @@
 // CEFR level, sync baseline, tutorial/welcome flags, leftover auth tokens.
 //
 // Sequence is load-bearing:
+//   0. forget this device's push registration — while the session still exists,
+//      because the RPC that drops the token acts as the signed-in user. After
+//      signOut it could not, and the device would keep ringing with the
+//      previous account's streak and league pushes. Bounded and never throws,
+//      so it cannot stall or fail the sign-out.
 //   1. await supabase signOut — the session has to die first. Wiping storage
 //      while still authenticated would let sync push an empty blob to the
 //      account. Reloading before signOut resolves would leave the session.
@@ -12,6 +17,7 @@
 //      the gateDismissed latch) has no other bulletproof reset in this SPA.
 //      Same-URL assign('/') is a no-op on `/`.
 import { signOut as authSignOut } from './auth.js';
+import { forgetPushDevice } from './pushNotifications.js';
 import { freezePersist } from './storage.js';
 import { THEME_MODE_KEY } from './themeMode.js';
 
@@ -60,11 +66,21 @@ export function clearUserLocalState() {
  * signOut settles — supabase can clear the local session and still return
  * `{ error }` on a failed server call.
  *
- * @param {{ signOut?: () => Promise<{ error?: unknown }>, reload?: () => void }} [opts]
+ * @param {{
+ *   signOut?: () => Promise<{ error?: unknown }>,
+ *   forgetDevice?: () => Promise<void>,
+ *   reload?: () => void,
+ * }} [opts]
  * @returns {Promise<{ error: unknown }>}
  */
 export async function signOutAndReset(opts = {}) {
   const signOutFn = opts.signOut ?? authSignOut;
+  const forgetDevice = opts.forgetDevice ?? forgetPushDevice;
+  try {
+    await forgetDevice();
+  } catch {
+    // forgetPushDevice never throws; an injected one might. Sign out regardless.
+  }
   let error;
   try {
     const result = await signOutFn();

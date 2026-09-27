@@ -33,6 +33,7 @@ VITE_SYNC_ENABLED=true
 VITE_LEAGUES_ENABLED=true
 VITE_GOOGLE_AUTH_ENABLED=true
 VITE_GITHUB_AUTH_ENABLED=…   # whatever Production has
+VITE_PUSH_ENABLED=true       # ONLY with android/app/google-services.json — docs/MOBILE_PUSH_SETUP.md
 VITE_SENTRY_DSN=…            # optional, as Production has them
 VITE_SENTRY_ENVIRONMENT=…
 ```

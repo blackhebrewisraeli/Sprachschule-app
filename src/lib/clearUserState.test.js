@@ -151,6 +151,37 @@ describe('signOutAndReset', () => {
     }
   });
 
+  // The drop-token RPC acts as the signed-in user, so it has to land while
+  // there still is one. After signOut the device would keep the old account's
+  // pushes.
+  it('forgets the push device before the session ends', async () => {
+    const order = [];
+    const forgetDevice = vi.fn(async () => {
+      order.push('forgetDevice');
+    });
+    const signOut = vi.fn(async () => {
+      order.push('signOut');
+      return { error: null };
+    });
+    await signOutAndReset({ forgetDevice, signOut, reload: () => order.push('reload') });
+    expect(order).toEqual(['forgetDevice', 'signOut', 'reload']);
+  });
+
+  it('still signs out when forgetting the device throws', async () => {
+    const signOut = vi.fn(async () => ({ error: null }));
+    const reload = vi.fn();
+    await signOutAndReset({
+      forgetDevice: async () => {
+        throw new Error('offline');
+      },
+      signOut,
+      reload,
+    });
+    expect(signOut).toHaveBeenCalledTimes(1);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(STATE_KEY)).toBeNull();
+  });
+
   it('blocks saveState from rewriting the blob after the wipe', async () => {
     await signOutAndReset({
       signOut: async () => ({ error: null }),

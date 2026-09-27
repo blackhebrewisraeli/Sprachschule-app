@@ -28,6 +28,7 @@ const USER_OWNED = [
   'progress_events_seen',
   'feedback',
   'token_ledger',
+  'user_devices',
 ];
 
 // Distinct rows per table. The previous fixture returned the SAME row for every

@@ -19,6 +19,16 @@ vi.mock('../../lib/leagues', async (importOriginal) => {
   return { ...actual, LEAGUES_ENABLED: true, updateHandle: vi.fn().mockResolvedValue({}) };
 });
 vi.mock('../../lib/profile', () => ({ updateProfile: vi.fn().mockResolvedValue({}) }));
+// Whether this is the native app with push switched on. The section's own
+// behaviour is NotificationsSection.test.jsx; here only its placement.
+const { push } = vi.hoisted(() => ({ push: { available: false } }));
+vi.mock('../../lib/pushNotifications', () => ({
+  isPushAvailable: () => push.available,
+  pushPermission: async () => 'prompt',
+  readPushDevice: () => null,
+  enablePush: vi.fn(),
+  disablePush: vi.fn(),
+}));
 const user = { id: 'u1', email: 'sam@example.com' };
 const profile = { handle: 'sam' };
 
@@ -150,6 +160,30 @@ describe('SettingsRoute', () => {
     await selectSection(u, 'System');
     await u.click(screen.getByRole('button', { name: /sound: off/i }));
     expect(onSoundChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves Notifications out of a browser, where there is no push', async () => {
+    const u = userEvent.setup();
+    push.available = false;
+    renderRoute();
+    await selectSection(u, 'System');
+    expect(screen.queryByRole('heading', { name: 'Notifications' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /push notifications/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the push opt-in under System in the native app', async () => {
+    const u = userEvent.setup();
+    push.available = true;
+    try {
+      renderRoute();
+      await selectSection(u, 'System');
+      expect(screen.getByRole('heading', { name: 'Notifications' })).toBeInTheDocument();
+      expect(
+        await screen.findByRole('button', { name: /push notifications: off/i })
+      ).toBeInTheDocument();
+    } finally {
+      push.available = false;
+    }
   });
 
   it('toggles an interest topic through onInterestsChange', async () => {
