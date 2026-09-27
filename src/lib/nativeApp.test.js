@@ -217,6 +217,9 @@ describe('the launch screen hand-off', () => {
   it('is configured to wait for the web app', () => {
     const config = readFileSync('capacitor.config.ts', 'utf8');
     expect(config).toMatch(/SplashScreen:\s*\{[^}]*launchAutoHide:\s*false/);
+    expect(config).toMatch(/backgroundColor:\s*'#FBF8F1'/);
+    expect(config).toMatch(/androidScaleType:\s*'CENTER_CROP'/);
+    expect(config).toMatch(/showSpinner:\s*false/);
   });
 
   it('is lifted by App and by the error boundary that replaces it', () => {

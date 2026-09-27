@@ -12,6 +12,9 @@ const config: CapacitorConfig = {
       // 500ms, so the webview is never uncovered before it has painted. The
       // artwork itself is drawn by `npm run gen:assets`.
       launchAutoHide: false,
+      backgroundColor: '#FBF8F1',
+      androidScaleType: 'CENTER_CROP',
+      showSpinner: false,
     },
   },
 };

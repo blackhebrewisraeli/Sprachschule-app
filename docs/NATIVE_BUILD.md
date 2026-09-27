@@ -96,13 +96,13 @@ An unsigned debug APK for a quick device test needs no keystore:
 
 ## Icons and launch screens
 
-Every launcher icon and launch screen in both projects is drawn by
-`npm run gen:assets` from the same geometry as the PWA icons
-(`scripts/gen-assets/mark.js`, file list in `scripts/gen-assets/native.js`).
-Don't replace them from Xcode, Android Studio's Image Asset wizard or
-`@capacitor/assets`: the next `gen:assets` overwrites them, and
-`src/brandAssets.test.js` checks the invariants the stores enforce (for example,
-no alpha channel on the 1024 iOS icon).
+Every launcher icon and launch screen in both projects comes from the canonical
+PNGs under `assets/`. `npm run gen:assets` first draws those sources from the
+same Fraunces geometry as the PWA icons, then runs `@capacitor/assets` to inject
+all required iOS and Android resolutions, including dark launch screens. Don't
+replace generated files from Xcode or Android Studio: the next `gen:assets`
+overwrites them. `src/brandAssets.test.js` checks the package's output contract
+and store invariants (for example, no alpha channel on the 1024 iOS icon).
 
 The mark is the Fraunces "D." baked to outlines in
 `scripts/gen-assets/glyphs.js`. Re-run `scripts/gen-assets/extract-glyphs.py`

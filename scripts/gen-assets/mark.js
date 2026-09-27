@@ -135,12 +135,20 @@ export function needsAlpha({ radius, plane = true }) {
  *                                    transparency — Android's adaptive
  *                                    foreground, whose plane is its own layer.
  * @param {keyof typeof CUTS} [opts.cut] optical cut; `small` for the favicon
+ * @param {{plane:string,ink:string,dot:string}} [opts.colors] fixed palette
  * @returns {string} standalone SVG, containing no <text> and no font reference
  */
-export function iconSvg({ size, radius, markHeight, plane = true, cut = 'display' }) {
+export function iconSvg({
+  size,
+  radius,
+  markHeight,
+  plane = true,
+  cut = 'display',
+  colors = BRAND,
+}) {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
-    ...iconBody({ size, radius, markHeight, plane, cut }),
+    ...iconBody({ size, radius, markHeight, plane, cut, colors }),
     `</svg>`,
     '',
   ].join('\n');
@@ -184,7 +192,7 @@ export function splashSvg({ width, height, iconSize }) {
 }
 
 /** The plane and the mark, as SVG lines, for a `size`-edged canvas at 0,0. */
-function iconBody({ size, radius, markHeight, plane, cut }) {
+function iconBody({ size, radius, markHeight, plane, cut, colors = BRAND }) {
   const mark = CUTS[cut];
   const scale = markHeight / mark.height;
   const markW = mark.width * scale;
@@ -193,11 +201,11 @@ function iconBody({ size, radius, markHeight, plane, cut }) {
 
   return [
     ...(plane
-      ? [`  <rect width="${size}" height="${size}" rx="${radius}" fill="${BRAND.plane}"/>`]
+      ? [`  <rect width="${size}" height="${size}" rx="${radius}" fill="${colors.plane}"/>`]
       : []),
     `  <g transform="translate(${round(tx)} ${round(ty)}) scale(${round(scale, 5)})">`,
-    `    <path fill="${BRAND.ink}" d="${mark.letter}"/>`,
-    `    <path fill="${BRAND.dot}" d="${mark.period}"/>`,
+    `    <path fill="${colors.ink}" d="${mark.letter}"/>`,
+    `    <path fill="${colors.dot}" d="${mark.period}"/>`,
     `  </g>`,
   ];
 }

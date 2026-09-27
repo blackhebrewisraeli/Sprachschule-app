@@ -30,7 +30,7 @@
     "clean": "node scripts/clean.js",
     "prepare": "husky || true",
     "vendor:fonts": "node scripts/vendor-fonts/index.js",
-    "gen:assets": "node scripts/gen-assets/index.js",
+    "gen:assets": "node scripts/gen-assets/index.js && capacitor-assets generate --ios --android",
     "check:migrations": "node scripts/check-migrations/index.js",
     "seed:lessons": "node scripts/seed-lessons/index.js",
     "import:lexicon": "node --max-old-space-size=4096 scripts/import-lexicon/index.js"
@@ -69,6 +69,7 @@
     ]
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.2",
     "@eslint/js": "^10.0.1",
     "@sentry/vite-plugin": "^5.4.0",
