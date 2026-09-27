@@ -1,9 +1,20 @@
 import { useEffect } from 'react';
 import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, RADIUS, SHADOW, SPACE } from '../../lib/theme';
+import BadgeIcon from '../gamification/BadgeIcon';
+import TaskIcon from './TaskIcon';
+
+// The icon slot's width. A medal and a line glyph differ in size, so a fixed
+// slot keeps every title in a stack starting at the same x.
+const ICON_SLOT = 32;
 
 // One auto-dismissing toast. `onDone` is called after the lifetime elapses, or
 // immediately when the learner dismisses it.
-export function Toast({ icon, title, sub, onDone, ttl = 3200 }) {
+//
+// `icon` is a TaskIcon key ('star', 'flame' …), drawn in the plane's paper ink.
+// `badge` is an achievement id: a badge toast wears the same medal the badge
+// wall draws, not a stand-in. Both are svg, never emoji — an emoji is whatever
+// the OS font draws, so it never matched the type beside it.
+export function Toast({ icon, badge, title, sub, onDone, ttl = 3200 }) {
   useEffect(() => {
     const t = setTimeout(onDone, ttl);
     return () => clearTimeout(t);
@@ -25,10 +36,10 @@ export function Toast({ icon, title, sub, onDone, ttl = 3200 }) {
         pointerEvents: 'auto',
       }}
     >
-      {/* Decoration beside a text title — announcing it would read the toast
-          twice over. */}
-      <span aria-hidden="true" style={{ fontSize: 26 }}>
-        {icon}
+      {/* Decoration beside a text title — both icons are aria-hidden, since
+          announcing one would read the toast twice over. */}
+      <span style={{ width: ICON_SLOT, display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+        {badge ? <BadgeIcon id={badge} size={ICON_SLOT} /> : <TaskIcon name={icon} size={24} />}
       </span>
       <div>
         <div
@@ -86,15 +97,19 @@ export function Toast({ icon, title, sub, onDone, ttl = 3200 }) {
   );
 }
 
-// Fixed stack of toasts near the top-center. `toasts` = [{id, icon, title, sub}].
+// Fixed stack of toasts near the top-center. `toasts` = [{id, icon|badge, title, sub}].
 export default function ToastStack({ toasts, onDismiss }) {
   return (
     <div
       style={{
         position: 'fixed',
         top: 16,
-        left: '50%',
-        transform: 'translateX(-50%)',
+        // Gutters on both sides, toasts centred inside. `left: 50%` plus a
+        // translate left each toast only HALF the viewport to lay out in, so on
+        // a phone "Tagesziel erreicht!" broke onto two lines.
+        left: 16,
+        right: 16,
+        alignItems: 'center',
         zIndex: 200,
         display: 'flex',
         flexDirection: 'column',
@@ -108,6 +123,7 @@ export default function ToastStack({ toasts, onDismiss }) {
         <Toast
           key={t.id}
           icon={t.icon}
+          badge={t.badge}
           title={t.title}
           sub={t.sub}
           onDone={() => onDismiss(t.id)}

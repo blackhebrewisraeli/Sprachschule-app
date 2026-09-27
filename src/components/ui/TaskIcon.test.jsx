@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import TaskIcon from './TaskIcon';
 import { activePack } from '../../packs';
+import appSource from '../../App.jsx?raw';
 
 const glyph = (name) => render(<TaskIcon name={name} />).container.querySelector('svg');
 
@@ -15,13 +16,26 @@ const PACK_ICONS = [
   ['quest done state', 'done'],
 ];
 
+// Every toast App.jsx raises names its icon as `icon: '<key>'`. Read from the
+// source, so a new toast with an emoji or a misspelt key fails here instead of
+// shipping a toast with an empty icon slot.
+const TOAST_ICONS = [...appSource.matchAll(/\bicon: '([^']+)'/g)].map((m) => [
+  `toast ${m[1]}`,
+  m[1],
+]);
+
 describe('TaskIcon', () => {
   it('covers a known number of pack icons', () => {
     // Denominator: an empty pack and a fully covered one both pass the loop.
     expect(PACK_ICONS.length).toBeGreaterThan(15);
   });
 
-  it.each(PACK_ICONS)('draws %s (%s) as a decorative svg', (_, name) => {
+  it('finds every toast icon App.jsx raises', () => {
+    // star, target, snowflake, flame, trophy, zap, rocket, info, done.
+    expect(TOAST_ICONS.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it.each([...PACK_ICONS, ...TOAST_ICONS])('draws %s (%s) as a decorative svg', (_, name) => {
     const svg = glyph(name);
     expect(svg).not.toBeNull();
     expect(svg).toHaveAttribute('data-task-icon', name);
