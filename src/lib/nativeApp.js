@@ -74,6 +74,26 @@ export async function listenForAppUrls(onUrl) {
   deliver(launch?.url);
 }
 
+/**
+ * Lift the native launch screen. A no-op on the web.
+ *
+ * capacitor.config.ts sets `launchAutoHide: false`, so the launch screen stays
+ * up until this runs instead of a fixed 500ms later. A timer can only guess
+ * how long a cold start takes: guess short and the user sees the webview
+ * before it has painted, which is a white flash; guess long and every launch
+ * waits for nothing.
+ *
+ * The flip side of `launchAutoHide: false` is that nothing else will ever hide
+ * it, so every screen React can mount first has to reach this: App on its
+ * first commit, and ErrorBoundary when App throws before that commit happens.
+ * Safe to call more than once; later calls resolve without doing anything.
+ */
+export async function hideLaunchScreen() {
+  if (!isNativeApp()) return;
+  const { SplashScreen } = await import('@capacitor/splash-screen');
+  await SplashScreen.hide();
+}
+
 let finishBrowserSession = null;
 
 /**

@@ -1,5 +1,6 @@
 import React from 'react';
 import { reportError } from '../lib/observability.js';
+import { hideLaunchScreen } from '../lib/nativeApp.js';
 import { COLORS, CARD, BUTTON, TEXT, FONTS, FONT_SIZE, SPACE } from '../lib/theme.js';
 
 // Top-level React error boundary. Error boundaries must be class components —
@@ -19,6 +20,10 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     reportError(error, { componentStack: info?.componentStack });
+    // If App threw before its first commit, its effect that lifts the native
+    // launch screen never ran, and nothing else will: the recovery screen
+    // below would sit hidden behind it for good.
+    void hideLaunchScreen();
   }
 
   render() {

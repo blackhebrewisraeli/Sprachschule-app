@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-const { app, browser } = vi.hoisted(() => {
+const { app, browser, splash } = vi.hoisted(() => {
   const app = {
     urlListener: null,
     launchUrl: null,
@@ -15,7 +15,8 @@ const { app, browser } = vi.hoisted(() => {
     open: null,
     close: null,
   };
-  return { app, browser };
+  const splash = { hide: null };
+  return { app, browser, splash };
 });
 
 vi.mock('@capacitor/app', () => ({
@@ -23,6 +24,9 @@ vi.mock('@capacitor/app', () => ({
     addListener: (...args) => app.addListener(...args),
     getLaunchUrl: (...args) => app.getLaunchUrl(...args),
   },
+}));
+vi.mock('@capacitor/splash-screen', () => ({
+  SplashScreen: { hide: (...args) => splash.hide(...args) },
 }));
 vi.mock('@capacitor/browser', () => ({
   Browser: {
@@ -38,6 +42,7 @@ import {
   isNativeApp,
   isNativeAuthCallback,
   listenForAppUrls,
+  hideLaunchScreen,
   openAuthBrowser,
   closeAuthBrowser,
 } from './nativeApp.js';
@@ -64,6 +69,8 @@ beforeEach(() => {
   });
   browser.open = vi.fn(async () => {});
   browser.close = vi.fn(async () => {});
+
+  splash.hide = vi.fn(async () => {});
 });
 
 afterEach(() => {
@@ -186,6 +193,52 @@ describe('listenForAppUrls', () => {
     const onUrl = vi.fn();
     await listenForAppUrls(onUrl);
     expect(onUrl).not.toHaveBeenCalled();
+  });
+});
+
+describe('hideLaunchScreen', () => {
+  it('does nothing on the web', async () => {
+    await hideLaunchScreen();
+    expect(splash.hide).not.toHaveBeenCalled();
+  });
+
+  it('lifts the native launch screen', async () => {
+    goNative();
+    await hideLaunchScreen();
+    expect(splash.hide).toHaveBeenCalledTimes(1);
+  });
+});
+
+// `launchAutoHide: false` hands the launch screen's lifetime to the web app,
+// and every failure here looks the same on a device: the app never gets past
+// its launch screen, or the setting silently never ships. Nothing in the web
+// build would notice either, so these pin each link of the chain.
+describe('the launch screen hand-off', () => {
+  it('is configured to wait for the web app', () => {
+    const config = readFileSync('capacitor.config.ts', 'utf8');
+    expect(config).toMatch(/SplashScreen:\s*\{[^}]*launchAutoHide:\s*false/);
+  });
+
+  it('is lifted by App and by the error boundary that replaces it', () => {
+    // Just the two: a screen that can mount first and does not lift it would
+    // sit hidden behind the launch screen for good.
+    for (const file of ['src/App.jsx', 'src/components/ErrorBoundary.jsx']) {
+      expect(readFileSync(file, 'utf8'), file).toMatch(/\bhideLaunchScreen\(\)/);
+    }
+  });
+
+  it('ships the plugin in both native projects', () => {
+    // Written by `npx cap sync`. Without it the setting above ships to nobody
+    // and hide() rejects with "not implemented".
+    expect(readFileSync('android/capacitor.settings.gradle', 'utf8')).toContain(
+      "include ':capacitor-splash-screen'"
+    );
+    expect(readFileSync('android/app/capacitor.build.gradle', 'utf8')).toContain(
+      "implementation project(':capacitor-splash-screen')"
+    );
+    expect(readFileSync('ios/App/CapApp-SPM/Package.swift', 'utf8')).toContain(
+      '.product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen")'
+    );
   });
 });
 
