@@ -93,104 +93,91 @@ export function goalProgress(today, goal) {
 
 // ─── Achievements ────────────────────────────────────────────
 // ctx = { streak, totalExercises, masteredCount, decksMastered, level }
+// No `icon` field: a badge's picture is the medal BadgeIcon draws for its id.
 export const ACHIEVEMENTS = [
   {
     id: 'streak3',
     category: 'streak',
     name: 'Drei am Stück',
-    icon: '🔥',
     test: (c) => c.streak >= 3,
   },
-  { id: 'streak7', category: 'streak', name: 'Wochenheld', icon: '🔥', test: (c) => c.streak >= 7 },
+  { id: 'streak7', category: 'streak', name: 'Wochenheld', test: (c) => c.streak >= 7 },
   {
     id: 'streak14',
     category: 'streak',
     name: 'Zwei Wochen',
-    icon: '🔥',
     test: (c) => c.streak >= 14,
   },
   {
     id: 'streak30',
     category: 'streak',
     name: 'Monatsmeister',
-    icon: '👑',
     test: (c) => c.streak >= 30,
   },
   {
     id: 'vol100',
     category: 'volume',
     name: 'Erste Hundert',
-    icon: '💯',
     test: (c) => c.totalExercises >= 100,
   },
   {
     id: 'vol500',
     category: 'volume',
     name: 'Fünfhundert',
-    icon: '🏛️',
     test: (c) => c.totalExercises >= 500,
   },
   {
     id: 'vol1000',
     category: 'volume',
     name: 'Tausend',
-    icon: '🚀',
     test: (c) => c.totalExercises >= 1000,
   },
   {
     id: 'words25',
     category: 'volume',
     name: 'Wortschatz 25',
-    icon: '📖',
     test: (c) => c.masteredCount >= 25,
   },
   {
     id: 'words50',
     category: 'volume',
     name: 'Wortschatz 50',
-    icon: '📚',
     test: (c) => c.masteredCount >= 50,
   },
   {
     id: 'deck1',
     category: 'mastery',
     name: 'Deck-Meister',
-    icon: '✅',
     test: (c) => c.decksMastered >= 1,
   },
   {
     id: 'allDecks',
     category: 'mastery',
     name: 'Alle Decks',
-    icon: '🏆',
     test: (c) => c.decksMastered >= 4,
   },
   {
     id: 'quests10',
     category: 'quests',
     name: 'Aufgabenjäger',
-    icon: '🗂️',
     test: (c) => c.questsCompleted >= 10,
   },
   {
     id: 'quests50',
     category: 'quests',
     name: 'Aufgabenmeister',
-    icon: '🏅',
     test: (c) => c.questsCompleted >= 50,
   },
   {
     id: 'questPerfectDay',
     category: 'quests',
     name: 'Tagwerk',
-    icon: '🌟',
     test: (c) => c.questPerfectDays >= 1,
   },
   {
     id: 'leagueChampion',
     category: 'mastery',
     name: 'Liga-Meister',
-    icon: '🥇',
     test: (c) => c.leagueWins >= 1,
   },
 ];

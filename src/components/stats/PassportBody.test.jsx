@@ -178,15 +178,15 @@ describe('PassportBody — badges', () => {
     expect(screen.getByText(/noch keine abzeichen/i)).toBeInTheDocument();
   });
 
-  // The emoji sits beside the name; announcing both would read as
-  // "fire fire streak" to a screen reader.
+  // The medal sits beside the name; announcing both would read the badge
+  // twice to a screen reader.
   it('draws the badge medal, not the emoji, and hides it from assistive tech', () => {
     show({ achievements: [first.id] });
     const badge = document.querySelector(`[data-badge="${first.id}"]`);
     const medal = badge.querySelector(`svg[data-badge-icon="${first.id}"]`);
     expect(medal).not.toBeNull();
     expect(medal).toHaveAttribute('aria-hidden', 'true');
-    expect(badge).not.toHaveTextContent(first.icon);
+    expect(badge).not.toHaveTextContent(/\p{Extended_Pictographic}/u);
   });
 });
 

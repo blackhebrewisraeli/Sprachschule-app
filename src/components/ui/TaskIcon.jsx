@@ -5,18 +5,24 @@ import {
   Compass,
   Flame,
   GraduationCap,
+  Info,
   Languages,
   Layers,
   Medal,
   MessageSquare,
+  Rocket,
   ShieldAlert,
+  Snowflake,
+  Star,
   Target,
+  Trophy,
   Type,
   Undo2,
+  Zap,
 } from 'lucide-react';
 
-// The glyph beside a mission, quest or recommended action. The pack names an
-// icon by key; this is the one place a key becomes a drawing.
+// The glyph beside a mission, quest, recommended action or toast. The caller
+// names an icon by key; this is the one place a key becomes a drawing.
 //
 // These replaced emoji, which render as whatever the OS vendor's font draws — a
 // different picture on iOS, Android and Windows, none of it matching the line
@@ -35,11 +41,17 @@ const GLYPHS = {
   done: CircleCheck,
   flame: Flame,
   graduation: GraduationCap,
+  info: Info,
   medal: Medal,
+  rocket: Rocket,
   shield: ShieldAlert,
+  snowflake: Snowflake,
+  star: Star,
   target: Target,
   translate: Languages,
+  trophy: Trophy,
   undo: Undo2,
+  zap: Zap,
 };
 
 export default function TaskIcon({ name, size = 20, style }) {

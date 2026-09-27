@@ -174,12 +174,12 @@ export default function App() {
           const a = ACHIEVEMENTS.find((x) => x.id === it.id);
           return {
             id,
-            icon: a?.icon ?? '🏅',
+            badge: it.id,
             title: a?.name ?? 'Achievement',
             sub: 'Achievement freigeschaltet',
           };
         }
-        return { id, icon: it.icon, title: it.title, sub: it.sub };
+        return { id, icon: it.icon, badge: it.badge, title: it.title, sub: it.sub };
       }),
     ]);
   };
@@ -231,7 +231,7 @@ export default function App() {
             kind: 'level',
             title: `Level ${lvlInfo.level}`,
             sub: lvlInfo.rankName,
-            icon: '⭐',
+            icon: 'star',
           });
         }
         prevLevelRef.current = lvlInfo.level;
@@ -249,7 +249,7 @@ export default function App() {
             kind: 'goal',
             title: 'Tagesziel erreicht!',
             sub: `${goal.target} XP`,
-            icon: '🎯',
+            icon: 'target',
           });
         }
       }
@@ -281,7 +281,7 @@ export default function App() {
           kind: 'freeze',
           title: 'Freeze genutzt',
           sub: 'Streak gerettet',
-          icon: '❄️',
+          icon: 'snowflake',
         });
       }
 
@@ -294,14 +294,14 @@ export default function App() {
             kind: 'streak',
             title: `Streak → ${tStreak}`,
             sub: 'gesichert!',
-            icon: '🔥',
+            icon: 'flame',
           });
           if (tStreak > prevBest) {
             newToasts.push({
               kind: 'record',
               title: 'Neuer Rekord!',
               sub: `${tStreak} Tage`,
-              icon: '🏆',
+              icon: 'trophy',
             });
           }
           const milestone = crossedMilestone(prevStreak, tStreak);
@@ -310,7 +310,7 @@ export default function App() {
               kind: 'milestone',
               title: `${milestone}-Tage-Streak!`,
               sub: 'Meilenstein',
-              icon: '⚡',
+              icon: 'zap',
             });
           }
           const boost = multiplier(tStreak);
@@ -319,7 +319,7 @@ export default function App() {
               kind: 'boost',
               title: `×${boost} XP-Boost!`,
               sub: 'Multiplikator',
-              icon: '🚀',
+              icon: 'rocket',
             });
           }
         }
@@ -431,7 +431,7 @@ export default function App() {
           kind: 'league',
           title: count > 1 ? `${count} Ligen gewonnen!` : 'Liga gewonnen!',
           sub: `+${xp} XP · Liga-Meister`,
-          icon: '🥇',
+          badge: 'leagueChampion',
         },
       ]),
     { syncEnabled: SYNC_ENABLED, syncSettled: syncStatus.settled }
@@ -566,7 +566,7 @@ export default function App() {
     </>
   );
 
-  const showToast = (title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'ℹ️' }]);
+  const showToast = (title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'info' }]);
 
   // supabase.auth.signOut() can revoke the local session (header → SIGN IN)
   // and still return { error } on a failed server call. Skipping the hard
@@ -1079,7 +1079,7 @@ export default function App() {
       profile={profile}
       adminMe={adminSession.me}
       onProfileSaved={setProfile}
-      onToast={(title) => pushToasts([{ kind: 'info', title, sub: '', icon: '✅' }])}
+      onToast={(title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'done' }])}
       level={level}
       onLevelChange={setLevel}
       onRetakePlacement={openPlacement}

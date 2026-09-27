@@ -29,14 +29,14 @@ describe('BadgeIcon', () => {
     expect(missing).toEqual([]);
   });
 
-  it.each(ACHIEVEMENTS.map((a) => [a.id, a]))('draws %s as a decorative svg', (id, a) => {
+  it.each(ACHIEVEMENTS.map((a) => [a.id]))('draws %s as a decorative svg', (id) => {
     const svg = medal(id);
     expect(svg).toHaveAttribute('data-badge-icon', id);
     expect(svg).toHaveAttribute('aria-hidden', 'true');
     expect(svg).toHaveAttribute('focusable', 'false');
     expect(svg).toHaveAttribute('viewBox', '0 0 64 64');
-    // The emoji it replaced must not come back as text inside the art.
-    expect(svg.textContent).not.toContain(a.icon);
+    // No emoji may come back as text inside the art (ribbon digits are fine).
+    expect(svg.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
   it('paints only with flag tokens, set as CSS properties', () => {

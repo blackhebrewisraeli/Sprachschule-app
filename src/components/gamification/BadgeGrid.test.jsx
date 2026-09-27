@@ -48,7 +48,7 @@ describe('BadgeGrid', () => {
       expect(medal).toHaveAttribute('data-badge-icon', a.id);
       // Decorative: the name beside it is the accessible text.
       expect(medal).toHaveAttribute('aria-hidden', 'true');
-      expect(tile).not.toHaveTextContent(a.icon);
+      expect(tile).not.toHaveTextContent(/\p{Extended_Pictographic}/u);
     }
   });
 
