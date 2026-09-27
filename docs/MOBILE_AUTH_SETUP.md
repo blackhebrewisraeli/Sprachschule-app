@@ -81,11 +81,12 @@ After the change, the Redirect URLs list should read:
 ## Verify
 
 1. Build and sync: `npm run build:mobile`. The script pins the cloud
-   `VITE_SUPABASE_*` values, `VITE_API_BASE_URL` and
-   `VITE_GOOGLE_AUTH_ENABLED=true` inline, because Vite inlines them at build
-   time and `.env` points at the local stack by design. Don't move them into
-   `.env`. Without the Google flag the app hides the Google button, and
-   `signInWithGoogle()` refuses to start.
+   `VITE_SUPABASE_*` values, `VITE_API_BASE_URL`,
+   `VITE_GOOGLE_AUTH_ENABLED=true` and `VITE_GITHUB_AUTH_ENABLED=true` inline,
+   because Vite inlines them at build time and `.env` points at the local
+   stack by design. Don't move them into `.env`. Without a provider's flag the
+   app hides that provider's button, and `signInWithGoogle()` /
+   `signInWithGitHub()` refuses to start.
 2. Check that the OS routes the scheme to the app without signing in. Each
    command should open the app on a **"Sign-in cancelled"** panel:
    - iOS Simulator:
