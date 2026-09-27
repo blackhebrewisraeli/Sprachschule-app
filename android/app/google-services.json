@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "56471128227",
+    "project_id": "deutsch-sprachschule",
+    "storage_bucket": "deutsch-sprachschule.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:56471128227:android:ef6a189d44ccdb9ec59716",
+        "android_client_info": {
+          "package_name": "com.sprachschule.deutsch"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwM1Z_zPh-u8tZGWrUmKrPmwcXAnvpUHs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,16 +1,13 @@
 #!/usr/bin/env node
 /**
  * Regenerates every brand bitmap from one source of geometry: the web set in
- * public/, and the launcher icons and launch screens in the iOS and Android
- * projects (listed in native.js).
+ * public/ and the canonical native sources in assets/. @capacitor/assets turns
+ * those sources into the platform resolution sets after this script finishes.
  *
  *   npm run gen:assets
  *
- * Replaces scripts/gen-icons.js, which could not actually be run: it imported
- * `sharp`, which its own header admitted was not installed, and it rasterised
- * the font-dependent <text> described in mark.js. Playwright is already a
- * devDependency and already the engine behind `audit:contrast` and
- * `audit:layout`, so this adds no dependency at all.
+ * Playwright is already the engine behind `audit:contrast` and `audit:layout`,
+ * so the canonical rasters need no machine-global image tooling.
  *
  * Reproducibility, which is the whole reason this exists:
  *   - the icons are pure geometry — no text, no font, no gradient, no emoji;
@@ -27,18 +24,12 @@ import { mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import {
-  adaptiveSafeRadius,
-  iconSvg,
-  maskableClearance,
-  maskableSafeRadius,
-  needsAlpha,
-  splashSvg,
-} from './mark.js';
-import { ANDROID_COLORS, NATIVE_ICONS, NATIVE_SPLASHES, colorResourceXml } from './native.js';
+import { BRAND, MARK, iconSvg, maskableClearance, maskableSafeRadius, needsAlpha } from './mark.js';
+import { ADAPTIVE_SOURCE } from './native.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const publicDir = join(root, 'public');
+const mobileAssetsDir = join(root, 'assets');
 
 /**
  * The four mask contracts, and why the mark is a different size in each.
@@ -77,6 +68,57 @@ const SVGS = [
 
 const SOCIAL = { file: 'social-preview.png', width: 1200, height: 630 };
 
+const MOBILE_COLORS = {
+  light: BRAND.ink,
+  dark: BRAND.plane,
+};
+
+const MOBILE_SOURCES = [
+  {
+    file: 'icon-only.png',
+    size: 1024,
+    svg: () =>
+      iconSvg({
+        size: ADAPTIVE_SOURCE.size,
+        radius: 0,
+        markHeight: 524,
+        colors: { plane: MOBILE_COLORS.dark, ink: MOBILE_COLORS.light, dot: MOBILE_COLORS.light },
+      }),
+  },
+  {
+    file: 'icon-background.png',
+    size: 1024,
+    svg: () => solidSvg(1024, MOBILE_COLORS.dark),
+  },
+  {
+    file: 'icon-foreground.png',
+    size: 1024,
+    transparent: true,
+    svg: () =>
+      iconSvg({
+        size: 1024,
+        radius: 0,
+        // @capacitor/assets adds a 16.7% inset to the adaptive layer. At 540px
+        // the visible Fraunces mark lands back on Android's 66dp safe circle.
+        markHeight: ADAPTIVE_SOURCE.markHeight,
+        plane: false,
+        colors: { plane: MOBILE_COLORS.dark, ink: MOBILE_COLORS.light, dot: MOBILE_COLORS.light },
+      }),
+  },
+  {
+    file: 'splash.png',
+    size: 2732,
+    svg: (origin) =>
+      mobileSplashSvg({ origin, ground: MOBILE_COLORS.light, ink: MOBILE_COLORS.dark }),
+  },
+  {
+    file: 'splash-dark.png',
+    size: 2732,
+    svg: (origin) =>
+      mobileSplashSvg({ origin, ground: MOBILE_COLORS.dark, ink: MOBILE_COLORS.light }),
+  },
+];
+
 async function main() {
   // Fail loudly rather than shipping a clipped launcher icon. The test suite
   // asserts this too; having it here means `gen:assets` cannot produce the bad
@@ -91,18 +133,8 @@ async function main() {
       );
     }
   }
-  for (const icon of NATIVE_ICONS.filter((i) => i.adaptive)) {
-    const clearance = maskableClearance(icon);
-    const safe = adaptiveSafeRadius(icon.size);
-    if (clearance > safe) {
-      throw new Error(
-        `${icon.file}: mark half-diagonal ${clearance.toFixed(1)} exceeds the ` +
-          `adaptive-icon safe radius ${safe.toFixed(1)} (66dp of 108dp). Reduce markHeight.`
-      );
-    }
-  }
-
   await mkdir(publicDir, { recursive: true });
+  await mkdir(mobileAssetsDir, { recursive: true });
 
   const server = await serveRepo();
   const browser = await chromium.launch();
@@ -122,30 +154,52 @@ async function main() {
     await shootSocial(browser, server.origin, join(publicDir, SOCIAL.file));
     report(SOCIAL.file, `${SOCIAL.width}x${SOCIAL.height}`);
 
-    for (const spec of NATIVE_ICONS) {
-      const out = join(root, spec.file);
-      await mkdir(dirname(out), { recursive: true });
-      await rasteriseSvg(browser, iconSvg(spec), spec.size, spec.size, out, {
-        transparent: needsAlpha(spec),
+    for (const spec of MOBILE_SOURCES) {
+      const out = join(mobileAssetsDir, spec.file);
+      await rasteriseSvg(browser, spec.svg(server.origin), spec.size, spec.size, out, {
+        transparent: spec.transparent,
       });
-      report(spec.file, `${spec.size}x${spec.size}`);
-    }
-
-    for (const spec of NATIVE_SPLASHES) {
-      const out = join(root, spec.file);
-      await mkdir(dirname(out), { recursive: true });
-      await rasteriseSvg(browser, splashSvg(spec), spec.width, spec.height, out);
-      report(spec.file, `${spec.width}x${spec.height}`);
-    }
-
-    for (const color of ANDROID_COLORS) {
-      await writeFile(join(root, color.file), colorResourceXml(color), 'utf8');
-      report(color.file, color.value);
+      report(`assets/${spec.file}`, `${spec.size}x${spec.size}`);
     }
   } finally {
     await browser.close();
     await server.close();
   }
+}
+
+function solidSvg(size, fill) {
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
+    `  <rect width="${size}" height="${size}" fill="${fill}"/>`,
+    `</svg>`,
+    '',
+  ].join('\n');
+}
+
+/** The exact Fraunces mark and wordmark, reversed across light and dark. */
+function mobileSplashSvg({ origin, ground, ink }) {
+  const size = 2732;
+  const markHeight = 600;
+  const scale = markHeight / MARK.height;
+  const markWidth = MARK.width * scale;
+  const x = (size - markWidth) / 2;
+  const y = 720;
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
+    `  <style>`,
+    `    @font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 300 900; src: url('${origin}/fonts/fraunces/fraunces-latin-normal-300-900.woff2') format('woff2'); }`,
+    `    .wordmark { font-family: 'Fraunces'; font-optical-sizing: auto; text-anchor: middle; }`,
+    `  </style>`,
+    `  <rect width="${size}" height="${size}" fill="${ground}"/>`,
+    `  <g transform="translate(${x} ${y}) scale(${scale})" fill="${ink}">`,
+    `    <path d="${MARK.letter}"/>`,
+    `    <path d="${MARK.period}"/>`,
+    `  </g>`,
+    `  <text class="wordmark" x="1366" y="1590" fill="${ink}" font-size="220" font-weight="750">Deutsch</text>`,
+    `  <text class="wordmark" x="1366" y="1810" fill="${ink}" font-size="150" font-weight="520" letter-spacing="2">Sprachschule</text>`,
+    `</svg>`,
+    '',
+  ].join('\n');
 }
 
 /**
@@ -180,6 +234,7 @@ async function rasteriseSvg(browser, svg, width, height, out, { transparent = fa
        </style></head><body>${svg}</body></html>`,
       { waitUntil: 'load' }
     );
+    await page.evaluate(() => document.fonts.ready);
     await page.screenshot({ path: out, type: 'png', omitBackground: transparent });
   } finally {
     await page.close();

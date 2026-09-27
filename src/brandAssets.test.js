@@ -6,7 +6,6 @@ import {
   MARK,
   CUTS,
   BRAND,
-  SPLASH_GROUND,
   adaptiveSafeRadius,
   iconSvg,
   maskableClearance,
@@ -15,10 +14,11 @@ import {
 } from '../scripts/gen-assets/mark.js';
 import { GLYPHS } from '../scripts/gen-assets/glyphs.js';
 import {
-  ANDROID_COLORS,
+  ADAPTIVE_SOURCE,
+  MOBILE_COLORS,
+  MOBILE_SOURCES,
   NATIVE_ICONS,
   NATIVE_SPLASHES,
-  colorResourceXml,
 } from '../scripts/gen-assets/native.js';
 
 /**
@@ -133,7 +133,7 @@ describe('only artwork with uncovered canvas carries alpha', () => {
 
   it('every native icon matches its decision', () => {
     for (const icon of NATIVE_ICONS) {
-      expect(pngColorType(icon.file), icon.file).toBe(needsAlpha(icon) ? 6 : 2);
+      expect(pngColorType(icon.file), icon.file).toBe(icon.colorType ?? (needsAlpha(icon) ? 6 : 2));
     }
   });
 
@@ -312,8 +312,16 @@ describe('the social card fetches nothing at generation time', () => {
 describe('the native icons and launch screens', () => {
   // `npx cap add` seeds both projects with Capacitor's own logo, and nothing
   // in the web build or CI looks at them — a store build would have shipped it.
-  // Every file here is drawn by `npm run gen:assets` from native.js; these
-  // check the invariants a store upload or a launcher enforces.
+  // Canonical PNGs are drawn from the Fraunces outlines, then @capacitor/assets
+  // injects every platform resolution. These check the invariants a store
+  // upload or launcher enforces.
+
+  it('keeps every canonical source at the package minimum with intentional alpha', () => {
+    for (const { file, width, height, colorType } of MOBILE_SOURCES) {
+      expect(pngSize(file), file).toEqual({ width, height });
+      expect(pngColorType(file), file).toBe(colorType);
+    }
+  });
 
   it('every generated icon exists at the size the generator drew', () => {
     expect(NATIVE_ICONS.length).toBeGreaterThan(0);
@@ -353,12 +361,16 @@ describe('the native icons and launch screens', () => {
     expect(splashes.sort()).toEqual(generated('Splash.imageset').sort());
   });
 
-  it('every adaptive foreground clears the 66dp safe circle', () => {
-    const adaptive = NATIVE_ICONS.filter((i) => i.adaptive);
-    expect(adaptive.length).toBe(5);
-    for (const icon of adaptive) {
-      expect(maskableClearance(icon), icon.file).toBeLessThanOrEqual(adaptiveSafeRadius(icon.size));
-    }
+  it('the adaptive foreground clears the 66dp safe circle after the package inset', () => {
+    expect(NATIVE_ICONS.filter((i) => i.adaptive)).toHaveLength(6);
+    const visibleScale = 1 - ADAPTIVE_SOURCE.generatorInset * 2;
+    const effectiveMarkHeight =
+      (ADAPTIVE_SOURCE.markHeight / ADAPTIVE_SOURCE.size) *
+      ADAPTIVE_SOURCE.androidLayerSize *
+      visibleScale;
+    expect(maskableClearance({ markHeight: effectiveMarkHeight })).toBeLessThanOrEqual(
+      adaptiveSafeRadius(ADAPTIVE_SOURCE.androidLayerSize)
+    );
   });
 
   it('the maskable proportion would NOT clear it', () => {
@@ -371,28 +383,39 @@ describe('the native icons and launch screens', () => {
     );
   });
 
-  it('the Android colour resources are the generator output, unedited', () => {
-    // So a palette change in themeTokens.js reaches the launcher by re-running
-    // gen:assets, and a hand edit shows up here instead of drifting silently.
-    expect(ANDROID_COLORS.map((c) => c.value)).toEqual([BRAND.plane, SPLASH_GROUND]);
-    for (const color of ANDROID_COLORS) {
-      expect(readFileSync(color.file, 'utf8'), color.file).toBe(colorResourceXml(color));
-    }
+  it('uses the mode-independent monochrome pair', () => {
+    expect(MOBILE_COLORS).toEqual({
+      light: BRAND.ink,
+      dark: BRAND.plane,
+      android12Splash: BRAND.ink,
+    });
   });
 
-  it('the adaptive icon and the API 31+ launch theme use them', () => {
+  it('the adaptive icon and the API 31+ launch theme use the generated resources', () => {
     const res = 'android/app/src/main/res';
     for (const shape of ['ic_launcher', 'ic_launcher_round']) {
       const xml = readFileSync(`${res}/mipmap-anydpi-v26/${shape}.xml`, 'utf8');
       expect(xml, shape).toMatch(
-        /<background android:drawable="@color\/ic_launcher_background"\s*\/>/
+        /<inset android:drawable="@mipmap\/ic_launcher_background" android:inset="16\.7%"\s*\/>/
       );
       expect(xml, shape).toMatch(
-        /<foreground android:drawable="@mipmap\/ic_launcher_foreground"\s*\/>/
+        /<inset android:drawable="@mipmap\/ic_launcher_foreground" android:inset="16\.7%"\s*\/>/
       );
     }
+    expect(readFileSync(`${res}/values/splash_background.xml`, 'utf8')).toContain(
+      MOBILE_COLORS.android12Splash.toUpperCase()
+    );
+    expect(readFileSync(`${res}/values-night/splash_background.xml`, 'utf8')).toContain(
+      MOBILE_COLORS.dark.toUpperCase()
+    );
     expect(readFileSync(`${res}/values/styles.xml`, 'utf8')).toMatch(
       /<item name="windowSplashScreenBackground">@color\/splash_background<\/item>/
     );
+  });
+
+  it('regenerates native resolutions through @capacitor/assets', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    expect(pkg.devDependencies['@capacitor/assets']).toBeTruthy();
+    expect(pkg.scripts['gen:assets']).toContain('capacitor-assets generate --ios --android');
   });
 });
