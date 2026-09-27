@@ -1,43 +1,46 @@
 /**
  * The "Deutsch." mark, as geometry.
  *
- * Every brand bitmap in public/ is rendered from this one module, which is the
- * point: the previous sources drew the D with an SVG <text> element asking for
- * `Georgia, 'Times New Roman', serif`. Neither face is vendored, so the glyph
- * was whatever serif the rasterising machine happened to have — public/pwa-512.png
- * on `main` is a Times D, which appears nowhere in the app's type system. Same
- * input, different output, and nothing in CI could see it.
+ * Every brand bitmap in public/ and in the two native projects is rendered from
+ * this one module, and none of them may depend on a font at render time. The
+ * sources before #356 drew the D with an SVG <text> element asking for
+ * `Georgia, 'Times New Roman', serif`; neither face is vendored, so the glyph
+ * was whatever serif the rasterising machine happened to have. Same input,
+ * different output, and nothing in CI could see it.
  *
- * So the D is CONSTRUCTED, not set. It is not a Fraunces instance and does not
- * try to be. Outlining a variable font needs a font-parsing dependency, and
- * embedding a subset would bloat a 32px favicon; constructing it makes the
- * artwork byte-identical on every machine, forever. Fraunces still carries the
- * wordmark everywhere the wordmark is live text — the pre-JS shell in
- * index.html, the masthead, the social card.
+ * #356 fixed that by CONSTRUCTING a D from lines and curves. This keeps the fix
+ * and swaps the letter: the D and the period are now Fraunces, the app's
+ * display face, so the icon is the first letter of the wordmark the masthead
+ * and the pre-JS shell already set live. They arrive as OUTLINES, not text:
+ * extract-glyphs.py reads the vendored woff2 once and writes the path data to
+ * glyphs.js, so the artwork is still byte-identical on every machine and still
+ * contains no <text> and no font reference.
  *
- * Geometry lives on a 0–100 unit em box. `MARK` is exported as data rather than
- * baked into the SVG string so brandAssets.test.js can do arithmetic on the
- * same numbers the renderer uses, instead of parsing them back out of markup.
+ * Geometry lives on a box 100 units tall. `MARK` is exported as data rather
+ * than baked into the SVG string so brandAssets.test.js can do arithmetic on
+ * the same numbers the renderer uses, instead of parsing them back out of
+ * markup.
  */
 
 import { MODE_COLORS, FLAG_STRIPES } from '../../src/lib/themeTokens.js';
+import { GLYPHS } from './glyphs.js';
 
 /**
- * The letterform, as outer contour + counter under `fill-rule: evenodd`.
+ * The letterform in its two optical cuts (see extract-glyphs.py for why two).
+ * Each is `{ axes, width, height, letter, period }`, where `letter` and
+ * `period` are path data on a `width` x `height` box. They are separate paths
+ * because they take separate colours.
  *
- * Stem 26 and bar 22 out of a 100 em is a heavy weight, chosen so the counter
- * stays open at 16px — the favicon is the size that decides this, not the 512.
+ * Both paths use the nonzero fill rule, as TrueType outlines do: a variable
+ * font's contours may overlap, and even-odd would punch a hole wherever two do.
  */
-export const MARK = {
-  outer: 'M0 0 L40 0 C68 0 88 20 88 50 C88 80 68 100 40 100 L0 100 Z',
-  counter: 'M26 22 L38 22 C54 22 62 33 62 50 C62 67 54 78 38 78 L26 78 Z',
-  // The period, baseline-aligned and set 10 units clear of the bowl.
-  dotR: 13,
-  dotCx: 111,
-  dotCy: 87,
-  width: 124,
-  height: 100,
+export const CUTS = {
+  display: GLYPHS.display,
+  small: GLYPHS.small,
 };
+
+/** The display cut, which every icon and launch screen uses. */
+export const MARK = CUTS.display;
 
 /**
  * An app icon has no theme. It is rasterised once and shown on a launcher, a
@@ -75,15 +78,16 @@ export const SPLASH_GROUND = MODE_COLORS.light.ground;
  *
  * Android's maskable contract is a safe zone of the central circle at 80% of
  * the canvas (r = 0.4 × size). Content is safe iff this value clears it — which
- * the current `pwa-512.png` does not, which is why declaring it `maskable`
+ * the pre-#356 `pwa-512.png` did not, which is why declaring it `maskable`
  * promised something the artwork never kept.
  *
- * @param {{ markHeight: number }} opts
+ * @param {{ markHeight: number, cut?: keyof typeof CUTS }} opts
  */
-export function maskableClearance({ markHeight }) {
-  const scale = markHeight / MARK.height;
-  const w = (MARK.width * scale) / 2;
-  const h = (MARK.height * scale) / 2;
+export function maskableClearance({ markHeight, cut = 'display' }) {
+  const mark = CUTS[cut];
+  const scale = markHeight / mark.height;
+  const w = (mark.width * scale) / 2;
+  const h = (mark.height * scale) / 2;
   return Math.sqrt(w * w + h * h);
 }
 
@@ -104,23 +108,39 @@ export function adaptiveSafeRadius(size) {
 }
 
 /**
+ * Does this icon's bitmap need an alpha channel?
+ *
+ * Only where the artwork leaves part of the canvas uncovered: a plane with
+ * rounded corners, or no plane at all (Android's adaptive foreground). An
+ * opaque PNG fills those corners with the page's white, so a rounded launcher
+ * icon sits on a white square. Everything full-bleed stays opaque, which is
+ * what App Store Connect demands of the iOS icon.
+ *
+ * @param {{ radius: number, plane?: boolean }} spec
+ */
+export function needsAlpha({ radius, plane = true }) {
+  return plane === false || radius > 0;
+}
+
+/**
  * Render the mark onto a plane.
  *
  * @param {object} opts
  * @param {number} opts.size          canvas edge, px
  * @param {number} opts.radius        plane corner radius. 0 for anything a
  *                                    platform masks itself (maskable, iOS).
- * @param {number} opts.markHeight    em height of the mark, px
- * @param {number} [opts.dotRScale]   optical bump for the period at small sizes
+ * @param {number} opts.markHeight    height of the mark's box (cap top to the
+ *                                    period's overshoot below the baseline), px
  * @param {boolean} [opts.plane]      false omits the plane, leaving the mark on
  *                                    transparency — Android's adaptive
  *                                    foreground, whose plane is its own layer.
+ * @param {keyof typeof CUTS} [opts.cut] optical cut; `small` for the favicon
  * @returns {string} standalone SVG, containing no <text> and no font reference
  */
-export function iconSvg({ size, radius, markHeight, dotRScale = 1, plane = true }) {
+export function iconSvg({ size, radius, markHeight, plane = true, cut = 'display' }) {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`,
-    ...iconBody({ size, radius, markHeight, dotRScale, plane }),
+    ...iconBody({ size, radius, markHeight, plane, cut }),
     `</svg>`,
     '',
   ].join('\n');
@@ -149,8 +169,8 @@ export function splashSvg({ width, height, iconSize }) {
     size: iconSize,
     radius: round((iconSize * 96) / 512),
     markHeight: round(iconSize / 2),
-    dotRScale: 1,
     plane: true,
+    cut: 'display',
   });
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">`,
@@ -164,20 +184,20 @@ export function splashSvg({ width, height, iconSize }) {
 }
 
 /** The plane and the mark, as SVG lines, for a `size`-edged canvas at 0,0. */
-function iconBody({ size, radius, markHeight, dotRScale, plane }) {
-  const scale = markHeight / MARK.height;
-  const markW = MARK.width * scale;
+function iconBody({ size, radius, markHeight, plane, cut }) {
+  const mark = CUTS[cut];
+  const scale = markHeight / mark.height;
+  const markW = mark.width * scale;
   const tx = (size - markW) / 2;
   const ty = (size - markHeight) / 2;
-  const r = round(MARK.dotR * dotRScale);
 
   return [
     ...(plane
       ? [`  <rect width="${size}" height="${size}" rx="${radius}" fill="${BRAND.plane}"/>`]
       : []),
     `  <g transform="translate(${round(tx)} ${round(ty)}) scale(${round(scale, 5)})">`,
-    `    <path fill="${BRAND.ink}" fill-rule="evenodd" d="${MARK.outer} ${MARK.counter}"/>`,
-    `    <circle cx="${MARK.dotCx}" cy="${MARK.dotCy}" r="${r}" fill="${BRAND.dot}"/>`,
+    `    <path fill="${BRAND.ink}" d="${mark.letter}"/>`,
+    `    <path fill="${BRAND.dot}" d="${mark.period}"/>`,
     `  </g>`,
   ];
 }

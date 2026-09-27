@@ -102,3 +102,19 @@ Don't replace them from Xcode, Android Studio's Image Asset wizard or
 `@capacitor/assets`: the next `gen:assets` overwrites them, and
 `src/brandAssets.test.js` checks the invariants the stores enforce (for example,
 no alpha channel on the 1024 iOS icon).
+
+The mark is the Fraunces "D." baked to outlines in
+`scripts/gen-assets/glyphs.js`. Re-run `scripts/gen-assets/extract-glyphs.py`
+(instructions in its header) only when the vendored Fraunces changes;
+`brandAssets.test.js` fails when it has.
+
+### The launch screen hand-off
+
+`@capacitor/splash-screen` holds the launch screen until the web app lifts it
+(`launchAutoHide: false` in `capacitor.config.ts`), so the webview is never
+uncovered before it has painted. `hideLaunchScreen()` in `src/lib/nativeApp.js`
+lifts it, called from `App`'s first commit and from `ErrorBoundary` in case
+`App` throws first. **Anything new that can render before `App` must call it
+too**, or the app never gets past its launch screen. Adding a native plugin
+means `npx cap sync` and committing what it writes to both projects;
+`nativeApp.test.js` checks this one is registered.

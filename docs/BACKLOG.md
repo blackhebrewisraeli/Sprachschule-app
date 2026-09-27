@@ -78,10 +78,16 @@ the font slice shipped as #103.
   r = 40%; `apple-touch-icon` is full-bleed **square** because iOS always
   applies its own squircle and a baked radius would be rounded twice. One
   bitmap cannot serve all three, which is exactly the bug above.
-- **The `D` is constructed, not set in Fraunces.** Outlining a variable font
-  needs a font-parsing dependency and embedding a subset would bloat a 32px
-  favicon. Fraunces still carries the wordmark everywhere it is live text — the
-  pre-JS shell, the masthead, the social card.
+- **The `D` is Fraunces, baked to outlines** — since 2026-09-27, on the
+  owner's call. Until then it was constructed from lines and curves, because
+  outlining a variable font needs a font-parsing dependency and embedding a
+  subset would bloat a 32px favicon. Both objections are about render time, so
+  the outlines are extracted once at authoring time instead:
+  `scripts/gen-assets/extract-glyphs.py` (fontTools, outside the npm graph)
+  writes `glyphs.js`, and everything downstream is still plain geometry with no
+  `<text>` and no font. The favicon uses Fraunces' opsz 9 cut, because the
+  display cut's hairlines vanish at 16px. Older notes saying the `D` is
+  constructed are superseded by this one.
 
 `npm run gen:assets` regenerates everything (Playwright, already a devDep).
 `scripts/gen-icons.js` is deleted: it imported `sharp`, which its own header
