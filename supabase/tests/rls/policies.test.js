@@ -325,7 +325,18 @@ const SERVER_ONLY = {
     filterCol: 'event_id',
     filterVal: '00000000-0000-4000-8000-000000000000',
   },
+  user_devices: {
+    insert: { user_id: null, push_token: 'deny-probe', platform: 'ios' },
+    update: { platform: 'android' },
+    filterCol: 'push_token',
+    filterVal: 'deny-probe',
+  },
 };
+
+// Tables whose insert fixture names its owner. Filled in with the signed-in
+// caller for the authenticated pass, so a denial there cannot be blamed on a
+// row claiming somebody else.
+const OWNED_INSERT = new Set(['progress_events_seen', 'user_devices']);
 
 async function expectEveryVerbDenied(client, table, spec) {
   const select = await client.from(table).select('*');
@@ -347,13 +358,14 @@ async function expectEveryVerbDenied(client, table, spec) {
 }
 
 describe('RLS: server-only tables', () => {
-  // rate_limits and progress_events_seen are service-role only: no grants
-  // for Data API roles, plus deny-all RLS policies (advisor 0008 hygiene).
+  // rate_limits, progress_events_seen and user_devices are service-role only:
+  // no grants for Data API roles, plus deny-all RLS policies (advisor 0008
+  // hygiene). user_devices is written through its RPCs, push-devices.test.js.
   it('authenticated is denied every Data API verb', async () => {
     for (const [table, spec] of Object.entries(SERVER_ONLY)) {
       await expectEveryVerbDenied(A.client, table, {
         ...spec,
-        insert: table === 'progress_events_seen' ? { ...spec.insert, user_id: A.id } : spec.insert,
+        insert: OWNED_INSERT.has(table) ? { ...spec.insert, user_id: A.id } : spec.insert,
       });
     }
   });

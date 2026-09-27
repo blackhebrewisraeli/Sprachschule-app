@@ -13,10 +13,12 @@ import AccountSection from './AccountSection';
 import EmailSection from './EmailSection';
 import ProfileSection from './ProfileSection';
 import OfflineCacheSection from './OfflineCacheSection';
+import NotificationsSection from './NotificationsSection';
 import InterestPicker from './InterestPicker';
 import ModelPicker from '../ModelPicker';
 import FeedbackDialog from '../FeedbackDialog';
 import { replayTutorial } from '../../lib/tutorialPref';
+import { isPushAvailable } from '../../lib/pushNotifications';
 import { userTierOf } from '../../lib/ai-routing/preference.js';
 import { getThemeModeForUI, setThemePreference } from '../../lib/themeMode';
 import { writeLevel, LEVEL_NAMES, LEVEL_MODES } from '../../lib/levelPref';
@@ -276,6 +278,14 @@ export default function SettingsRoute({
                   {soundOn ? '🔊 Sound: on' : '🔇 Sound: off'}
                 </Button>
               </Subsection>
+
+              {/* Native app only. A browser has no Capacitor push, so the
+                  subsection is left out rather than shown switched off. */}
+              {isPushAvailable() && (
+                <Subsection title="Notifications">
+                  <NotificationsSection userId={user?.id} onToast={onToast} />
+                </Subsection>
+              )}
 
               <Subsection title="Appearance">
                 <AppearancePicker

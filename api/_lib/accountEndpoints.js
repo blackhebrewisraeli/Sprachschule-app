@@ -229,6 +229,9 @@ export const EXCLUDED_TABLES = {
   // In-exercise bug reports for the owner. item_label can be the concealed
   // answer; the message is operational, not learning data.
   feedback: 'owner-facing exercise reports; item_label can be the concealed answer',
+  // Device addresses for push, not learning data. A token is a credential for
+  // reaching a device, and a download is exactly where it should not travel.
+  user_devices: 'push tokens are device credentials, not learning data',
 };
 
 // `settings` is one row per user; everything else is a collection. Keeping the

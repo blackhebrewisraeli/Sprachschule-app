@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { adminClient } from './helpers.js';
 
-// Catalog + service-role check for 20260918213000, 20260921210000 and
-// 20260923120000: rate_limits, progress_events_seen, profile_follows and
-// token_ledger stay RLS-on,
+// Catalog + service-role check for 20260918213000, 20260921210000,
+// 20260923120000 and 20260927120000: rate_limits, progress_events_seen,
+// profile_follows, token_ledger and user_devices stay RLS-on,
 // server-only. Deny-all policies for anon/authenticated silence advisor 0008
 // without granting Data API access. service_role keeps BYPASSRLS + the DML it
 // actually uses, so the existing RPCs, admin cleanup and the profile
@@ -16,7 +16,13 @@ import { adminClient } from './helpers.js';
 
 const DB_URL = process.env.DB_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
-const TABLES = ['rate_limits', 'progress_events_seen', 'profile_follows', 'token_ledger'];
+const TABLES = [
+  'rate_limits',
+  'progress_events_seen',
+  'profile_follows',
+  'token_ledger',
+  'user_devices',
+];
 const CLIENT_ROLES = ['anon', 'authenticated'];
 const DML = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
 
@@ -31,6 +37,9 @@ const SERVICE_ROLE_DML = {
   profile_follows: ['SELECT', 'INSERT', 'DELETE'],
   // 20260923120000 grants all; the award/spend RPCs run as the definer.
   token_ledger: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  // 20260927120000: the future sender reads by user and prunes dead tokens;
+  // the register/unregister RPCs run as the definer.
+  user_devices: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
 };
 
 function sql(q) {
@@ -95,6 +104,7 @@ describe('server-only tables: catalog (advisor 0008 hygiene)', () => {
       'progress_events_seen.no client access',
       'rate_limits.no client access',
       'token_ledger.no client access',
+      'user_devices.no client access',
     ]);
     for (const p of policies) {
       expect(p.cmd, `${p.tablename} cmd`).toBe('ALL');
