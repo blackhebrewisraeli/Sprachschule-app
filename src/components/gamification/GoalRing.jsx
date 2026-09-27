@@ -1,6 +1,8 @@
 import { COLORS } from '../../lib/theme';
+import TaskIcon from '../ui/TaskIcon';
 
-// Daily-goal ring: red ring fills to `pct` (0–1); turns green with a ✓ when met.
+// Daily-goal ring: red ring fills to `pct` (0–1) around a target glyph; turns
+// green with a ✓ when met.
 export default function GoalRing({ pct, met, size = 48 }) {
   const r = size / 2 - 3;
   const c = 2 * Math.PI * r;
@@ -56,7 +58,7 @@ export default function GoalRing({ pct, met, size = 48 }) {
           ...(met ? { animation: 'pop 0.4s ease-out' } : {}),
         }}
       >
-        {met ? '✓' : '🎯'}
+        {met ? '✓' : <TaskIcon name="target" size={Math.round(size * 0.42)} />}
       </div>
     </div>
   );

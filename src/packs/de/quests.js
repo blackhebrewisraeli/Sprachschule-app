@@ -7,37 +7,38 @@
 // prevent.
 //
 // Each entry takes the quest and returns its line. The board renders the icon,
-// the text and the progress; nothing here knows about styling.
+// the text and the progress; nothing here knows about styling. `icon` is a
+// TaskIcon key (src/components/ui/TaskIcon.jsx), never an emoji.
 
 const plural = (n, one, many) => (n === 1 ? one : many);
 
 export const QUESTS = {
   'answer-cards': {
-    icon: '🃏',
+    icon: 'cards',
     text: (q) => `Answer ${q.target} ${plural(q.target, 'card', 'cards')}`,
   },
   'get-correct': {
-    icon: '🎯',
+    icon: 'target',
     text: (q) => `Get ${q.target} ${plural(q.target, 'answer', 'answers')} right`,
   },
   'practise-tabs': {
-    icon: '🧭',
+    icon: 'compass',
     text: (q) => `Practise in ${q.target} different sections`,
   },
   'focus-chat': {
-    icon: '💬',
+    icon: 'chat',
     text: (q) => `${q.target} ${plural(q.target, 'round', 'rounds')} in Chat`,
   },
   'focus-alphabet': {
-    icon: '🔤',
+    icon: 'alphabet',
     text: (q) => `${q.target} ${plural(q.target, 'round', 'rounds')} in Alphabet`,
   },
   'focus-vocab': {
-    icon: '📚',
+    icon: 'book',
     text: (q) => `${q.target} ${plural(q.target, 'card', 'cards')} in Vokabeln`,
   },
   'focus-translate': {
-    icon: '🔁',
+    icon: 'translate',
     text: (q) => `${q.target} ${plural(q.target, 'sentence', 'sentences')} in Übersetzen`,
   },
 };

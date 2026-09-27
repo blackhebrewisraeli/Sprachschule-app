@@ -24,8 +24,8 @@ export const HOME_CHROME = {
    * Übersetzen is the exercise surface, Vokabeln the vocabulary one.
    */
   recommendedFallbacks: [
-    { id: 'continue-quiz', icon: '🎓', text: 'Continue Quiz', tab: 'translate' },
-    { id: 'review-vocab', icon: '📚', text: 'Review Vocab', tab: 'vocab' },
+    { id: 'continue-quiz', icon: 'graduation', text: 'Continue Quiz', tab: 'translate' },
+    { id: 'review-vocab', icon: 'book', text: 'Review Vocab', tab: 'vocab' },
   ],
 
   /**

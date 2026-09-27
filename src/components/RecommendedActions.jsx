@@ -2,6 +2,7 @@ import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, SPACE } from '../lib/theme';
 import { Grid, Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
 import Heading from './ui/Heading';
+import TaskIcon from './ui/TaskIcon';
 import { activePack } from '../packs';
 import { resolveRecommended } from './resolveRecommended';
 
@@ -38,8 +39,8 @@ export default function RecommendedActions({ missions = [], classifiedLevel, onG
               style={{ padding: `${SPACE[3]}px ${SPACE[4]}px` }}
             >
               <Stack gap={1} style={{ minWidth: 0 }}>
-                <span aria-hidden="true" style={{ fontSize: FONT_SIZE['2xl'], flexShrink: 0 }}>
-                  {card.icon}
+                <span aria-hidden="true" style={{ color: COLORS.ink }}>
+                  <TaskIcon name={card.icon} size={24} />
                 </span>
                 <span
                   data-recommended-title=""

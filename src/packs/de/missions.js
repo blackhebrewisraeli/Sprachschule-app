@@ -7,32 +7,34 @@
 //
 // Each entry takes the mission and returns its line. The board renders the
 // icon, the text and the destination; nothing here knows about styling.
+// `icon` is a TaskIcon key (src/components/ui/TaskIcon.jsx), never an emoji —
+// an emoji draws as a different picture on every OS.
 
 const plural = (n, one, many) => (n === 1 ? one : many);
 
 export const MISSIONS = {
   'srs-due': {
-    icon: '⏰',
+    icon: 'clock',
     text: (m) => `${m.count} ${plural(m.count, 'card is', 'cards are')} due`,
   },
   'streak-risk': {
-    icon: '🔥',
+    icon: 'flame',
     text: (m) => `Keep your ${m.count}-day streak alive`,
   },
   'goal-remaining': {
-    icon: '🎯',
+    icon: 'target',
     text: (m) => `${m.count} XP to today's goal`,
   },
   'revisit-wrong': {
-    icon: '↩️',
+    icon: 'undo',
     text: (m) => `Revisit ${m.count} ${plural(m.count, 'word', 'words')} you missed`,
   },
   'deck-unfinished': {
-    icon: '📘',
+    icon: 'book',
     text: (m) => `${m.count} ${plural(m.count, 'card', 'cards')} left in your deck`,
   },
   'league-position': {
-    icon: '🛡️',
+    icon: 'shield',
     // Deliberately not phrased in the second person. noPromptsInComponents
     // guards that opening phrase to stop AI prompt text drifting out of
     // src/lib/prompts.js; the guard is blunt on purpose, and rewording one UI
@@ -40,7 +42,7 @@ export const MISSIONS = {
     text: () => 'In the drop zone — earn XP to stay up',
   },
   'badge-near': {
-    icon: '🏅',
+    icon: 'medal',
     // Avoids the word "next": the tutorial's own "Next →" control shares the
     // screen, and an accessible-name query for one would match both.
     text: () => 'One more session unlocks a badge',
