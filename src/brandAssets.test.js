@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 import {
   MARK,
+  CUTS,
   BRAND,
   SPLASH_GROUND,
   adaptiveSafeRadius,
   iconSvg,
   maskableClearance,
   maskableSafeRadius,
+  needsAlpha,
 } from '../scripts/gen-assets/mark.js';
+import { GLYPHS } from '../scripts/gen-assets/glyphs.js';
 import {
   ANDROID_COLORS,
   NATIVE_ICONS,
@@ -55,6 +59,11 @@ function pngSize(file) {
   return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
 }
 
+/** PNG colour type, IHDR byte 25: 2 = RGB, 6 = RGBA. */
+function pngColorType(file) {
+  return readFileSync(file)[25];
+}
+
 describe('icon sources carry no font dependency', () => {
   // The whole reason this mission existed. Both SVGs used to draw the D with
   // <text font-family="Georgia, 'Times New Roman', serif">, neither of which is
@@ -79,6 +88,64 @@ describe('icon sources carry no font dependency', () => {
     const svg = iconSvg({ size: 512, radius: 96, markHeight: 256 });
     expect(svg).not.toMatch(/<text[\s>]/i);
     expect(svg).not.toMatch(/font-family/i);
+  });
+});
+
+describe('the mark is Fraunces, baked to outlines', () => {
+  // glyphs.js is extract-glyphs.py's output, and nothing re-runs that script:
+  // it is Python, and CI never needs it. So if the vendored font changes, the
+  // icons would quietly keep the old letterform. This is the tripwire.
+  it('was extracted from the font file the app vendors today', () => {
+    const font = readFileSync(GLYPHS.source.file);
+    expect(createHash('sha256').update(font).digest('hex')).toBe(GLYPHS.source.sha256);
+  });
+
+  it('is the display face AGENTS.md names for the brand', () => {
+    expect(GLYPHS.source.file).toMatch(/^public\/fonts\/fraunces\//);
+    expect(GLYPHS.source.text).toBe('D.');
+  });
+
+  it('each optical cut is normalised onto the box mark.js draws in', () => {
+    for (const [cut, g] of Object.entries(CUTS)) {
+      expect(g.height, cut).toBe(100);
+      expect(g.width, cut).toBeGreaterThan(g.height);
+      expect(g.letter, cut).toMatch(/^M[\d. ]+/);
+      expect(g.period, cut).toMatch(/^M[\d. ]+/);
+    }
+  });
+
+  it('the committed SVGs were drawn from the current outlines, in their cut', () => {
+    // The favicon is the one asset in the small cut; the canonical mark is display.
+    expect(readFileSync('public/favicon.svg', 'utf8')).toContain(CUTS.small.letter);
+    expect(readFileSync('public/icon-base.svg', 'utf8')).toContain(CUTS.display.letter);
+  });
+});
+
+describe('only artwork with uncovered canvas carries alpha', () => {
+  // Opaque is the default because App Store Connect rejects an iOS icon with an
+  // alpha channel. But an opaque PNG paints a rounded plane's corners white, so
+  // a launcher or tab strip shows a white square behind the icon.
+  it('decides from the plane', () => {
+    expect(needsAlpha({ radius: 0 })).toBe(false);
+    expect(needsAlpha({ radius: 36 })).toBe(true);
+    expect(needsAlpha({ radius: 0, plane: false })).toBe(true);
+  });
+
+  it('every native icon matches its decision', () => {
+    for (const icon of NATIVE_ICONS) {
+      expect(pngColorType(icon.file), icon.file).toBe(needsAlpha(icon) ? 6 : 2);
+    }
+  });
+
+  it.each([
+    ['public/pwa-192.png', 6],
+    ['public/pwa-512.png', 6],
+    ['public/favicon-32.png', 6],
+    // Full-bleed: iOS and the maskable crop both apply their own mask.
+    ['public/apple-touch-icon.png', 2],
+    ['public/pwa-maskable-512.png', 2],
+  ])('%s', (file, type) => {
+    expect(pngColorType(file)).toBe(type);
   });
 });
 
@@ -247,11 +314,6 @@ describe('the native icons and launch screens', () => {
   // in the web build or CI looks at them — a store build would have shipped it.
   // Every file here is drawn by `npm run gen:assets` from native.js; these
   // check the invariants a store upload or a launcher enforces.
-
-  /** PNG colour type, IHDR byte 25: 2 = RGB, 6 = RGBA. */
-  function pngColorType(file) {
-    return readFileSync(file)[25];
-  }
 
   it('every generated icon exists at the size the generator drew', () => {
     expect(NATIVE_ICONS.length).toBeGreaterThan(0);

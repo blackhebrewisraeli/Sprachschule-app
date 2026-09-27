@@ -87,7 +87,7 @@ import {
   humanAuthError,
 } from './lib/auth';
 import { signOutAndReset } from './lib/clearUserState';
-import { isNativeApp } from './lib/nativeApp';
+import { isNativeApp, hideLaunchScreen } from './lib/nativeApp';
 import { SYNC_ENABLED, start, stop, markDirty, loadRemoteDaily } from './lib/sync';
 import { startProgressFlush, stopProgressFlush, scheduleFlush } from './lib/progressQueue';
 import { setLevelBoostEnabled } from './lib/xpEntitlement';
@@ -125,6 +125,15 @@ export default function App() {
   const [preferredModel, setPreferredModel] = useState(AUTO_MODEL);
   const [reviewTarget, setReviewTarget] = useState(null);
   const [streakBurst, setStreakBurst] = useState(false);
+
+  // Lift the native launch screen once the first commit is in the DOM. An
+  // effect rather than main.jsx's double-rAF: Android keeps the whole content
+  // view from drawing while its launch screen is up, and rAF is not promised
+  // to tick in a webview that is not being drawn — a rAF-gated hide could end
+  // up waiting on itself. A no-op on the web; see hideLaunchScreen.
+  useEffect(() => {
+    void hideLaunchScreen();
+  }, []);
 
   // ── First-run walkthrough anchors ─────────────────────────────
   // The overlay measures these three nodes to place its bubbles. They are refs

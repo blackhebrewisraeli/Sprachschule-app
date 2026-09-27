@@ -12,6 +12,11 @@ import { MAX_CUSTOM_DECKS } from './lib/customDecks';
 
 vi.mock('@vercel/analytics/react', () => ({ Analytics: () => null }));
 
+// The native-app tests below fake Capacitor's global, so App's mount effect
+// lifts a launch screen. The real plugin would load @capacitor/core, which
+// rewrites that fake global to report the web platform mid-test.
+vi.mock('@capacitor/splash-screen', () => ({ SplashScreen: { hide: async () => {} } }));
+
 // Lets the App-level tests drive a real deck generation without a network call.
 const callClaude = vi.hoisted(() => vi.fn());
 vi.mock('./lib/claude', () => ({ callClaude }));

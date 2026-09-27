@@ -32,6 +32,7 @@ import {
   iconSvg,
   maskableClearance,
   maskableSafeRadius,
+  needsAlpha,
   splashSvg,
 } from './mark.js';
 import { ANDROID_COLORS, NATIVE_ICONS, NATIVE_SPLASHES, colorResourceXml } from './native.js';
@@ -49,18 +50,20 @@ const publicDir = join(root, 'public');
  *               round it twice and show ground in the notches, so radius is 0.
  *               The squircle is far wider than the maskable circle, so the mark
  *               can sit larger than it does there.
- * favicon     — decided at 16px, not 32: the period needs an optical bump or it
- *               disappears, and the counter needs the heavy stem to stay open.
+ * favicon     — decided at 16px, not 32, and drawn in the `small` optical cut:
+ *               the display cut's hairlines are a fifth of a pixel there and
+ *               the D falls apart into a stem and an arc. The small cut is also
+ *               wider, hence the lower mark height.
  */
 const ICONS = [
   { file: 'pwa-192.png', size: 192, radius: 36, markHeight: 96 },
   { file: 'pwa-512.png', size: 512, radius: 96, markHeight: 256 },
-  // 240, not 256: the maskable is the one variant a platform may crop, and 256
-  // leaves only 5.7px of the safe circle — inside rounding error. See the
-  // clearance guard in main().
+  // 240, not 256: the maskable is the one variant a platform may crop, and the
+  // Fraunces mark at 256 overshoots the safe circle by 6.2px; 240 clears it by
+  // 6.9px. See the clearance guard in main().
   { file: 'pwa-maskable-512.png', size: 512, radius: 0, markHeight: 240, maskable: true },
   { file: 'apple-touch-icon.png', size: 180, radius: 0, markHeight: 92 },
-  { file: 'favicon-32.png', size: 32, radius: 5, markHeight: 20, dotRScale: 1.15 },
+  { file: 'favicon-32.png', size: 32, radius: 5, markHeight: 18, cut: 'small' },
 ];
 
 /** SVGs committed to public/ as well as rasterised. */
@@ -69,7 +72,7 @@ const SVGS = [
   // open to see what the brand is.
   { file: 'icon-base.svg', size: 512, radius: 96, markHeight: 256 },
   // Served, and linked from index.html as the primary favicon.
-  { file: 'favicon.svg', size: 32, radius: 5, markHeight: 20, dotRScale: 1.15 },
+  { file: 'favicon.svg', size: 32, radius: 5, markHeight: 18, cut: 'small' },
 ];
 
 const SOCIAL = { file: 'social-preview.png', width: 1200, height: 630 };
@@ -110,7 +113,9 @@ async function main() {
     }
 
     for (const spec of ICONS) {
-      await rasteriseSvg(browser, iconSvg(spec), spec.size, spec.size, join(publicDir, spec.file));
+      await rasteriseSvg(browser, iconSvg(spec), spec.size, spec.size, join(publicDir, spec.file), {
+        transparent: needsAlpha(spec),
+      });
       report(spec.file, `${spec.size}x${spec.size}`);
     }
 
@@ -121,7 +126,7 @@ async function main() {
       const out = join(root, spec.file);
       await mkdir(dirname(out), { recursive: true });
       await rasteriseSvg(browser, iconSvg(spec), spec.size, spec.size, out, {
-        transparent: spec.plane === false,
+        transparent: needsAlpha(spec),
       });
       report(spec.file, `${spec.size}x${spec.size}`);
     }
@@ -152,7 +157,8 @@ async function main() {
  *
  * Opaque by default, and that is load-bearing: Chromium then writes an RGB PNG
  * with no alpha channel at all, which App Store Connect requires of the iOS
- * icon. `transparent` is only for the Android adaptive foreground layer.
+ * icon. `transparent` is for artwork that leaves canvas uncovered — see
+ * needsAlpha in mark.js.
  *
  * @param {import('playwright').Browser} browser
  * @param {string} svg
