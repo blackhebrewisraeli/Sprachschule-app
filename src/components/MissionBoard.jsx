@@ -2,6 +2,7 @@ import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, SPACE } from '../li
 import { Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
 import StatusNote from './ui/StatusNote';
+import TaskIcon from './ui/TaskIcon';
 import { activePack } from '../packs';
 import { ListChecks } from 'lucide-react';
 
@@ -10,6 +11,15 @@ import { ListChecks } from 'lucide-react';
 // cramped; three stops of vertical air and four of inline give the copy room
 // without growing into InteractiveCard's full deck-tile inset.
 const ROW_PADDING = `${SPACE[3]}px ${SPACE[4]}px`;
+
+// The glyph's column: exactly one line of the row's copy tall, so the icon
+// centres on the first line of text however far the copy wraps below it.
+const ICON_SLOT = {
+  display: 'flex',
+  alignItems: 'center',
+  height: FONT_SIZE.md * LINE_HEIGHT.normal,
+  color: COLORS.inkSoft,
+};
 
 const BOUNDED_BOARD = {
   width: '100%',
@@ -65,7 +75,7 @@ export default function MissionBoard({ missions = [], onGo }) {
                   <InteractiveCard
                     onClick={() => onGo?.(mission.tab, mission)}
                     style={{ ...BOUNDED_BOARD, textAlign: 'left', padding: ROW_PADDING }}
-                    // The visible row reads "⏰ 12 cards are due · Vokabeln",
+                    // The visible row reads "[clock] 12 cards are due · Vokabeln",
                     // but an icon-only glyph carries no name, so the control
                     // gets an explicit one naming where it goes.
                     aria-label={`${label} — go to ${destination}`}
@@ -82,11 +92,8 @@ export default function MissionBoard({ missions = [], onGo }) {
                         ...BOUNDED_BOARD,
                       }}
                     >
-                      <span
-                        aria-hidden="true"
-                        style={{ fontSize: FONT_SIZE.lg, lineHeight: LINE_HEIGHT.normal }}
-                      >
-                        {entry.icon}
+                      <span aria-hidden="true" style={ICON_SLOT}>
+                        <TaskIcon name={entry.icon} />
                       </span>
                       <div style={{ minWidth: 0 }}>
                         <span

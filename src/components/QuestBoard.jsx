@@ -1,11 +1,21 @@
 import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, LINE_HEIGHT, RADIUS, SPACE } from '../lib/theme';
 import { Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
+import TaskIcon from './ui/TaskIcon';
 import { activePack } from '../packs';
 
 // Row padding — same recipe as MissionBoard: three stops of vertical air so the
 // copy, ratio and bar are not pressed against the pill's edge.
 const ROW_PADDING = `${SPACE[3]}px ${SPACE[4]}px`;
+
+// Same glyph column as MissionBoard: one line of copy tall, so the icon
+// centres on the first line however far the text wraps.
+const ICON_SLOT = {
+  display: 'flex',
+  alignItems: 'center',
+  height: FONT_SIZE.md * LINE_HEIGHT.normal,
+  color: COLORS.inkSoft,
+};
 
 const BOUNDED_BOARD = {
   width: '100%',
@@ -88,9 +98,9 @@ export default function QuestBoard({ quests = [], onGo }) {
                   >
                     <span
                       aria-hidden="true"
-                      style={{ fontSize: FONT_SIZE.lg, lineHeight: LINE_HEIGHT.normal }}
+                      style={{ ...ICON_SLOT, color: quest.done ? COLORS.green : ICON_SLOT.color }}
                     >
-                      {quest.done ? '✅' : entry.icon}
+                      <TaskIcon name={quest.done ? 'done' : entry.icon} />
                     </span>
                     <div style={{ minWidth: 0 }}>
                       <span
