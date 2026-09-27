@@ -94,9 +94,19 @@ afterAll(async () => {
     await admin.from('progress_events_seen').delete().eq('user_id', u.id);
     await admin.from('stats_daily').delete().eq('user_id', u.id);
   }
+  // Remove only OUR members, and the league only once it is empty. This league
+  // is a tier-0 cohort in the REAL current week, so assign_user_to_bucket (the
+  // oldest cohort with room) places league-bucket.test.js's first-XP learner
+  // into it when the two files overlap. Deleting by league_id wiped that
+  // learner before its assertion ran — main's RLS job failed on it 2026-09-27.
   if (leagueId) {
-    await admin.from('league_members').delete().eq('league_id', leagueId);
-    await admin.from('leagues').delete().eq('id', leagueId);
+    const ours = [A?.id, B?.id].filter(Boolean);
+    await admin.from('league_members').delete().eq('league_id', leagueId).in('user_id', ours);
+    const { count } = await admin
+      .from('league_members')
+      .select('*', { count: 'exact', head: true })
+      .eq('league_id', leagueId);
+    if (count === 0) await admin.from('leagues').delete().eq('id', leagueId);
   }
 });
 
