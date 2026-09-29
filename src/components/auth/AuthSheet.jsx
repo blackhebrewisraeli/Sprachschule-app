@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, RADIUS, SHADOW, SPACE } from '../../lib/theme';
 import {
@@ -10,6 +10,8 @@ import MagicLinkForm from './MagicLinkForm';
 import GoogleButton from './GoogleButton';
 import GitHubButton from './GitHubButton';
 import useFocusTrap from '../../lib/useFocusTrap.js';
+import { recordIntent, clearIntent } from '../../lib/legalAcceptance.js';
+import LegalConsent from './LegalConsent';
 
 /**
  * In-app auth modal used by WelcomeGate, the trial wall, AccountChip,
@@ -19,6 +21,13 @@ import useFocusTrap from '../../lib/useFocusTrap.js';
  * Does not touch Supabase directly — MagicLinkForm awaits the code-split
  * client via signInWithMagicLink / verifyCode, and Google and GitHub go
  * through the single handlers App passes as onGoogle / onGitHub.
+ *
+ * Terms consent: on the create sheet nothing that starts an account (Google,
+ * GitHub, or the email code flow) runs until the box is ticked; the sign-in
+ * sheet never shows or requires it. The email/consent draft is lifted to App
+ * (`draft`, `onDraftChange`) so it survives a trip to /terms or /privacy — the
+ * email half is forwarded to MagicLinkForm only when the caller supplied both
+ * props, otherwise the form keeps its own state.
  *
  * Keyboard loop: because a single instance in App serves five different
  * triggers, the opener is captured from `document.activeElement` rather than
@@ -34,10 +43,17 @@ export default function AuthSheet({
   googleBusy = false,
   onGitHub,
   gitHubBusy = false,
+  draft,
+  onDraftChange,
+  onNavigateLegal,
+  focusConsent = false,
 }) {
   const sheetRef = useRef(null);
   const openerRef = useRef(null);
   const wasOpenRef = useRef(false);
+  const [consentInvalid, setConsentInvalid] = useState(false);
+  const creating = intent === 'create';
+  const accepted = draft?.accepted ?? false;
 
   // Captured during RENDER, on the pass where `open` first turns true — NOT in
   // the effect below. React applies a child's `autoFocus` during the commit,
@@ -49,7 +65,12 @@ export default function AuthSheet({
   // This shipped broken and was caught by driving production: every test in the
   // suite runs with Google OFF, where nothing autofocuses and the effect-time
   // read happened to be correct. Production runs with it ON.
-  if (open && !wasOpenRef.current) openerRef.current = document.activeElement;
+  if (open && !wasOpenRef.current) {
+    openerRef.current = document.activeElement;
+    // The sheet returns null rather than unmounting, so a previous open's error
+    // would otherwise greet the next one.
+    if (consentInvalid) setConsentInvalid(false);
+  }
   wasOpenRef.current = open;
 
   // Focus in on open, and back out to the opener on close. The sheet returns
@@ -92,6 +113,28 @@ export default function AuthSheet({
   // change this sheet in exactly the state that must stay identical to today.
   const googleOn = isGoogleAuthConfigured();
   const oauthOn = googleOn || isGitHubAuthConfigured();
+
+  // One guard for every way to start an account flow from this sheet. On the
+  // create sheet it refuses until the box is ticked and records the intent the
+  // session-side hook consumes; on the sign-in sheet it clears any stale intent
+  // so an abandoned create can never be credited to a later sign-in.
+  const guard = () => {
+    if (!creating) {
+      clearIntent();
+      return true;
+    }
+    if (!accepted) {
+      setConsentInvalid(true);
+      sheetRef.current?.querySelector('input[type="checkbox"]')?.focus();
+      return false;
+    }
+    recordIntent();
+    return true;
+  };
+  const guarded =
+    (fn) =>
+    (...args) =>
+      guard() && fn?.(...args);
 
   return (
     <div
@@ -176,13 +219,27 @@ export default function AuthSheet({
         >
           <X size={16} aria-hidden="true" />
         </button>
+        {creating && (
+          <div style={{ maxWidth: 360, margin: `0 auto ${SPACE[4]}px` }}>
+            <LegalConsent
+              checked={accepted}
+              onChange={(next) => {
+                setConsentInvalid(false);
+                onDraftChange?.({ accepted: next });
+              }}
+              invalid={consentInvalid}
+              onNavigate={onNavigateLegal}
+              focusOnMount={focusConsent}
+            />
+          </div>
+        )}
         {oauthOn && (
           <div style={{ maxWidth: 360, margin: '0 auto' }}>
             {/* Focus lands on whichever provider is first, and only one of
                 them: two autoFocus props would leave it on the last. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[3] }}>
-              <GoogleButton onClick={onGoogle} busy={googleBusy} autoFocus />
-              <GitHubButton onClick={onGitHub} busy={gitHubBusy} autoFocus={!googleOn} />
+              <GoogleButton onClick={guarded(onGoogle)} busy={googleBusy} autoFocus />
+              <GitHubButton onClick={guarded(onGitHub)} busy={gitHubBusy} autoFocus={!googleOn} />
             </div>
             <div
               aria-hidden="true"
@@ -204,7 +261,14 @@ export default function AuthSheet({
             </div>
           </div>
         )}
-        <MagicLinkForm heading={heading} onSuccess={onSuccess} />
+        <MagicLinkForm
+          heading={heading}
+          onSuccess={onSuccess}
+          beforeStart={guard}
+          {...(draft && onDraftChange
+            ? { draft: { email: draft.email, sent: draft.sent }, onDraftChange }
+            : {})}
+        />
       </dialog>
     </div>
   );
