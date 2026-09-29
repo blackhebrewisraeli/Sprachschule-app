@@ -2436,6 +2436,7 @@ git commit -m "feat(push): just-in-time disclosure before the notification opt-i
 - Modify: `index.html` (`<title>`, `apple-mobile-web-app-title`, `description`, and the `og:` / `twitter:` title, site-name and description tags that name the product)
 - Modify: `vite.config.js` (PWA `manifest.name`, `manifest.short_name` only)
 - Modify: `supabase/config.toml` (`[auth.email.template.magic_link] subject` only), `supabase/templates/magic_link.html` (product name in `<title>` and body)
+- Modify: `store-metadata/app-store-listing.md` (root; EN + HE, both stores — brand mentions and the counts beside them; the search keyword `deutsch` stays), `docs/api/README.md` (H1)
 - Modify: `docs/NATIVE_BUILD.md`, `docs/MOBILE_AUTH_SETUP.md`, `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, `docs/AUTH_GOOGLE_OAUTH_RUNBOOK.md`, `docs/AUTH_GITHUB_OAUTH_RUNBOOK.md`, `docs/MAINTENANCE_CHECKLIST.md`, `docs/store-metadata/app-store-listing.md`, `src/lib/theme.js` (header comment only)
 - Create: `src/lib/nativeDisplayName.test.js`
 - Include (already edited by the controller, do not rewrite): the spec and this plan
@@ -2481,7 +2482,8 @@ describe('declared app name', () => {
 
   it('web title and PWA manifest', () => {
     expect(read('index.html')).toMatch(/<title>sprachschule-app<\/title>/);
-    expect(read('vite.config.js')).toMatch(/name:\s*'sprachschule-app'/);
+    expect(read('vite.config.js')).toMatch(/\bname:\s*'sprachschule-app'/);
+    expect(read('vite.config.js')).toMatch(/short_name:\s*'sprachschule-app'/);
   });
 
   it('npm package name', () => {

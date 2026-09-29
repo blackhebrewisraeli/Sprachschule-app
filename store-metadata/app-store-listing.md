@@ -1,4 +1,4 @@
-# App Store & Google Play Listing: Deutsch·
+# App Store & Google Play Listing: sprachschule-app
 
 Store copy for the Apple App Store and Google Play, in English and Hebrew.
 Character counts are shown next to every field that has a limit.
@@ -18,9 +18,9 @@ Character counts are shown next to every field that has a limit.
 
 ## English
 
-### App Name (22/30)
+### App Name (16/30)
 
-Deutsch·: Learn German
+sprachschule-app
 
 ### Subtitle (30/30)
 
@@ -36,7 +36,7 @@ Learn German with an AI tutor, a CEFR placement test and weekly leagues.
 
 ### Full Description
 
-Deutsch· is a German course that starts where you are, not at lesson one.
+sprachschule-app is a German course that starts where you are, not at lesson one.
 
 **Start at your real level**
 A short placement test of nine questions, drawn from the course itself, places you at A1, A2 or B1 on the CEFR scale. It works offline and needs no account. You can retake it from Settings whenever you feel ready to move up.
@@ -90,9 +90,9 @@ german,deutsch,learn german,language,vocabulary,flashcards,CEFR,A1,B1,grammar,sp
 
 ## עברית
 
-### שם האפליקציה (22/30)
+### שם האפליקציה (16/30)
 
-Deutsch·: ללמוד גרמנית
+sprachschule-app
 
 ### כותרת משנה (25/30)
 
@@ -108,7 +108,7 @@ Deutsch·: ללמוד גרמנית
 
 ### תיאור מלא
 
-Deutsch· הוא קורס גרמנית שמתחיל מהרמה שלך, לא מהשיעור הראשון.
+sprachschule-app הוא קורס גרמנית שמתחיל מהרמה שלך, לא מהשיעור הראשון.
 
 **מתחילים מהרמה האמיתית שלך**
 מבחן רמה קצר של תשע שאלות, שלקוחות מתוך הקורס עצמו, ממקם אותך ברמה A1, A2 או B1 לפי סולם CEFR. הוא עובד בלי אינטרנט ובלי חשבון. אפשר לחזור עליו מההגדרות בכל פעם שמרגישים מוכנים לעלות רמה.
