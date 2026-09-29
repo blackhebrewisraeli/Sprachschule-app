@@ -44,6 +44,9 @@ export function useLegalAcceptance(user) {
 
   useEffect(() => {
     if (!userId || hintCovers(userId)) {
+      // A session that needs no RPC still consumes the ticked-box intent, so it
+      // can never be credited to a different account signing in later.
+      if (userId) clearIntent();
       setState({ userId, ...initial(userId) });
       return undefined;
     }
@@ -58,6 +61,7 @@ export function useLegalAcceptance(user) {
         const { current, hasPrior } = await fetchAcceptances(userId);
         if (!live()) return;
         if (current) {
+          clearIntent();
           writeAcceptedHint(userId);
           return settle({ status: 'accepted', hasPrior: true });
         }

@@ -288,3 +288,39 @@ describe('useLegalAcceptance: switching users and retrying', () => {
     expect(localStorage.getItem(LEGAL_ACCEPTED_KEY)).toBeNull();
   });
 });
+
+describe('useLegalAcceptance: a leftover intent is consumed by any settled session', () => {
+  it('a hint-covered session clears the intent without any network call', () => {
+    writeAcceptedHint('u1');
+    recordIntent();
+    const { result } = renderHook(() => useLegalAcceptance(U));
+    expect(result.current.status).toBe('accepted');
+    expect(hasValidIntent()).toBe(false);
+    expect(api.fetch).not.toHaveBeenCalled();
+    expect(api.accept).not.toHaveBeenCalled();
+  });
+
+  it('a server-confirmed session clears the intent without calling the RPC', async () => {
+    api.fetch.mockResolvedValue({ current: true, hasPrior: true });
+    recordIntent();
+    const { result } = renderHook(() => useLegalAcceptance(U));
+    await waitFor(() => expect(result.current.status).toBe('accepted'));
+    expect(hasValidIntent()).toBe(false);
+    expect(api.accept).not.toHaveBeenCalled();
+  });
+
+  it("never credits user A's leftover intent to a later user B with no record", async () => {
+    recordIntent();
+    api.fetch.mockImplementation(async (id) =>
+      id === 'a' ? { current: true, hasPrior: true } : { current: false, hasPrior: false }
+    );
+    const { result, rerender, seen } = renderRecorded({ id: 'a' });
+    await waitFor(() => expect(result.current.status).toBe('accepted'));
+
+    rerender({ user: { id: 'b' } });
+    await waitFor(() => expect(result.current.status).toBe('required'));
+    expect(statusesFor(seen, 'b')).not.toContain('accepted');
+    expect(api.accept).not.toHaveBeenCalled();
+    expect(storedHint().userId).toBe('a');
+  });
+});
