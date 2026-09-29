@@ -80,4 +80,15 @@ describe('AcceptanceGate', () => {
     await userEvent.click(screen.getByRole('button', { name: /delete this account instead/i }));
     expect(screen.getByLabelText(/type DELETE to confirm/i)).toHaveFocus();
   });
+
+  it('bounds and scrolls the dialog when the delete confirmation expands it', async () => {
+    render(<AcceptanceGate {...props()} />);
+    await userEvent.click(screen.getByRole('button', { name: /delete this account instead/i }));
+
+    const dialog = screen.getByRole('alertdialog');
+    // jsdom cannot measure viewport layout, so guard the CSS contract that
+    // prevents centered content from being clipped on short screens.
+    expect(dialog).toHaveStyle({ maxHeight: '100%', overflowY: 'auto' });
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeInTheDocument();
+  });
 });
