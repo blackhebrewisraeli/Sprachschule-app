@@ -75,7 +75,7 @@ export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile
     // announced again).
     setState((s) => (s.status === 'error' ? { status: 'idle', league: null, rows: [] } : s));
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const league = await joinLeague();
         await refreshLeague();

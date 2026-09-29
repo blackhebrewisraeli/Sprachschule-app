@@ -36,7 +36,7 @@ export function usePushNotifications(userId) {
   useEffect(() => {
     if (!available) return undefined;
     let active = true;
-    pushPermission()
+    void pushPermission()
       .catch(() => 'prompt')
       .then((permission) => {
         if (active) setStatus(statusFor(permission, readPushDevice(), userId));

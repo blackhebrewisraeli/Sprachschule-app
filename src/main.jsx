@@ -13,7 +13,7 @@ bootTheme();
 // No-op unless VITE_SENTRY_DSN is set.
 // Fire-and-forget: the Sentry chunk loads off the critical path, and errors
 // raised while it is in flight are queued and replayed once it lands.
-initObservability();
+void initObservability();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
@@ -39,7 +39,7 @@ setTimeout(dropShell, 1500);
 // own root so it is a separate chunk — users who never pass the flag never
 // download it, and it cannot re-render the app tree while measuring it.
 if (new URLSearchParams(window.location.search).has('vitals')) {
-  import('./components/VitalsOverlay.jsx').then(({ default: VitalsOverlay }) => {
+  void import('./components/VitalsOverlay.jsx').then(({ default: VitalsOverlay }) => {
     const host = document.createElement('div');
     host.id = 'vitals-overlay';
     document.body.appendChild(host);

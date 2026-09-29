@@ -44,7 +44,7 @@ export function useLeagueStanding(userId) {
     }
     let cancelled = false;
 
-    (async () => {
+    void (async () => {
       try {
         const supabase = await getSupabase();
         const membership = await fetchMyMembership(supabase, userId, currentPeriodStart());

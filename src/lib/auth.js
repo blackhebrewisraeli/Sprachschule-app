@@ -356,7 +356,7 @@ function startNativeAuthCallbacks() {
   if (nativeCallbacksStarted || !isNativeApp()) return;
   nativeCallbacksStarted = true;
   listenForAppUrls((url) => {
-    handleNativeAuthCallback(url);
+    void handleNativeAuthCallback(url);
   }).catch(() => {
     // Plugin missing or failed to load. Allow a later subscriber to try again.
     nativeCallbacksStarted = false;
@@ -388,7 +388,7 @@ export function onNativeAuthCallback(fn) {
  */
 export async function handleNativeAuthCallback(url) {
   if (!isNativeAuthCallback(url)) return;
-  closeAuthBrowser();
+  void closeAuthBrowser();
   const loc = new URL(url);
   if (authCallbackKind(loc) === 'error') {
     emitNativeCallback({ kind: 'error', reason: authCallbackReason(loc) });
@@ -440,7 +440,7 @@ export function useAuth() {
         setSignupRejected(true);
         setSession(null);
         setStatus('anonymous');
-        c.auth.signOut();
+        void c.auth.signOut();
         return;
       }
       if (next) setSignupRejected(false);
@@ -451,7 +451,7 @@ export function useAuth() {
     const attach = (c) => {
       // The effect can be torn down while the client chunk is still in flight.
       if (!active || !c || unsubscribe) return;
-      c.auth.getSession().then(({ data }) => {
+      void c.auth.getSession().then(({ data }) => {
         if (!active) return;
         applySession(c, data.session);
       });
@@ -463,7 +463,7 @@ export function useAuth() {
     };
 
     if (mayHaveSession()) {
-      getClient().then((c) => {
+      void getClient().then((c) => {
         if (!active) return;
         if (!c) setStatus('anonymous');
         else attach(c);
