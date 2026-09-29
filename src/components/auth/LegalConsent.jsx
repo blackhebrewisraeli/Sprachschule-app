@@ -5,6 +5,8 @@ import { Body } from '../ui/Text';
 
 /** Minimum comfortable touch target, px — same constant WelcomeGate uses. */
 const TAP_TARGET_MIN = 44;
+/** One line of label text. With SPACE[3] above and below it makes exactly TAP_TARGET_MIN. */
+const LINE = SPACE[5];
 
 /**
  * The account-terms checkbox. Copy is owner-approved legal copy (spec §5.3) —
@@ -50,16 +52,7 @@ export default function LegalConsent({
 
   return (
     <div>
-      <div
-        data-consent-row=""
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: SPACE[3],
-          minHeight: TAP_TARGET_MIN,
-          minWidth: 0,
-        }}
-      >
+      <div style={{ display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
         <input
           ref={inputRef}
           id={id}
@@ -70,20 +63,29 @@ export default function LegalConsent({
           aria-invalid={invalid ? 'true' : undefined}
           aria-describedby={invalid ? errorId : undefined}
           style={{
-            width: 20,
-            height: 20,
-            margin: `${SPACE[1]}px 0 0`,
+            width: LINE,
+            height: LINE,
+            margin: `${SPACE[3]}px 0 0`,
             flex: 'none',
             accentColor: COLORS.ink,
           }}
         />
+        {/* The label, not the row, is the tap target: a block (never flex, so the
+            text and both links keep flowing inline) at least TAP_TARGET_MIN tall.
+            The box-to-words gap is the label's left padding, so there is no dead
+            strip between them; the box's top margin lines it up with line one. */}
         <label
           htmlFor={id}
           style={{
+            display: 'block',
+            minHeight: TAP_TARGET_MIN,
+            minWidth: 0,
+            padding: `${SPACE[3]}px 0 ${SPACE[3]}px ${SPACE[3]}px`,
+            boxSizing: 'border-box',
             fontFamily: FONTS.body,
             fontSize: FONT_SIZE.sm,
+            lineHeight: `${LINE}px`,
             color: COLORS.ink,
-            minWidth: 0,
             overflowWrap: 'break-word',
           }}
         >
