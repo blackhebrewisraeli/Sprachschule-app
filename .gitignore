@@ -20,6 +20,11 @@ dist-ssr
 .env.local
 .env.*.local
 
+# Android release-signing secrets
+android/keystore.properties
+*.keystore
+*.jks
+
 # Superpowers brainstorm sessions
 .superpowers/
 
