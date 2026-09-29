@@ -1,6 +1,10 @@
 # Store submission: privacy audit, terms acceptance, push disclosure — design
 
-**Status:** DRAFT, awaiting owner approval. Nothing below is implemented.
+**Status:** APPROVED by the owner on 2026-09-29 — §5 copy as written, §7
+answered (see the "Owner answers" block under the table). Original gating
+note kept below for the record.
+
+~~DRAFT, awaiting owner approval.~~ Nothing below was implemented before approval.
 Three things need an explicit yes before any product code is written:
 
 1. the proposed legal copy in §5 (Privacy Policy, Terms of Service, consent
@@ -126,14 +130,14 @@ will reproduce the approved text verbatim (tests pin it, as today).
 
 ### 5.1 Privacy Policy (full replacement)
 
-**Updated line:** `Last Updated: [EFFECTIVE DATE]`
+**Updated line:** `Last Updated: September 2026` (effective date 2026-09-29)
 
 **Intro (unchanged):** Welcome to Deutsch App. This Privacy Policy explains how
 we collect, use, and protect your information when you use our application.
 
 **1. Who We Are**
-Deutsch App is operated by [OPERATOR LEGAL NAME]. If you have questions about
-this policy or your data, contact us at [CONTACT EMAIL].
+Deutsch App is operated by Shimon Esterkin. If you have questions about
+this policy or your data, contact us at esterkinshimon712@gmail.com.
 
 **2. Information We Collect**
 
@@ -220,7 +224,7 @@ behalf:
 - Vercel — hosting the website and our server, and website analytics
 - Anthropic — AI tutor responses, answer checking and practice content
 - Sentry — error reports
-- [SMTP PROVIDER, e.g. Resend — OWNER TO CONFIRM] — sending sign-in emails
+- Supabase Auth — sending sign-in emails
 
 If you choose to use them, these services also receive data under their own
 privacy policies: Google or GitHub (if you sign in with them), and Apple Push
@@ -542,6 +546,14 @@ the checklist is done; the owner flips that pin when it is.
 | D5  | Magic-link "Sign in" with an unregistered email             | (a) Keep creating the account; the gate follows. (b) `shouldCreateUser: false` on the sign-in path.                                                                             | **(a).** (b) reveals whether an email is registered (an enumeration oracle) and still leaves OAuth needing the gate.                                                                                                                                                  |
 | D6  | Push flag                                                   | Pin `VITE_PUSH_ENABLED=false` in `build:mobile` now; owner flips it after the checklist. Separately, remove `VITE_PUSH_ENABLED=true` from your local `.env.production.local`.  | **Pin it.** It is the only way the brief's "must remain off" is true for the next archive (P1).                                                                                                                                                                      |
 | D7  | Placeholders                                                | Operator legal name, contact email, effective date(s), SMTP provider name.                                                                                                     | Owner supplies; implementation blocks on these.                                                                                                                                                                                                                       |
+
+**Owner answers (2026-09-29):** D1 (a) require acceptance at next launch ·
+D2 (b) Sign out + Delete account · D3 (a) create sheet + trial wall only ·
+D4 one date-based version per document · D5 (a) create, then gate · D6 pin
+`VITE_PUSH_ENABLED=false` in `build:mobile` · D7 operator Shimon Esterkin,
+contact esterkinshimon712@gmail.com, effective date 2026-09-29 (both
+documents), sign-in email provider Supabase Auth. Versions:
+`TERMS_VERSION = PRIVACY_VERSION = '2026-09-29'`.
 
 ---
 

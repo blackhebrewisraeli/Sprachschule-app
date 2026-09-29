@@ -2,9 +2,10 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> **BLOCKED until the owner approves** the spec's §5 copy and §7 decisions. This
-> plan assumes every recommendation in §7 (D1 a, D2 b, D3 a, D4, D5 a, D6 pin).
-> Tasks that change if the owner picks differently say so at the top.
+> **APPROVED 2026-09-29.** Owner accepted the spec's §5 copy as written and
+> every §7 recommendation (D1 a, D2 b, D3 a, D4, D5 a, D6 pin). D7: operator
+> Shimon Esterkin, contact esterkinshimon712@gmail.com, effective date
+> 2026-09-29, sign-in email provider Supabase Auth.
 
 **Goal:** Accurate Privacy Policy, a server-recorded versioned acceptance of the
 Terms and Privacy Policy for every account, and a just-in-time push disclosure —
@@ -25,6 +26,7 @@ Capacitor 8.
 
 ## Global Constraints
 
+- Effective date of both documents: 2026-09-29 → `TERMS_VERSION = PRIVACY_VERSION = '2026-09-29'`; pages read `Last Updated: September 2026`.
 - Legal copy is reproduced **verbatim** from the owner-approved spec §5; tests pin it. No wording changes without approval.
 - Consent label: `I agree to the Terms of Service and acknowledge the Privacy Policy.` — links to `/terms` and `/privacy`, unchecked by default.
 - No existing localStorage key is renamed or migrated. New keys: `deutsch-app-legal-accepted-v1`, `deutsch-app-legal-intent-v1`.
@@ -342,7 +344,7 @@ git commit -m "feat(db): legal_acceptances table + accept_legal_terms RPC (file 
 
 - Consumes: `getSupabase()` from `src/lib/auth.js`; RPC/table from Task 2.
 - Produces:
-  - `TERMS_VERSION: string`, `PRIVACY_VERSION: string` (D7 effective dates; `'2026-10-01'` until the owner answers)
+  - `TERMS_VERSION: string`, `PRIVACY_VERSION: string` (`'2026-09-29'`, the approved effective date)
   - `LEGAL_ACCEPTED_KEY = 'deutsch-app-legal-accepted-v1'`, `LEGAL_INTENT_KEY = 'deutsch-app-legal-intent-v1'`, `INTENT_TTL_MS`
   - `hintCovers(userId: string): boolean`, `writeAcceptedHint(userId: string): void`
   - `recordIntent(now?: number): void`, `clearIntent(): void`, `hasValidIntent(now?: number): boolean`
@@ -495,8 +497,8 @@ Run: `npx vitest run src/lib/legalAcceptance.test.js`
 import { getSupabase } from './auth.js';
 
 /** Effective dates of the documents in src/components/legal. Bumping either re-asks everyone. */
-export const TERMS_VERSION = '2026-10-01';
-export const PRIVACY_VERSION = '2026-10-01';
+export const TERMS_VERSION = '2026-09-29';
+export const PRIVACY_VERSION = '2026-09-29';
 
 export const LEGAL_ACCEPTED_KEY = 'deutsch-app-legal-accepted-v1';
 export const LEGAL_INTENT_KEY = 'deutsch-app-legal-intent-v1';
@@ -1951,9 +1953,10 @@ git commit -m "feat(auth): gate synced use on a current terms acceptance"
 
 ### Task 11: Approved legal copy
 
-> Uses the text the owner approved from spec §5.1/§5.2, with D7 placeholders
-> filled. The code below carries the **proposed** text; replace any sentence the
-> owner changed, word for word.
+> The owner approved spec §5.1/§5.2 **as written** on 2026-09-29, with the D7
+> values filled in. The code below is that approved text — reproduce it
+> verbatim. The optional §5.2 "8. AI-Generated Content" clause was approved
+> with the rest, so it ships.
 
 **Files:**
 
@@ -2081,7 +2084,7 @@ const SECTIONS = [
   {
     heading: '1. Who We Are',
     paragraphs: [
-      'Deutsch App is operated by [OPERATOR LEGAL NAME]. If you have questions about this policy or your data, contact us at [CONTACT EMAIL].',
+      'Deutsch App is operated by Shimon Esterkin. If you have questions about this policy or your data, contact us at esterkinshimon712@gmail.com.',
     ],
   },
   {
@@ -2120,7 +2123,7 @@ const SECTIONS = [
       { term: 'Vercel —', text: 'hosting the website and our server, and website analytics' },
       { term: 'Anthropic —', text: 'AI tutor responses, answer checking and practice content' },
       { term: 'Sentry —', text: 'error reports' },
-      { term: '[SMTP PROVIDER] —', text: 'sending sign-in emails' },
+      { term: 'Supabase Auth —', text: 'sending sign-in emails' },
     ],
     after: [
       'If you choose to use them, these services also receive data under their own privacy policies: Google or GitHub (if you sign in with them), and Apple Push Notification service or Firebase Cloud Messaging by Google (if you turn on push notifications).',
@@ -2171,7 +2174,7 @@ export default function PrivacyPolicy({ onBack }) {
 }
 ```
 
-(The spec's "**Push notifications are optional** and are not required…" bold lead is carried by the `term`.) Every `[…]` above is a D7 value; the "no unfilled placeholder" test fails until each is replaced.
+(The spec's "**Push notifications are optional** and are not required…" bold lead is carried by the `term`.) The D7 values are already filled in; the "no unfilled placeholder" test guards against regressions.
 
 `TermsOfService.jsx` — `updated` derives from `TERMS_VERSION` the same way; append the approved sections:
 
@@ -2341,9 +2344,11 @@ a judgement only the owner has. Tick them in order: several gate the next.
    sync pauses (the app cannot confirm acceptance) until the table exists.
    Verify: `select count(*) from public.legal_acceptances;` returns 0 without
    error, then `notify pgrst, 'reload schema';`.
-2. **Supply the legal placeholders**: operator legal name, contact email,
-   effective date(s), and confirm the SMTP provider for sign-in emails
-   (Supabase → Auth → SMTP settings).
+2. **Check the sign-in email sender.** The policy names Supabase Auth as the
+   sender of sign-in emails (owner answer, 2026-09-29). The B2 design specified
+   Resend SMTP inside Supabase; if Supabase → Auth → SMTP Settings shows a
+   custom SMTP provider, that provider must be added to the policy's service
+   provider list (a version bump).
 3. **Have qualified counsel review** the final Privacy Policy and Terms,
    including international transfers, the minimum age (Terms say 13), and
    whether the optional AI clause is wanted.
