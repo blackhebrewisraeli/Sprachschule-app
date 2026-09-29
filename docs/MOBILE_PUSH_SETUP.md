@@ -79,15 +79,11 @@ directly, or registers them with FCM first if it wants one API for both.
 
 ## 4. Turn the flag on for native builds
 
-Add to `.env.production.local` (see `docs/NATIVE_BUILD.md` §1):
-
-```bash
-VITE_PUSH_ENABLED=true
-```
-
-Only on a machine that has step 2's `google-services.json`. Then rebuild:
-`npm run build:mobile`. Vite inlines the flag at build time, so an existing
-build does not change.
+`npm run build:mobile` pins `VITE_PUSH_ENABLED=false`, so no local env file can
+turn push on by accident. Turn it on only after every push item in
+`docs/STORE_SUBMISSION_CHECKLIST.md` is done: change that pin to `true` in
+`package.json`, on a machine that has step 2's `google-services.json`, then
+`npm run build:mobile`.
 
 Leave it **off** in Vercel. The web never shows the switch anyway, and keeping
 the flag a native-build decision keeps it next to the file it depends on.
