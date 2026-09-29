@@ -38,7 +38,7 @@ export default function FeedbackInbox() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    void (async () => {
       setLoading(true);
       setError('');
       try {
@@ -61,7 +61,7 @@ export default function FeedbackInbox() {
   const onFilter = (key) => {
     setStatus(key);
     setPendingDelete(null);
-    load(key);
+    void load(key);
   };
 
   const onStatus = async (id, next) => {

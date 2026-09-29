@@ -27,7 +27,7 @@ export function useTokenBalance({ userId, quests, todayKey }) {
     setTokens(null);
     claimed.current = new Set();
     baseline.current = null;
-    fetchMyTokens(userId).then((t) => {
+    void fetchMyTokens(userId).then((t) => {
       if (live) setTokens(t);
     });
     return () => {
@@ -55,7 +55,7 @@ export function useTokenBalance({ userId, quests, todayKey }) {
         })
         .catch(() => {
           // Unknown outcome: re-read the truth rather than guess an undo.
-          fetchMyTokens(userId).then((t) => {
+          void fetchMyTokens(userId).then((t) => {
             if (t !== null) setTokens(t);
           });
         });

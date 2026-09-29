@@ -78,7 +78,7 @@ export default function GodMode() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    void (async () => {
       setLoadingUsers(true);
       try {
         const payload = await fetchAdminUsers();

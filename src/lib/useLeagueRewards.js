@@ -54,7 +54,7 @@ export function useLeagueRewards(
     // lie of omission. The effect re-runs when syncSettled flips true.
     if (syncEnabled && !syncSettled) return undefined;
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const results = await fetchMyResults(await getSupabase(), userId);
         if (cancelled) return;

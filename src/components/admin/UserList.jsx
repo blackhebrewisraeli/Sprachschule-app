@@ -30,7 +30,7 @@ export default function UserList() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    void (async () => {
       setLoading(true);
       setError('');
       try {

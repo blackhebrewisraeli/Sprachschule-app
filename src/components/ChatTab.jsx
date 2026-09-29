@@ -198,7 +198,7 @@ export default function ChatTab({
   };
 
   useEffect(() => {
-    openScene();
+    void openScene();
     // Only a new scene (scenario or level) re-opens. Vocab, model and task
     // changes apply from the next turn; re-opening would wipe the thread.
     // eslint-disable-next-line react-hooks/exhaustive-deps
