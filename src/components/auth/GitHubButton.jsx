@@ -35,24 +35,23 @@ export default function GitHubButton({ onClick, busy = false, autoFocus = false 
       // itself on activation drops keyboard focus to <body>.
       busy={busy}
       autoFocus={autoFocus}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: SPACE[3],
-      }}
+      // Centres Button's one child span, and the busy spinner with it.
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <svg
-        aria-hidden="true"
-        focusable="false"
-        width={18}
-        height={18}
-        viewBox="0 0 16 16"
-        fill="currentColor"
-      >
-        <path d={MARK_PATH} />
-      </svg>
-      Continue with GitHub
+      {/* Same row as GoogleButton's: laid out inside Button's span. */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE[3] }}>
+        <svg
+          aria-hidden="true"
+          focusable="false"
+          width={18}
+          height={18}
+          viewBox="0 0 16 16"
+          fill="currentColor"
+        >
+          <path d={MARK_PATH} />
+        </svg>
+        Continue with GitHub
+      </span>
     </Button>
   );
 }

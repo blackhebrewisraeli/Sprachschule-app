@@ -30,6 +30,17 @@ describe('GitHubButton', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 
+  // Button puts its children in one span (the busy fade), so flex and gap set
+  // on the <button> never reached the mark: it sat on the text baseline,
+  // touching the label. The row has to be laid out inside that span.
+  it('lays the mark and label out as one centred row', () => {
+    const { container } = render(<GitHubButton onClick={() => {}} />);
+    const row = container.querySelector('svg').parentElement;
+    expect(row).toHaveStyle({ display: 'inline-flex', alignItems: 'center' });
+    expect(row.style.gap).not.toBe('');
+    expect(row).toHaveTextContent('Continue with GitHub');
+  });
+
   it('fires onClick', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
