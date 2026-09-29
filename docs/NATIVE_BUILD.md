@@ -9,7 +9,7 @@ with that command**, on the machine that runs Xcode or Android Studio.
 | What              | Value                                                     |
 | ----------------- | --------------------------------------------------------- |
 | Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)        |
-| Display name      | `Deutsch App`                                             |
+| Display name      | `sprachschule-app` (`CFBundleDisplayName` / `app_name`)   |
 | iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)               |
 | Android           | minSdk 24 · target/compile 36                             |
 | Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio |

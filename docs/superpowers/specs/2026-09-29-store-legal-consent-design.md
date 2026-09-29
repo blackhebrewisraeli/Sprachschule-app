@@ -20,7 +20,7 @@ Audit taken against `origin/main` at `03543f91` (2026-09-29).
 
 ## 1. Intent
 
-**What the owner asked for.** Prepare Deutsch App for App Store and Google Play
+**What the owner asked for.** Prepare sprachschule-app (formerly "Deutsch App") for App Store and Google Play
 submission: make the Privacy Policy true to what the code does, add a
 server-recorded, versioned acceptance of the Terms and Privacy Policy at account
 creation, and put a just-in-time disclosure in front of the push-notification
@@ -130,18 +130,18 @@ will reproduce the approved text verbatim (tests pin it, as today).
 
 ### 5.1 Privacy Policy (full replacement)
 
-**Updated line:** `Last Updated: September 2026` (effective date 2026-09-29)
+**Updated line:** `Last Updated: September 29, 2026` — derived from `PRIVACY_VERSION = '2026-09-29'`, never typed by hand (owner brief, 2026-09-30)
 
-**Intro (unchanged):** Welcome to Deutsch App. This Privacy Policy explains how
+**Intro (brand updated 2026-09-30; otherwise unchanged):** Welcome to sprachschule-app. This Privacy Policy explains how
 we collect, use, and protect your information when you use our application.
 
 **1. Who We Are**
-Deutsch App is operated by Shimon Esterkin. If you have questions about
-this policy or your data, contact us at esterkinshimon712@gmail.com.
+sprachschule-app is operated by Shimon Esterkin. If you have questions about
+this policy or your data, contact us at sprachschule.support@gmail.com.
 
 **2. Information We Collect**
 
-- **Using the App as a Guest:** You can use Deutsch App without an account. As a
+- **Using the App as a Guest:** You can use sprachschule-app without an account. As a
   guest, your learning progress is stored only on your device and is not synced
   to our servers.
 - **Account Information:** When you create an account or sign in — with a
@@ -283,7 +283,23 @@ in the app before you continue using your account.
 > owner wants them fixed first, the copy gets shorter. Shipping the honest
 > version now is the default.
 
-### 5.2 Terms of Service (additions only; sections 1–5 unchanged)
+### 5.2 Terms of Service (brand update to sections 1–5 and the intro, plus additions)
+
+**Brand update (owner, 2026-09-30).** The supplied sections 1–5 and the intro
+are otherwise unchanged; only the product name changes. The three affected
+sentences become, verbatim:
+
+- Intro: By accessing or using sprachschule-app, you agree to be bound by these
+  Terms of Service.
+- 3. App Usage and Leagues: sprachschule-app includes gamified elements like
+  Leagues and Streaks. We reserve the right to reset, modify, or adjust league
+  standings, points, or progression logic at any time, especially during this
+  pre-beta phase, to ensure a fair experience for all users.
+- 5. "As Is" Disclaimer: sprachschule-app is currently in a pre-beta stage. The
+  service is provided "AS IS" and "AS AVAILABLE," without warranties of any
+  kind.
+
+**Additions:**
 
 **6. Changes to These Terms** _(needed: the re-acceptance gate relies on it)_
 We may update these Terms. When we do, we will update the "Last Updated" date
@@ -294,7 +310,7 @@ continue using your account.
 Our Privacy Policy explains how we collect and use your information.
 
 **8. AI-Generated Content** _(optional — counsel's call)_
-Deutsch App uses artificial intelligence to generate tutor replies, answer
+sprachschule-app uses artificial intelligence to generate tutor replies, answer
 feedback and practice content. AI-generated content can be inaccurate.
 
 ### 5.3 Consent label (account creation and the acceptance gate)
@@ -339,9 +355,10 @@ device.":
 ### 6.1 Versions
 
 `src/lib/legalAcceptance.js` exports `TERMS_VERSION` and `PRIVACY_VERSION`,
-each an ISO date (`'YYYY-MM-DD'`) equal to that document's effective date. A
-test pins each legal page's "Last Updated" line to its constant's month and year,
-so the text and the version cannot drift. Bumping either constant is the one
+each an ISO date (`'YYYY-MM-DD'`) equal to that document's effective date. Each
+legal page renders its "Last Updated" line from its constant as
+`Last Updated: <Month> <D>, <YYYY>` (`Last Updated: September 29, 2026`), and a
+test pins it, so the text and the version cannot drift. Bumping either constant is the one
 act that triggers re-acceptance (D4).
 
 ### 6.2 Server record — `public.legal_acceptances`
@@ -551,9 +568,38 @@ the checklist is done; the owner flips that pin when it is.
 D2 (b) Sign out + Delete account · D3 (a) create sheet + trial wall only ·
 D4 one date-based version per document · D5 (a) create, then gate · D6 pin
 `VITE_PUSH_ENABLED=false` in `build:mobile` · D7 operator Shimon Esterkin,
-contact esterkinshimon712@gmail.com, effective date 2026-09-29 (both
+contact ~~esterkinshimon712@gmail.com~~ (superseded 2026-09-30 by
+sprachschule.support@gmail.com), effective date 2026-09-29 (both
 documents), sign-in email provider Supabase Auth. Versions:
 `TERMS_VERSION = PRIVACY_VERSION = '2026-09-29'`.
+
+**Owner update (2026-09-30), binding — supersedes the contact email above.**
+Project and brand name `sprachschule-app` (every human-facing product-name
+reference in the legal copy, store-submission docs and native display-name
+config). Legal operator Shimon Esterkin. Official support/contact email
+`sprachschule.support@gmail.com` — used ONLY where the address is the legal,
+privacy, support or contact address; `esterkinshimon712@gmail.com` stays wherever
+it is the admin, allowlist, system-account, test-identity or authorization
+email. Effective date September 29, 2026 (ISO `2026-09-29`) for both documents.
+Sign-in email provider Supabase Auth. D1–D6 re-confirmed as answered above.
+Operational identifiers keep their existing names and are documented, not
+migrated: repository `blackhebrewisraeli/deutsch-app`, Vercel project and URL
+`deutsch-app-dusky.vercel.app`, Supabase project `Sprachschule`
+(`xcnnlczvxmuwcqwychox`), bundle/application ID and URL scheme
+`com.sprachschule.deutsch`, every `deutsch-app-*` localStorage key (including
+the two new legal keys, which join that namespace), and the Sentry project.
+Brand-name scope (owner brief, 2026-09-30): `sprachschule-app` replaces the
+product name wherever it is human-facing brand copy or a declarative name field —
+the legal copy; `package.json` / root `package-lock.json` entries;
+`capacitor.config.ts` `appName`; iOS `CFBundleDisplayName`; Android `app_name`
+/ `title_activity_main`; `index.html` title, description and social metadata;
+the PWA manifest names; the magic-link email subject and template in the repo;
+the App Store listing; and current native, auth and maintenance docs. Historical
+specs and plans keep the name they recorded. The in-app "Deutsch." wordmark and
+the rendered `public/social-preview.png` are left for a separate owner decision:
+the wordmark sits in a header whose 320px budget has ~10px of slack, so a longer
+name is a layout change, not a rename. Production-side copies (Supabase email
+template, Google/GitHub OAuth app names) are owner actions in the checklist.
 
 ---
 

@@ -55,7 +55,7 @@ mention.
    (Under an organisation instead: the org's **Settings → Developer settings**.
    Either works; pick whoever should own the credential long-term.)
 2. Fill in:
-   - **Application name** — `Deutsch · Sprachschule`. Users see it on the
+   - **Application name** — `sprachschule-app`. Users see it on the
      authorize screen.
    - **Homepage URL** — `https://deutsch-app-dusky.vercel.app`
    - **Authorization callback URL** — exactly this:

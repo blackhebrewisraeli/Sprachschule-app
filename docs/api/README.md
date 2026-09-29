@@ -1,4 +1,4 @@
-# deutsch-app API — conventions
+# sprachschule-app API — conventions
 
 The REST half of the **developer interface** (the other half is the database
 contract, arriving in phase B1). Spec:

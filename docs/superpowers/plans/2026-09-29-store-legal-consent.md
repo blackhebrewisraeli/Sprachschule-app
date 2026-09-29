@@ -4,8 +4,14 @@
 
 > **APPROVED 2026-09-29.** Owner accepted the spec's §5 copy as written and
 > every §7 recommendation (D1 a, D2 b, D3 a, D4, D5 a, D6 pin). D7: operator
-> Shimon Esterkin, contact esterkinshimon712@gmail.com, effective date
-> 2026-09-29, sign-in email provider Supabase Auth.
+> Shimon Esterkin, effective date 2026-09-29, sign-in email provider Supabase
+> Auth.
+>
+> **OWNER UPDATE 2026-09-30 (binding):** brand/project name `sprachschule-app`;
+> official support/contact email `sprachschule.support@gmail.com` (legal/contact
+> uses only — `esterkinshimon712@gmail.com` stays as the admin, allowlist,
+> system-account and test identity); D1–D6 re-confirmed. Execution order:
+> 2 → 1 → 3 → owner-update gate (absorbs Task 15) → 4 → … → 12 → 13 → 14.
 
 **Goal:** Accurate Privacy Policy, a server-recorded versioned acceptance of the
 Terms and Privacy Policy for every account, and a just-in-time push disclosure —
@@ -26,7 +32,10 @@ Capacitor 8.
 
 ## Global Constraints
 
-- Effective date of both documents: 2026-09-29 → `TERMS_VERSION = PRIVACY_VERSION = '2026-09-29'`; pages read `Last Updated: September 2026`.
+- Brand/project name: `sprachschule-app` (exact, lowercase, hyphenated) wherever the product name is human-facing brand copy or a declarative name field (spec §7 "Brand-name scope"). It replaces "Deutsch App" and "Deutsch · Sprachschule". Exception: the in-app "Deutsch." wordmark and `public/social-preview.png` (owner decision pending).
+- Legal/support/contact email: `sprachschule.support@gmail.com`. Never replace `esterkinshimon712@gmail.com` where it is the admin, allowlist, system-account, test-identity or authorization email.
+- Operational identifiers keep their names (document, never migrate): repo `deutsch-app`, Vercel URL `deutsch-app-dusky.vercel.app`, Supabase project `Sprachschule` / `xcnnlczvxmuwcqwychox`, bundle/application ID + URL scheme `com.sprachschule.deutsch`, every `deutsch-app-*` localStorage key, the Sentry project.
+- Effective date of both documents: 2026-09-29 → `TERMS_VERSION = PRIVACY_VERSION = '2026-09-29'`; pages read `Last Updated: September 29, 2026`, rendered by `lastUpdatedLine(version)` — never typed by hand.
 - Legal copy is reproduced **verbatim** from the owner-approved spec §5; tests pin it. No wording changes without approval.
 - Consent label: `I agree to the Terms of Service and acknowledge the Privacy Policy.` — links to `/terms` and `/privacy`, unchecked by default.
 - No existing localStorage key is renamed or migrated. New keys: `deutsch-app-legal-accepted-v1`, `deutsch-app-legal-intent-v1`.
@@ -1954,9 +1963,12 @@ git commit -m "feat(auth): gate synced use on a current terms acceptance"
 ### Task 11: Approved legal copy
 
 > The owner approved spec §5.1/§5.2 **as written** on 2026-09-29, with the D7
-> values filled in. The code below is that approved text — reproduce it
-> verbatim. The optional §5.2 "8. AI-Generated Content" clause was approved
-> with the rest, so it ships.
+> values filled in, and on 2026-09-30 changed the brand to `sprachschule-app`
+> and the contact email to `sprachschule.support@gmail.com` (spec §7 "Owner
+> update"). The code below is that approved text — reproduce it verbatim. The
+> optional §5.2 "8. AI-Generated Content" clause was approved with the rest, so
+> it ships. The brand change also rewrites three sentences in the EXISTING
+> Terms (intro, §3, §5) — spec §5.2 lists them verbatim.
 
 **Files:**
 
@@ -1964,14 +1976,30 @@ git commit -m "feat(auth): gate synced use on a current terms acceptance"
 - Modify: `src/components/legal/LegalPage.test.jsx`
 - Modify: `src/components/legal/PrivacyPolicy.jsx`, `PrivacyPolicy.test.jsx`
 - Modify: `src/components/legal/TermsOfService.jsx`, `TermsOfService.test.jsx`
-- Modify: `src/lib/legalAcceptance.js` (set `TERMS_VERSION` / `PRIVACY_VERSION` to the D7 effective dates)
+- Modify: `src/lib/legalAcceptance.js`, `src/lib/legalAcceptance.test.js` (add `lastUpdatedLine`; the version constants already hold `'2026-09-29'`)
 
 **Interfaces:**
 
 - Consumes: `TERMS_VERSION`, `PRIVACY_VERSION`.
-- Produces: `LegalPage` section shape `{ heading, paragraphs?, items?: {term?, text}[], after?: string[] }`.
+- Produces: `LegalPage` section shape `{ heading, paragraphs?, items?: {term?, text}[], after?: string[] }`; `lastUpdatedLine(version: 'YYYY-MM-DD') → 'Last Updated: <Month> <D>, <YYYY>'`.
 
 - [ ] **Step 1: Write the failing tests**
+
+`legalAcceptance.test.js` — add:
+
+```js
+import { lastUpdatedLine } from './legalAcceptance.js';
+
+describe('lastUpdatedLine', () => {
+  it('spells the effective date out in full', () => {
+    expect(lastUpdatedLine('2026-09-29')).toBe('Last Updated: September 29, 2026');
+  });
+
+  it('does not zero-pad the day and never shifts it with the time zone', () => {
+    expect(lastUpdatedLine('2027-01-05')).toBe('Last Updated: January 5, 2027');
+  });
+});
+```
 
 `LegalPage.test.jsx`:
 
@@ -1996,12 +2024,10 @@ it('renders a term-less item and paragraphs after the list', () => {
 ```jsx
 import { PRIVACY_VERSION } from '../../lib/legalAcceptance';
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-it('dates the page from PRIVACY_VERSION', () => {
+it('shows the effective date, derived from PRIVACY_VERSION', () => {
+  expect(PRIVACY_VERSION).toBe('2026-09-29');
   render(<PrivacyPolicy />);
-  const [y, m] = PRIVACY_VERSION.split('-').map(Number);
-  expect(screen.getByText(`Last Updated: ${MONTHS[m - 1]} ${y}`)).toBeInTheDocument();
+  expect(screen.getByText('Last Updated: September 29, 2026')).toBeInTheDocument();
 });
 
 it('carries the nine numbered sections, in order', () => {
@@ -2024,6 +2050,13 @@ it('ships no unfilled placeholder', () => {
   expect(container.textContent).not.toMatch(/\[|\]/);
 });
 
+it('carries the current brand and contact, never the old ones', () => {
+  const { container } = render(<PrivacyPolicy />);
+  expect(container.textContent).not.toMatch(/Deutsch App/);
+  expect(container.textContent).not.toMatch(/esterkinshimon712@gmail\.com/);
+  expect(container.textContent).toMatch(/sprachschule\.support@gmail\.com/);
+});
+
 it('no longer makes the two claims the audit disproved', () => {
   const { container } = render(<PrivacyPolicy />);
   expect(container.textContent).not.toMatch(/scrubbed of personally identifiable information/);
@@ -2033,7 +2066,9 @@ it('no longer makes the two claims the audit disproved', () => {
 it('reproduces the approved copy verbatim', () => {
   render(<PrivacyPolicy />);
   for (const phrase of [
-    'You can use Deutsch App without an account.',
+    'You can use sprachschule-app without an account.',
+    'sprachschule-app is operated by Shimon Esterkin.',
+    'contact us at sprachschule.support@gmail.com.',
     'is sent through our server to Anthropic, which generates the response.',
     'We do not send your name, email address or account ID with these requests.',
     'We configure Sentry not to attach your account ID or email address',
@@ -2048,13 +2083,78 @@ it('reproduces the approved copy verbatim', () => {
 });
 ```
 
-`TermsOfService.test.jsx` — the heading list grows to include `'6. Changes to These Terms'`, `'7. Privacy'` (and `'8. AI-Generated Content'` only if approved), plus the same `TERMS_VERSION` date test and the verbatim phrases of the new sections.
+`TermsOfService.test.jsx` — replace the heading-list and verbatim tests (keep the file's other tests):
+
+```jsx
+import { TERMS_VERSION } from '../../lib/legalAcceptance';
+
+it('shows the effective date, derived from TERMS_VERSION', () => {
+  expect(TERMS_VERSION).toBe('2026-09-29');
+  render(<TermsOfService />);
+  expect(screen.getByText('Last Updated: September 29, 2026')).toBeInTheDocument();
+});
+
+it('carries the eight numbered sections, in order', () => {
+  render(<TermsOfService />);
+  expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
+    '1. Eligibility',
+    '2. User Accounts',
+    '3. App Usage and Leagues',
+    '4. User-Generated Content',
+    '5. "As Is" Disclaimer',
+    '6. Changes to These Terms',
+    '7. Privacy',
+    '8. AI-Generated Content',
+  ]);
+});
+
+it('never names the old brand', () => {
+  const { container } = render(<TermsOfService />);
+  expect(container.textContent).not.toMatch(/Deutsch App/);
+});
+
+it('reproduces the approved copy verbatim', () => {
+  render(<TermsOfService />);
+  for (const phrase of [
+    'By accessing or using sprachschule-app, you agree to be bound by these Terms of Service.',
+    'You must be at least 13 years old to use this app. By creating an account, you confirm that you meet this age requirement.',
+    'sprachschule-app includes gamified elements like Leagues and Streaks.',
+    'sprachschule-app is currently in a pre-beta stage.',
+    'We may update these Terms. When we do, we will update the "Last Updated" date',
+    'Our Privacy Policy explains how we collect and use your information.',
+    'sprachschule-app uses artificial intelligence to generate tutor replies, answer feedback and practice content. AI-generated content can be inaccurate.',
+  ]) {
+    expect(screen.getByText(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
+  }
+});
+```
 
 - [ ] **Step 2: Run — expect FAIL**
 
 Run: `npx vitest run src/components/legal`
 
 - [ ] **Step 3: Implement**
+
+`legalAcceptance.js` — add, next to the version constants:
+
+```js
+/**
+ * The page's "Last Updated" line, from a document version: '2026-09-29' →
+ * 'Last Updated: September 29, 2026'. Derived, never typed, so the copy and the
+ * version that re-asks acceptance cannot drift. UTC, so the day is the same in
+ * every reader's time zone.
+ */
+export function lastUpdatedLine(version) {
+  const date = new Date(`${version}T00:00:00Z`);
+  const text = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+  return `Last Updated: ${text}`;
+}
+```
 
 `LegalPage.jsx` — item key and term are optional; `after` renders below the list:
 
@@ -2075,22 +2175,19 @@ Run: `npx vitest run src/components/legal`
 
 ```jsx
 import LegalPage from './LegalPage';
-import { PRIVACY_VERSION } from '../../lib/legalAcceptance';
-
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const [YEAR, MONTH] = PRIVACY_VERSION.split('-').map(Number);
+import { PRIVACY_VERSION, lastUpdatedLine } from '../../lib/legalAcceptance';
 
 const SECTIONS = [
   {
     heading: '1. Who We Are',
     paragraphs: [
-      'Deutsch App is operated by Shimon Esterkin. If you have questions about this policy or your data, contact us at esterkinshimon712@gmail.com.',
+      'sprachschule-app is operated by Shimon Esterkin. If you have questions about this policy or your data, contact us at sprachschule.support@gmail.com.',
     ],
   },
   {
     heading: '2. Information We Collect',
     items: [
-      { term: 'Using the App as a Guest:', text: 'You can use Deutsch App without an account. As a guest, your learning progress is stored only on your device and is not synced to our servers.' },
+      { term: 'Using the App as a Guest:', text: 'You can use sprachschule-app without an account. As a guest, your learning progress is stored only on your device and is not synced to our servers.' },
       { term: 'Account Information:', text: 'When you create an account or sign in — with a one-time email code or link, with Google, or with GitHub — we collect your email address to authenticate you and keep your progress in sync across devices. If you sign in with Google or GitHub, that service also shares the basic profile details it makes available to apps, such as your name, profile picture link and, for GitHub, your username; our authentication provider stores them with your account. For security, it also records technical information about each sign-in, such as your IP address and browser or device type. We also record which versions of our Terms of Service and this Privacy Policy you accepted, and when.' },
       { term: 'Profile Information:', text: 'Your account has a handle (username), created automatically when you sign up, which you can change. You can also add your first, middle and last name and a profile picture, and choose whether your profile is private.' },
       { term: 'Learning Data:', text: 'We store your vocabulary progress, exercise results, daily activity, streaks, XP, custom decks, preferences (such as your level, daily goal and interests) and in-app token history locally on your device. When you are signed in, we sync this data to our cloud database.' },
@@ -2165,8 +2262,8 @@ export default function PrivacyPolicy({ onBack }) {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated={`Last Updated: ${MONTHS[MONTH - 1]} ${YEAR}`}
-      intro="Welcome to Deutsch App. This Privacy Policy explains how we collect, use, and protect your information when you use our application."
+      updated={lastUpdatedLine(PRIVACY_VERSION)}
+      intro="Welcome to sprachschule-app. This Privacy Policy explains how we collect, use, and protect your information when you use our application."
       sections={SECTIONS}
       onBack={onBack}
     />
@@ -2176,7 +2273,13 @@ export default function PrivacyPolicy({ onBack }) {
 
 (The spec's "**Push notifications are optional** and are not required…" bold lead is carried by the `term`.) The D7 values are already filled in; the "no unfilled placeholder" test guards against regressions.
 
-`TermsOfService.jsx` — `updated` derives from `TERMS_VERSION` the same way; append the approved sections:
+`TermsOfService.jsx` — `updated={lastUpdatedLine(TERMS_VERSION)}` (import both from `../../lib/legalAcceptance`). Apply the brand update to the three existing sentences exactly as spec §5.2 lists them:
+
+- `intro` → `By accessing or using sprachschule-app, you agree to be bound by these Terms of Service.`
+- section 3 paragraph → `sprachschule-app includes gamified elements like Leagues and Streaks. We reserve the right to reset, modify, or adjust league standings, points, or progression logic at any time, especially during this pre-beta phase, to ensure a fair experience for all users.`
+- section 5 paragraph → `sprachschule-app is currently in a pre-beta stage. The service is provided "AS IS" and "AS AVAILABLE," without warranties of any kind.`
+
+Update the file's header comment so it says the copy is owner-supplied with the 2026-09-30 brand update. Then append the approved sections:
 
 ```jsx
   {
@@ -2189,16 +2292,15 @@ export default function PrivacyPolicy({ onBack }) {
     heading: '7. Privacy',
     paragraphs: ['Our Privacy Policy explains how we collect and use your information.'],
   },
-  // Only if approved (spec §5.2, optional):
   {
     heading: '8. AI-Generated Content',
     paragraphs: [
-      'Deutsch App uses artificial intelligence to generate tutor replies, answer feedback and practice content. AI-generated content can be inaccurate.',
+      'sprachschule-app uses artificial intelligence to generate tutor replies, answer feedback and practice content. AI-generated content can be inaccurate.',
     ],
   },
 ```
 
-Set `TERMS_VERSION` / `PRIVACY_VERSION` in `src/lib/legalAcceptance.js` to the approved effective dates.
+`TERMS_VERSION` / `PRIVACY_VERSION` in `src/lib/legalAcceptance.js` already hold `'2026-09-29'` (Task 3) — confirm, do not change.
 
 - [ ] **Step 4: Run — expect PASS**
 
@@ -2207,7 +2309,7 @@ Run: `npx vitest run src/components/legal src/lib/legalAcceptance.test.js`
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/components/legal src/lib/legalAcceptance.js
+git add src/components/legal src/lib/legalAcceptance.js src/lib/legalAcceptance.test.js
 git commit -m "docs(legal): owner-approved Privacy Policy and Terms, dated from their versions"
 ```
 
@@ -2317,20 +2419,126 @@ git commit -m "feat(push): just-in-time disclosure before the notification opt-i
 
 ---
 
+### Task 15: Owner-update gate — canonical brand across config and docs
+
+> Owner brief `.superpowers/sdd/2026-09-29-store-legal-consent/owner-update-brief.md`
+> (2026-09-30). Executes right after Task 3, before Task 4, as ONE commit with
+> subject `chore(brand): apply canonical store legal identity`, which also carries
+> the controller's already-made spec and plan edits. Declarative names and
+> human-facing brand copy only — every identifier in Global Constraints stays.
+
+**Files:**
+
+- Modify: `package.json` (`name`), `package-lock.json` (root `"name"` and `packages[""].name` only — never `npm install`)
+- Modify: `capacitor.config.ts` (`appName` only)
+- Modify: `ios/App/App/Info.plist` (`CFBundleDisplayName` only)
+- Modify: `android/app/src/main/res/values/strings.xml` (`app_name`, `title_activity_main` only)
+- Modify: `index.html` (`<title>`, `apple-mobile-web-app-title`, `description`, and the `og:` / `twitter:` title, site-name and description tags that name the product)
+- Modify: `vite.config.js` (PWA `manifest.name`, `manifest.short_name` only)
+- Modify: `supabase/config.toml` (`[auth.email.template.magic_link] subject` only), `supabase/templates/magic_link.html` (product name in `<title>` and body)
+- Modify: `docs/NATIVE_BUILD.md`, `docs/MOBILE_AUTH_SETUP.md`, `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, `docs/AUTH_GOOGLE_OAUTH_RUNBOOK.md`, `docs/AUTH_GITHUB_OAUTH_RUNBOOK.md`, `docs/MAINTENANCE_CHECKLIST.md`, `docs/store-metadata/app-store-listing.md`, `src/lib/theme.js` (header comment only)
+- Create: `src/lib/nativeDisplayName.test.js`
+- Include (already edited by the controller, do not rewrite): the spec and this plan
+
+**Must NOT change:** `appId` / `package_name` / `custom_url_scheme` (`com.sprachschule.deutsch`); any URL (incl. `deutsch-app-dusky.vercel.app`, `og:url`, `og:image`, canonical); any localStorage key; env var names; the in-app "Deutsch." wordmark in `src/components`; `public/social-preview.png`; `README.md`; `docs/AUDIT_GERMAN_COUPLING.md` and every historical spec/plan; any `esterkinshimon712@gmail.com` use (all remaining ones are admin/allowlist/test identity).
+
+**Interfaces:** none.
+
+- [ ] **Step 1: Pre-check** — nothing reads the npm package name, and `src/brandAssets.test.js` expectations are known:
+
+Run: `rg -n "npm_package_name|package\.json" vite.config.js scripts api src --glob '!**/*.test.*'` and `rg -n "og:title|og:site_name|<title>|apple-mobile-web-app-title" src/brandAssets.test.js`.
+If a reader of the package name changes behaviour, STOP and report NEEDS_CONTEXT. If `brandAssets.test.js` pins the old titles, update those expectations in the same commit.
+
+- [ ] **Step 2: Write the failing test**
+
+```js
+// src/lib/nativeDisplayName.test.js
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+
+// The name people see under the icon, in the tab and on install. `cap sync`
+// does not copy capacitor.config.ts's appName into ios/ or android/ after
+// `cap add`, so these drift unless something pins them together. The bundle
+// ID is an identity, not a name: a new one is a new app in both stores.
+const read = (path) => readFileSync(path, 'utf8');
+
+describe('declared app name', () => {
+  it('capacitor.config.ts', () => {
+    expect(read('capacitor.config.ts')).toMatch(/appName:\s*'sprachschule-app'/);
+  });
+
+  it('iOS CFBundleDisplayName', () => {
+    expect(read('ios/App/App/Info.plist')).toMatch(
+      /<key>CFBundleDisplayName<\/key>\s*<string>sprachschule-app<\/string>/
+    );
+  });
+
+  it('Android app_name and activity title', () => {
+    const xml = read('android/app/src/main/res/values/strings.xml');
+    expect(xml).toMatch(/<string name="app_name">sprachschule-app<\/string>/);
+    expect(xml).toMatch(/<string name="title_activity_main">sprachschule-app<\/string>/);
+  });
+
+  it('web title and PWA manifest', () => {
+    expect(read('index.html')).toMatch(/<title>sprachschule-app<\/title>/);
+    expect(read('vite.config.js')).toMatch(/name:\s*'sprachschule-app'/);
+  });
+
+  it('npm package name', () => {
+    expect(JSON.parse(read('package.json')).name).toBe('sprachschule-app');
+  });
+
+  it('keeps the bundle / application ID', () => {
+    expect(read('capacitor.config.ts')).toMatch(/appId:\s*'com\.sprachschule\.deutsch'/);
+    expect(read('android/app/src/main/res/values/strings.xml')).toMatch(
+      /<string name="package_name">com\.sprachschule\.deutsch<\/string>/
+    );
+  });
+});
+```
+
+- [ ] **Step 3: Run — expect FAIL** (the bundle-ID test already passes)
+
+Run: `npx vitest run src/lib/nativeDisplayName.test.js`
+
+- [ ] **Step 4: Rename** — replace the product name with `sprachschule-app` in each listed spot. The product has appeared as "Deutsch App", "Deutsch · Sprachschule", "Deutsch. Sprachschule" and (as a name, not the language) "Deutsch.". Keep surrounding sentences; e.g. `Your sign-in code for Deutsch · Sprachschule` → `Your sign-in code for sprachschule-app`; the App Store listing's App Name → `**sprachschule-app**`, its alternates line → `Set by the owner on 2026-09-30; matches the home-screen display name.`, and its description's `Deutsch puts you…` / `Deutsch turns a few minutes…` → `sprachschule-app puts you…` / `sprachschule-app turns a few minutes…`. Run the listing's character-limit check (bottom of that file) and paste the output in the report.
+
+- [ ] **Step 5: Verify**
+
+- `rg -n "esterkinshimon712" docs/superpowers/specs/2026-09-29-store-legal-consent-design.md docs/superpowers/plans/2026-09-29-store-legal-consent.md` → only lines that describe it as the admin/allowlist identity (or the struck-through superseded answer).
+- `rg -n "esterkinshimon712" api src .env.example docs/PRE_BETA_OWNER_CHECKLIST.md docs/api` → unchanged admin/allowlist/test uses.
+- `rg -n "Deutsch App|Deutsch · Sprachschule|Deutsch\. Sprachschule"` over the Files list → no hits.
+- `npx vitest run src/lib/nativeDisplayName.test.js src/lib/buildMobileScript.test.js src/brandAssets.test.js` → PASS; `npx prettier --write <changed files>`; `npm run format:check` → clean.
+
+- [ ] **Step 6: Commit** (normal hook, never `--no-verify`)
+
+```bash
+git add <every file above, never ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/>
+git commit -m "chore(brand): apply canonical store legal identity" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
 ### Task 13: Owner checklist for store submission
 
 **Files:**
 
 - Create: `docs/STORE_SUBMISSION_CHECKLIST.md`
 - Modify: `docs/BACKLOG.md` (one pointer line in the owner-actions list)
-- Modify: `docs/MOBILE_PUSH_SETUP.md` §5 (point at the checklist; the policy copy now exists)
+- Modify: `docs/MOBILE_PUSH_SETUP.md` §4 (flip note) and §5 (point at the checklist; the policy copy now exists)
 
 **Interfaces:** none.
 
 - [ ] **Step 1: Write the checklist**
 
 ```markdown
-# Store submission — owner checklist
+# Store submission — owner checklist (sprachschule-app)
+
+> **RELEASE GATE — do this before merging or deploying the terms-acceptance
+> client.** Apply `supabase/migrations/20260929120000_legal_acceptances.sql` to
+> the production Supabase project (item 1). Until the table exists, the client
+> cannot confirm anyone's acceptance and every signed-in learner's sync pauses.
+> The migration file being merged is NOT the migration being applied.
 
 Code alone does not make the app compliant. Each item below needs an account or
 a judgement only the owner has. Tick them in order: several gate the next.
@@ -2344,11 +2552,11 @@ a judgement only the owner has. Tick them in order: several gate the next.
    sync pauses (the app cannot confirm acceptance) until the table exists.
    Verify: `select count(*) from public.legal_acceptances;` returns 0 without
    error, then `notify pgrst, 'reload schema';`.
-2. **Check the sign-in email sender.** The policy names Supabase Auth as the
-   sender of sign-in emails (owner answer, 2026-09-29). The B2 design specified
-   Resend SMTP inside Supabase; if Supabase → Auth → SMTP Settings shows a
-   custom SMTP provider, that provider must be added to the policy's service
-   provider list (a version bump).
+2. **Keep the email-provider line true.** The policy names Supabase Auth as the
+   sender of sign-in emails (owner answer, 2026-09-29, re-confirmed
+   2026-09-30). If a custom SMTP provider is ever configured under Supabase →
+   Auth → SMTP Settings, add it to the policy's service-provider list and bump
+   `PRIVACY_VERSION`.
 3. **Have qualified counsel review** the final Privacy Policy and Terms,
    including international transfers, the minimum age (Terms say 13), and
    whether the optional AI clause is wanted.
@@ -2405,6 +2613,34 @@ a judgement only the owner has. Tick them in order: several gate the next.
 13. Decide whether GitHub sign-in should be on for the web
     (`VITE_GITHUB_AUTH_ENABLED` is unset in Vercel Production; the policy
     mentions GitHub because the apps use it).
+14. Decide whether the in-app "Deutsch." wordmark and the rendered
+    `public/social-preview.png` follow the new name. Both were left alone on
+    purpose: the wordmark sits in a header whose 320px budget has ~10px of
+    slack, so a longer name is a layout change, not a rename.
+15. Update the production-side copies of the brand (owner-only settings; the
+    repo copies are already renamed): Supabase → Auth → Email Templates →
+    Magic Link subject and body (paste from `supabase/config.toml` and
+    `supabase/templates/magic_link.html`, `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`);
+    the Google OAuth consent-screen app name
+    (`docs/AUTH_GOOGLE_OAUTH_RUNBOOK.md`); the GitHub OAuth application name
+    (`docs/AUTH_GITHUB_OAUTH_RUNBOOK.md`); and the App Store Connect / Play
+    Console app name.
+
+## Identifiers that keep the old name (by design)
+
+The product is `sprachschule-app`, and the contact address is
+`sprachschule.support@gmail.com`. These stable identifiers were NOT renamed,
+because renaming them needs a migration or infrastructure change:
+
+| Identifier | Value | Why it stays |
+| --- | --- | --- |
+| GitHub repository | `blackhebrewisraeli/deutsch-app` | Remotes, CI, Sonar, Vercel link |
+| Vercel project / URL | `deutsch-app-dusky.vercel.app` | Supabase redirect allow-list, `build:mobile`, policy URL in the stores |
+| Supabase project | `Sprachschule` (`xcnnlczvxmuwcqwychox`) | Project ref is baked into every client |
+| Bundle / application ID, URL scheme | `com.sprachschule.deutsch` | Changing it makes a different app in both stores and breaks the auth callback |
+| localStorage keys | `deutsch-app-*` (incl. `deutsch-app-legal-*`) | AGENTS.md: never rename or migrate a storage key |
+| Admin / allowlist identity | `esterkinshimon712@gmail.com` | Authorization, not contact — `api/_lib/roles.js` |
+| Sentry project | `javascript-react` (org `blackhebrewisraeli`) | Event history and alert rules |
 ```
 
 - [ ] **Step 2: Pointers**
@@ -2412,6 +2648,10 @@ a judgement only the owner has. Tick them in order: several gate the next.
 `docs/BACKLOG.md`, owner-actions list: `- **Store submission:** work through docs/STORE_SUBMISSION_CHECKLIST.md — item 1 (apply legal_acceptances) must happen before the terms PR merges.`
 
 `docs/MOBILE_PUSH_SETUP.md` §5: replace the body with `The push wording is in the Privacy Policy (section 2, "Push Notifications") and in the Settings disclosure. Follow docs/STORE_SUBMISSION_CHECKLIST.md item 9 before turning push on.`
+
+`docs/MOBILE_PUSH_SETUP.md` §4 (deferred minor from Task 1): add one sentence after the flip instruction — `Flip it in a release commit, only for a build machine that has google-services.json, and update src/lib/buildMobileScript.test.js in the same commit (it pins =false on purpose).`
+
+`docs/BACKLOG.md` owner action #13 (deferred minor from Task 1): it still says to set `VITE_PUSH_ENABLED=true` in `.env.production.local`, which the `build:mobile` pin now overrides. Replace that instruction with `follow docs/MOBILE_PUSH_SETUP.md §4 and docs/STORE_SUBMISSION_CHECKLIST.md item 9`.
 
 - [ ] **Step 3: Format and commit**
 
@@ -2443,6 +2683,7 @@ git commit -m "docs: store-submission owner checklist"
 
 ## Self-review notes
 
+- Owner update 2026-09-30 → Global Constraints (brand, contact email, preserved identifiers), Task 11 (copy + tests), Task 13 (release-gate banner, identifiers table, carried minors), Task 15 (native display names, package name, store listing).
 - Spec §6.2 → Task 2; §6.1/§6.3 → Task 3; §6.4 → Tasks 4 + 10; §6.5 → Tasks 5, 7, 8, 9; §6.6 → Tasks 6, 7, 10; §6.7 rows → Task 4 (intent/hint/unknown/versions) and Task 10 (decline, dismiss, callback error, returning user); §6.8 → Task 10 guest block + untouched existing suites; §6.9 → Tasks 1, 12; §5 copy → Tasks 5, 9, 11, 12; checklist → Task 13; §6.10 table → Task 14 plus each task's tests.
 - D1 (a) needs no code: existing accounts simply have no row, so the hook reports `required` on their next launch.
 - Names used across tasks: `recordIntent`, `clearIntent`, `hasValidIntent`, `hintCovers`, `writeAcceptedHint`, `fetchAcceptances`, `acceptCurrentTerms`, `useLegalAcceptance → { status, hasPrior, accept }`, `LegalConsent({ checked, onChange, invalid, onNavigate, focusOnMount })`, `AcceptanceGate({ hasPrior, accepted, onAcceptedChange, onContinue, onSignOut, onDelete, onNavigateLegal, focusConsent })`.
