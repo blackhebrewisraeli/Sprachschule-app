@@ -224,10 +224,9 @@ export default function UserProfile({
   // either way: guests DO earn badges — the Badges card below shows them — so
   // the old "sign in to earn badges" promised something they already had.
   if (!user) {
+    const leagueClause = LEAGUES_ENABLED ? ' and join a weekly league' : '';
     const guestNote = onSignIn
-      ? `Your progress is saved on this device. Sign in to sync it across devices${
-          LEAGUES_ENABLED ? ' and join a weekly league' : ''
-        }.`
+      ? `Your progress is saved on this device. Sign in to sync it across devices${leagueClause}.`
       : 'Your progress is saved on this device.';
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: SPACE[6] }}>
