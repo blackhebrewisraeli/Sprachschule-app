@@ -36,15 +36,15 @@ export default function GoogleButton({ onClick, busy = false, autoFocus = false 
       // guards onClick instead, and adds aria-busy plus a spinner.
       busy={busy}
       autoFocus={autoFocus}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: SPACE[3],
-      }}
+      // Centres Button's one child span, and the busy spinner with it.
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <img src="/google-g.svg" alt="" aria-hidden="true" width={18} height={18} />
-      Continue with Google
+      {/* Button wraps children in a single span, so the mark/label row is
+          laid out here. A gap on the <button> itself never reached them. */}
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: SPACE[3] }}>
+        <img src="/google-g.svg" alt="" aria-hidden="true" width={18} height={18} />
+        Continue with Google
+      </span>
     </Button>
   );
 }
