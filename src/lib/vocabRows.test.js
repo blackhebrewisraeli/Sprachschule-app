@@ -96,10 +96,12 @@ describe('toVocabRows', () => {
   });
 
   describe('status', () => {
-    it('is new, and due, for a card with no SRS row', () => {
+    it('is new, and NOT due, for a card with no SRS row', () => {
+      // Nothing is owed on a card nobody has studied. It used to be due too,
+      // which put a red Due pill on every row of a fresh learner's browser.
       const [row] = toVocabRows({ cards: [lexCard()], deckId: 'food', srs: {}, now: NOW });
       expect(row.status).toBe('new');
-      expect(row.due).toBe(true);
+      expect(row.due).toBe(false);
       expect(row.box).toBeNull();
     });
 
@@ -270,11 +272,9 @@ describe('filterVocabRows', () => {
       expect(filterVocabRows(mixed, { status: 'learned' }).map((r) => r.id)).toEqual(['n:brot']);
     });
 
-    it('collects the overdue card and the never-seen one under due', () => {
-      expect(filterVocabRows(mixed, { status: 'due' }).map((r) => r.id)).toEqual([
-        'n:kaese',
-        'n:strasse',
-      ]);
+    it('collects the overdue card under due, and leaves the never-seen one to new', () => {
+      expect(filterVocabRows(mixed, { status: 'due' }).map((r) => r.id)).toEqual(['n:kaese']);
+      expect(filterVocabRows(mixed, { status: 'new' }).map((r) => r.id)).toEqual(['n:strasse']);
     });
 
     it('combines with the query rather than replacing it', () => {
@@ -361,8 +361,8 @@ describe('statusCounts', () => {
       new: 1,
       learning: 1,
       mastered: 1,
-      // the overdue mastered card plus the never-seen one
-      due: 2,
+      // the overdue mastered card only — the never-seen one is new, not due
+      due: 1,
       learned: 1,
     });
   });

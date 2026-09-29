@@ -100,13 +100,38 @@ export function getDueCards(srs, deck, deckId, now) {
 }
 
 // ─── Aggregate queries (for Stats widget) ─────────────────────
+//
+// DUE and NEW are separate counts, and a card is never both.
+//
+//   due — the learner has seen it and its interval has elapsed: a review that
+//         is owed. This is what the Profile nav badge, Home's `srs-due` mission
+//         and the red DUE NOW figure mean, so it is the only count allowed to
+//         raise attention.
+//   new — no SRS row at all: a card nobody has studied yet. An invitation, not
+//         a debt.
+//
+// These used to be one number. getDueCount counted unseen cards as due, so a
+// learner opening the app for the first time was greeted by "40 cards are
+// due", a red DUE NOW 40 and a red "9+" on the Profile tab before answering a
+// single card. The QUEUE is unchanged: getDueCards above still serves new
+// cards after the reviews that are due, which is how a first session starts.
 
 export function getDueCount(srs, decks, now) {
   let count = 0;
   for (const [deckId, deck] of Object.entries(decks)) {
     for (const card of deck) {
       const entry = srs[srsKey(deckId, card.id)];
-      if (!entry || entry.nextDue <= now) count += 1;
+      if (entry && entry.nextDue <= now) count += 1;
+    }
+  }
+  return count;
+}
+
+export function getNewCount(srs, decks) {
+  let count = 0;
+  for (const [deckId, deck] of Object.entries(decks)) {
+    for (const card of deck) {
+      if (!srs[srsKey(deckId, card.id)]) count += 1;
     }
   }
   return count;

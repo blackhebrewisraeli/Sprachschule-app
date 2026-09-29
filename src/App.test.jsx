@@ -295,6 +295,45 @@ describe('App navigation a11y', () => {
     expect(screen.getByRole('heading', { name: /guten tag/i })).toBeInTheDocument();
   });
 
+  // First launch. Unseen cards are NEW, not due: a learner who has answered
+  // nothing owes nothing. This app used to greet them with "40 cards are due"
+  // on Home and a red "9+" on the Profile tab.
+  it('opens a brand-new learner to no attention badge and no "cards are due"', () => {
+    setViewportWidth(375);
+    renderPastEntry(<App />);
+    const profileTab = within(screen.getByRole('navigation')).getByRole('button', {
+      name: 'Profile',
+    });
+    // Icon-only nav at 375: the badge would be the button's only text.
+    expect(profileTab.textContent).toBe('');
+    expect(screen.queryByText(/cards? (?:are|is) due/i)).toBeNull();
+  });
+
+  it('raises the badge and the mission once a studied card actually falls due', () => {
+    const [first] = activePack.content.decks.greetings;
+    const now = Date.now();
+    localStorage.setItem(
+      'deutsch-app-state-v1',
+      JSON.stringify({
+        srs: {
+          [`greetings:${first.id}`]: {
+            box: 1,
+            lastReviewed: now - 2 * 86400000,
+            nextDue: now - 86400000,
+            reps: 1,
+          },
+        },
+      })
+    );
+    setViewportWidth(375);
+    renderPastEntry(<App />);
+    const profileTab = within(screen.getByRole('navigation')).getByRole('button', {
+      name: 'Profile',
+    });
+    expect(profileTab.textContent).toBe('1');
+    expect(screen.getByText('1 card is due')).toBeInTheDocument();
+  });
+
   it('deep-links #/settings onto the Profile tab Settings view', () => {
     setViewportWidth(1280);
     window.location.hash = '#/settings';
@@ -2680,6 +2719,25 @@ describe('daily quests on Home', () => {
   });
 
   it('renders a quest board beside the missions board', () => {
+    // One review genuinely owed, so three missions are open (srs-due, the goal,
+    // the next badge) and one is left on the board after Recommended takes two.
+    // This used to hold for an empty history only because unseen cards counted
+    // as due — the forty phantom reviews a brand-new learner no longer sees.
+    const [first] = activePack.content.decks.greetings;
+    const now = Date.now();
+    localStorage.setItem(
+      'deutsch-app-state-v1',
+      JSON.stringify({
+        srs: {
+          [`greetings:${first.id}`]: {
+            box: 1,
+            lastReviewed: now - 2 * 86400000,
+            nextDue: now - 86400000,
+            reps: 1,
+          },
+        },
+      })
+    );
     renderPastEntry(<App />);
     const quests = screen.getByRole('region', { name: /Tagesaufgaben/i });
     const missions = screen.getByRole('region', { name: /Missionen/i });

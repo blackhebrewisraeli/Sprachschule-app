@@ -1027,7 +1027,9 @@ export default function App() {
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, num: '07' }] : []),
   ];
 
-  // Stats nav badge — count of wrong items + due vocab cards.
+  // Stats nav badge — count of wrong items + vocab reviews actually owed.
+  // Unseen cards are NEW, not due (see getDueCount), so a brand-new learner
+  // opens the app to no red badge at all.
   // Read fresh from storage on every render so it reflects exercises taken in
   // other tabs since the last App re-render. Cheap (single localStorage hit).
   const liveState = loadState() ?? {};

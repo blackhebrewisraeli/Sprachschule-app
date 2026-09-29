@@ -1,10 +1,12 @@
 // "Travel Basics": the Wikivoyage German phrasebook (327 de/en pairs,
 // CC BY-SA 4.0 — see CONTENT_LICENSE.md) as one preset deck.
 //
-// Kept OUT of DECKS/LEXICON on purpose. Every unstudied preset card counts as
-// due (lib/srs getDueCount), so folding 327 phrases into content.decks would
-// put all of them on the Stats nav badge and Home's SRS mission at once. DECKS
-// also feeds seed-lessons' vocab units, which this deck is not.
+// Kept OUT of DECKS/LEXICON on purpose. DECKS feeds seed-lessons' vocab units,
+// which this deck is not, and every Stats total over the preset decks (the SRS
+// widget's mastered and new counts). The original reason was the nav badge:
+// unstudied preset cards counted as due, so 327 phrases would have landed on it
+// and on Home's SRS mission at once. Since 2026-09-29 they count as NEW, not due
+// (lib/srs getDueCount), so that one no longer applies.
 import PHRASES from '../../../scripts/seed-data/apify_raw_sentences.json' with { type: 'json' };
 
 export const TRAVEL_BASICS_ID = 'travel-basics';
