@@ -24,7 +24,7 @@ export default function ReviewFeed({ items, onReview }) {
   if (items.length === 0) {
     return (
       <StatusNote icon={BookOpen} style={{ padding: SPACE[3], gap: SPACE[2] }}>
-        Nothing to review — keep practicing.
+        Nothing to review — keep practising.
       </StatusNote>
     );
   }

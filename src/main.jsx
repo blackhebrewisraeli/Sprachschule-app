@@ -5,6 +5,7 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initObservability } from './lib/observability.js';
 import { bootTheme } from './lib/themeMode.js';
+import { isNativeApp } from './lib/nativeApp.js';
 
 // Resolve CSS custom properties before React mounts — no flash of wrong theme.
 bootTheme();
@@ -20,7 +21,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <ErrorBoundary>
       <App />
     </ErrorBoundary>
-    <SpeedInsights />
+    {/* Web only — see the note on <Analytics /> in App.jsx. Its script is
+        page-relative too, and 404s from the native app's local origin. */}
+    {!isNativeApp() && <SpeedInsights />}
   </React.StrictMode>
 );
 

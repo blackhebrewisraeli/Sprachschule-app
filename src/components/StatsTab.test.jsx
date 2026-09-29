@@ -68,6 +68,15 @@ vi.mock('../lib/leagues.js', () => ({
   fetchProfile: vi.fn().mockResolvedValue({ handle: 'sam', tier: 0 }),
 }));
 
+// isAuthConfigured() reads module-level constants, so stubEnv cannot flip it
+// mid-suite; a partial mock with a switch can. Default true, matching a
+// production build.
+const auth = vi.hoisted(() => ({ configured: true }));
+vi.mock('../lib/auth.js', async (orig) => ({
+  ...(await orig()),
+  isAuthConfigured: () => auth.configured,
+}));
+
 const setViewportWidth = (width) => {
   Object.defineProperty(window, 'innerWidth', {
     writable: true,
@@ -77,7 +86,26 @@ const setViewportWidth = (width) => {
 };
 
 beforeEach(() => setViewportWidth(1280));
-afterEach(() => vi.unstubAllEnvs());
+afterEach(() => {
+  vi.unstubAllEnvs();
+  auth.configured = true;
+});
+
+describe('StatsTab — guest', () => {
+  it('offers a guest exactly one sign-in on the page', () => {
+    // It used to offer two: the profile intro's "Sign in", and an
+    // "Account & sync → Sign in to sync" block four rows below it.
+    render(<StatsTab user={null} onSignIn={vi.fn()} />);
+    expect(screen.getAllByRole('button', { name: /sign in/i })).toHaveLength(1);
+    expect(screen.queryByText(/account & sync/i)).toBeNull();
+  });
+
+  it('offers no sign-in at all when there is no backend to sign in to', () => {
+    auth.configured = false;
+    render(<StatsTab user={null} onSignIn={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /sign in/i })).toBeNull();
+  });
+});
 
 describe('StatsTab — one consolidated page, no sub-tabs', () => {
   const USER = { id: 'u1', email: 'sam@example.com' };

@@ -15,10 +15,14 @@ import { isDeckIdAllowed, isModeAllowed } from '../lib/levelGate';
  * open, are skipped. Tab-only fallbacks (Continue Quiz → Translate) inherit
  * the classified mode at the destination and stay.
  *
+ * `promotedCount` is how many cards came from open missions rather than from
+ * fallbacks. Home needs it to tell "nothing is open" apart from "everything
+ * open is already in Recommended" — both leave `remaining` empty.
+ *
  * @param {Array<{id: string, tab: string, count?: number, level?: string, mode?: string, deckId?: string}>} missions
  * @param {number} [cap]
  * @param {{ classifiedLevel?: string }} [opts]
- * @returns {{ cards: Array<{id: string, icon: string, text: string, tab: string, mission: object}>, remaining: object[] }}
+ * @returns {{ cards: Array<{id: string, icon: string, text: string, tab: string, mission: object}>, remaining: object[], promotedCount: number }}
  */
 export function resolveRecommended(missions = [], cap = 2, { classifiedLevel } = {}) {
   const copy = activePack.content.missions ?? {};
@@ -59,5 +63,6 @@ export function resolveRecommended(missions = [], cap = 2, { classifiedLevel } =
   return {
     cards,
     remaining: missions.filter((m) => !promoted.has(m.id) && allowed(m)),
+    promotedCount: fromMissions.length,
   };
 }

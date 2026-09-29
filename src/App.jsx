@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { User, BookOpen, MessageSquare, Type, Languages, Home, Shield, Search } from 'lucide-react';
+import {
+  User,
+  BookOpen,
+  MessageSquare,
+  Type,
+  Languages,
+  Home,
+  Shield,
+  Search,
+  Snowflake,
+} from 'lucide-react';
 import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW } from './lib/theme';
 import { loadState, saveState } from './lib/storage';
 import { stampSettings } from './lib/settingsStamp';
@@ -1326,12 +1336,30 @@ export default function App() {
                 size={mobile ? 42 : 52}
               />
             </span>
+            {/* A line icon, not the ❄️ emoji. The emoji rendered in each
+                platform's own colour font — a different glyph on iOS, Android
+                and desktop, and blue on a charcoal bar in both themes — where
+                every other header mark is a currentColor SVG (#368, #369). The
+                count is set in the mono label face the chips use. `title` is a
+                hover-only tooltip, so the name also rides on role="img" +
+                aria-label for touch and screen readers. */}
             {game.freezes > 0 && (
               <span
+                role="img"
+                aria-label={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
                 title={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
-                style={{ fontSize: mobile ? 14 : 16 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontFamily: FONT_MONO,
+                  fontSize: mobile ? 12 : 14,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
               >
-                ❄️{game.freezes}
+                <Snowflake size={mobile ? 14 : 16} aria-hidden="true" />
+                {game.freezes}
               </span>
             )}
             {/* Both social endpoints require auth (see socialEndpoints.js), so
@@ -1625,7 +1653,12 @@ export default function App() {
           it, never both at once. */}
         <TutorialOverlay anchors={tutorialAnchors} />
 
-        <Analytics />
+        {/* Web only. The script loads from /_vercel/insights/, relative to
+            the page, and the native app serves the bundle from its own local
+            origin (no server.url in capacitor.config.ts) — so in the store
+            build it 404'd on every launch, logged a console error, and
+            counted nothing. main.jsx gates SpeedInsights the same way. */}
+        {!isNativeApp() && <Analytics />}
         {authOverlay}
         {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
       </div>

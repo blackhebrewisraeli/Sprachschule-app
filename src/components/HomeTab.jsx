@@ -48,7 +48,15 @@ export default function HomeTab({
   onRetakePlacement,
   onDismissPlacementOffer,
 }) {
-  const { remaining } = resolveRecommended(missions, 2, { classifiedLevel: cefrLevel });
+  const { remaining, promotedCount } = resolveRecommended(missions, 2, {
+    classifiedLevel: cefrLevel,
+  });
+  // MissionBoard only ever sees what Recommended did NOT take. When
+  // Recommended took everything, its empty state — "Alles erledigt — Nothing
+  // due today" — sat directly above a card reading "40 cards are due". The
+  // board steps aside instead; its empty state stays for a day that is
+  // genuinely clear.
+  const missionsAllPromoted = remaining.length === 0 && promotedCount > 0;
 
   return (
     <Stack gap={5} style={{ maxWidth: PAGE_MAX_WIDTH, marginInline: 'auto' }}>
@@ -66,9 +74,11 @@ export default function HomeTab({
         league={league}
         today={
           <Stack gap={3} data-testid="home-today-stack">
-            <ErrorBoundary>
-              <MissionBoard missions={remaining} onGo={onGoToTab} />
-            </ErrorBoundary>
+            {missionsAllPromoted ? null : (
+              <ErrorBoundary>
+                <MissionBoard missions={remaining} onGo={onGoToTab} />
+              </ErrorBoundary>
+            )}
             <ErrorBoundary>
               <QuestBoard quests={quests} onGo={onGoToTab} />
             </ErrorBoundary>

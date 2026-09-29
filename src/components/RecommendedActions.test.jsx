@@ -29,6 +29,17 @@ describe('resolveRecommended', () => {
     expect(cards[1].tab).toBe('vocab');
   });
 
+  it('counts promoted missions apart from fallbacks', () => {
+    // Home tells "nothing open" from "everything open is up here" by this
+    // count; both leave `remaining` empty.
+    expect(resolveRecommended([]).promotedCount).toBe(0);
+    const one = [{ id: 'srs-due', count: 5, tab: 'vocab', priority: 0 }];
+    const { cards, remaining, promotedCount } = resolveRecommended(one);
+    expect(remaining).toEqual([]);
+    expect(cards).toHaveLength(2); // one mission + one fallback
+    expect(promotedCount).toBe(1);
+  });
+
   it('skips a mission with no pack copy rather than inventing a label', () => {
     const missions = [{ id: 'not-a-real-mission', count: 1, tab: 'chat' }];
     const { cards, remaining } = resolveRecommended(missions);

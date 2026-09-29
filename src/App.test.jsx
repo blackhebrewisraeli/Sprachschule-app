@@ -10,7 +10,15 @@ import { loadState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
 import { MAX_CUSTOM_DECKS } from './lib/customDecks';
 
-vi.mock('@vercel/analytics/react', () => ({ Analytics: () => null }));
+// Counts renders so the web-only gate can be asserted without the real
+// script-injecting component.
+const analytics = vi.hoisted(() => ({ renders: 0 }));
+vi.mock('@vercel/analytics/react', () => ({
+  Analytics: () => {
+    analytics.renders += 1;
+    return null;
+  },
+}));
 
 // The native-app tests below fake Capacitor's global, so App's mount effect
 // lifts a launch screen. The real plugin would load @capacitor/core, which
@@ -631,6 +639,37 @@ describe('header and daily-goal surfaces', () => {
     }
   );
 
+  it('mounts Vercel Analytics on the web', () => {
+    analytics.renders = 0;
+    renderPastEntry(<App />);
+    expect(analytics.renders).toBeGreaterThan(0);
+  });
+
+  it('leaves Vercel Analytics out of the native app, where its script 404s', () => {
+    // The script is page-relative (/_vercel/insights/script.js) and the
+    // native shell serves the bundle from a local origin with no such path.
+    analytics.renders = 0;
+    window.Capacitor = { isNativePlatform: () => true };
+    try {
+      renderPastEntry(<App />);
+      expect(analytics.renders).toBe(0);
+    } finally {
+      delete window.Capacitor;
+    }
+  });
+
+  it('draws the freeze count as a named SVG icon, not an emoji', () => {
+    setViewportWidth(375);
+    seedPopulatedAccount();
+    renderPastEntry(<App />);
+    const header = screen.getByRole('banner');
+    // role="img" + aria-label: `title` alone is hover-only, so touch and
+    // screen-reader users never heard what the number meant.
+    const chip = within(header).getByRole('img', { name: /streak freezes? held/i });
+    expect(chip.querySelector('.lucide-snowflake')).not.toBeNull();
+    expect(header.textContent).not.toContain('❄');
+  });
+
   it('no longer offers Appearance inside Stats (header is the single control)', async () => {
     setViewportWidth(1280);
     const user = userEvent.setup();
@@ -720,7 +759,11 @@ describe('in-app AuthSheet', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    await user.click(screen.getByRole('button', { name: /sign in to sync/i }));
+    // The Profile page's own sign-in — scoped to <main>, because the header's
+    // account chip carries a "Sign in" of its own.
+    const main = screen.getByRole('main');
+    expect(within(main).getAllByRole('button', { name: /sign in/i })).toHaveLength(1);
+    await user.click(within(main).getByRole('button', { name: /^sign in$/i }));
 
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /email me a sign-in code/i })).toBeInTheDocument();
