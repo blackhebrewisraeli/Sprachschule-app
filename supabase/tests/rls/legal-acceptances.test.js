@@ -57,7 +57,13 @@ describe('accept_legal_terms', () => {
   });
 
   it("never writes another user's row", async () => {
-    await B.client.rpc('accept_legal_terms', { ...V, p_terms_version: '2027-01-01' });
+    const { error } = await B.client.rpc('accept_legal_terms', {
+      ...V,
+      p_terms_version: '2027-01-01',
+    });
+    expect(error).toBeNull();
+    // B's row exists (so the check below is not vacuous) and it is B's alone.
+    expect((await rowsFor(B.id)).map((r) => r.terms_version)).toContain('2027-01-01');
     expect((await rowsFor(A.id)).map((r) => r.terms_version)).not.toContain('2027-01-01');
   });
 });
@@ -66,7 +72,9 @@ describe('legal_acceptances: direct table access', () => {
   it('A reads own rows only', async () => {
     const { data, error } = await A.client.from('legal_acceptances').select('user_id');
     expect(error).toBeNull();
-    expect(data.every((r) => r.user_id === A.id)).toBe(true);
+    // Exact, not `every(...)`: that is true of an empty result, so a SELECT
+    // policy of `using (false)` would pass. A has one row; B's is not visible.
+    expect(data).toEqual([{ user_id: A.id }]);
   });
 
   it('A cannot insert directly, even for itself', async () => {
