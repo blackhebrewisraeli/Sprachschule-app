@@ -67,8 +67,10 @@ export function useLegalAcceptance(user) {
         }
         if (hasValidIntent()) {
           await acceptCurrentTerms();
-          if (!live()) return;
+          // The RPC ran as this session, so it consumed the tick even if the
+          // hook has since moved on to another account; nothing else is ours to do then.
           clearIntent();
+          if (!live()) return;
           writeAcceptedHint(userId);
           return settle({ status: 'accepted', hasPrior: true });
         }

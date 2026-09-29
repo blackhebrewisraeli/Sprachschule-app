@@ -207,22 +207,34 @@ describe('useLegalAcceptance: switching users and retrying', () => {
     expect(result.current.status).toBe('required');
   });
 
-  it("drops a late intent-accept for the previous user (hint stays the current user's)", async () => {
+  it('a late intent-accept for the previous user still consumes the intent, and only that', async () => {
     recordIntent();
     const rpcA = deferred();
+    const fetchB = deferred();
     api.accept.mockReturnValueOnce(rpcA.promise);
-    const { result, rerender } = renderRecorded({ id: 'a' });
+    api.fetch.mockImplementation((id) =>
+      id === 'a' ? Promise.resolve({ current: false, hasPrior: false }) : fetchB.promise
+    );
+    const { result, rerender, seen } = renderRecorded({ id: 'a' });
     await waitFor(() => expect(api.accept).toHaveBeenCalledTimes(1));
 
+    // A's RPC is in flight when the account switches; then it lands for A.
     rerender({ user: { id: 'b' } });
-    await waitFor(() => expect(result.current.status).toBe('accepted'));
-    expect(storedHint().userId).toBe('b');
-
     await act(async () => {
       rpcA.resolve();
     });
-    expect(storedHint().userId).toBe('b');
-    expect(result.current.status).toBe('accepted');
+    expect(hasValidIntent()).toBe(false);
+    expect(localStorage.getItem(LEGAL_ACCEPTED_KEY)).toBeNull();
+    expect(result.current.status).toBe('checking');
+
+    // B has no record and A's tick is gone, so B must be asked.
+    await act(async () => {
+      fetchB.resolve({ current: false, hasPrior: false });
+    });
+    expect(result.current.status).toBe('required');
+    expect(statusesFor(seen, 'b')).not.toContain('accepted');
+    expect(api.accept).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(LEGAL_ACCEPTED_KEY)).toBeNull();
   });
 
   it("does not render 'checking' when an online retry refetches while required", async () => {
