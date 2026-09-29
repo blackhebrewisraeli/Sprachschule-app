@@ -1,5 +1,5 @@
 // src/lib/useLegalAcceptance.js
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   LEGAL_ACCEPTED_KEY,
   hintCovers,
@@ -19,7 +19,12 @@ import {
  *   required  no record for the current versions — App shows AcceptanceGate
  *   unknown   could not ask (offline, or the table is not deployed). Fails
  *             safe: App treats it like 'checking' — local practice only, no
- *             sync, no gate — and it retries on `online`.
+ *             sync, no gate — and it retries on `online`. A retry never resets a
+ *             settled status: `required` stays `required` while it refetches,
+ *             and stays if the retry itself fails.
+ *
+ * The state is keyed to the user it was computed for; a different current user
+ * always reads as `initial(userId)`, never the previous account's status.
  */
 function initial(userId) {
   if (!userId) return { status: 'none', hasPrior: false };
@@ -30,23 +35,35 @@ function initial(userId) {
 
 export function useLegalAcceptance(user) {
   const userId = user?.id ?? null;
-  const [state, setState] = useState(() => initial(userId));
+  // The state names the user it belongs to, so a switch can never hand the
+  // previous account's status to the next one, not even for a single render.
+  const [state, setState] = useState(() => ({ userId, ...initial(userId) }));
   const [attempt, setAttempt] = useState(0);
+  const currentUserId = useRef(userId);
+  currentUserId.current = userId;
 
   useEffect(() => {
-    setState(initial(userId));
-    if (!userId || hintCovers(userId)) return undefined;
+    if (!userId || hintCovers(userId)) {
+      setState({ userId, ...initial(userId) });
+      return undefined;
+    }
+    // Only a user change resets; a retry keeps the settled status while it refetches.
+    setState((s) => (s.userId === userId ? s : { userId, ...initial(userId) }));
+    // Still this effect run AND still the hook's user: a late answer is dropped.
     let active = true;
-    const settle = (next) => active && setState(next);
+    const live = () => active && currentUserId.current === userId;
+    const settle = (next) => setState({ userId, ...next });
     (async () => {
       try {
         const { current, hasPrior } = await fetchAcceptances(userId);
+        if (!live()) return;
         if (current) {
           writeAcceptedHint(userId);
           return settle({ status: 'accepted', hasPrior: true });
         }
         if (hasValidIntent()) {
           await acceptCurrentTerms();
+          if (!live()) return;
           clearIntent();
           writeAcceptedHint(userId);
           return settle({ status: 'accepted', hasPrior: true });
@@ -54,7 +71,13 @@ export function useLegalAcceptance(user) {
         clearIntent();
         return settle({ status: 'required', hasPrior });
       } catch {
-        return settle({ status: 'unknown', hasPrior: false });
+        if (!live()) return;
+        // A failed retry keeps what we already knew; only a first attempt is 'unknown'.
+        return setState((s) =>
+          s.userId === userId && (s.status === 'required' || s.status === 'accepted')
+            ? s
+            : { userId, status: 'unknown', hasPrior: false }
+        );
       }
     })();
     return () => {
@@ -78,14 +101,18 @@ export function useLegalAcceptance(user) {
   const accept = useCallback(async () => {
     try {
       await acceptCurrentTerms();
-      clearIntent();
-      writeAcceptedHint(userId);
-      setState({ status: 'accepted', hasPrior: true });
-      return { ok: true };
     } catch (error) {
       return { ok: false, error };
     }
+    if (currentUserId.current !== userId) {
+      return { ok: false, error: new Error('The signed-in account changed.') };
+    }
+    clearIntent();
+    writeAcceptedHint(userId);
+    setState({ userId, status: 'accepted', hasPrior: true });
+    return { ok: true };
   }, [userId]);
 
-  return { ...state, accept };
+  const view = state.userId === userId ? state : { userId, ...initial(userId) };
+  return { status: view.status, hasPrior: view.hasPrior, accept };
 }

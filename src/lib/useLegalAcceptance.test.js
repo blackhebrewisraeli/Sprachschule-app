@@ -140,3 +140,151 @@ describe('useLegalAcceptance', () => {
     expect(result.current.status).toBe('required');
   });
 });
+
+const deferred = () => {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+};
+
+// Renders the hook and records every status it returns, tagged with the user it was rendered for.
+function renderRecorded(initialUser) {
+  const seen = [];
+  const utils = renderHook(
+    ({ user }) => {
+      const value = useLegalAcceptance(user);
+      seen.push({ id: user?.id ?? null, status: value.status });
+      return value;
+    },
+    { initialProps: { user: initialUser } }
+  );
+  return { ...utils, seen };
+}
+const statusesFor = (seen, id) => seen.filter((s) => s.id === id).map((s) => s.status);
+const storedHint = () => JSON.parse(localStorage.getItem(LEGAL_ACCEPTED_KEY));
+
+describe('useLegalAcceptance: switching users and retrying', () => {
+  it("never renders the previous user's accepted state for the next user", async () => {
+    writeAcceptedHint('a');
+    const b = deferred();
+    api.fetch.mockReturnValue(b.promise);
+    const { result, rerender, seen } = renderRecorded({ id: 'a' });
+    expect(result.current.status).toBe('accepted');
+
+    rerender({ user: { id: 'b' } });
+    expect(result.current.status).toBe('checking');
+    expect(statusesFor(seen, 'b')).not.toContain('accepted');
+
+    await act(async () => {
+      b.resolve({ current: true, hasPrior: true });
+    });
+    await waitFor(() => expect(result.current.status).toBe('accepted'));
+    expect(api.fetch).toHaveBeenCalledWith('b');
+  });
+
+  it('drops a late fetch answer for the previous user (no status, no hint)', async () => {
+    const a = deferred();
+    const b = deferred();
+    api.fetch.mockImplementation((id) => (id === 'a' ? a.promise : b.promise));
+    const { result, rerender, seen } = renderRecorded({ id: 'a' });
+    expect(result.current.status).toBe('checking');
+
+    rerender({ user: { id: 'b' } });
+    await act(async () => {
+      a.resolve({ current: true, hasPrior: true });
+    });
+    expect(result.current.status).toBe('checking');
+    expect(statusesFor(seen, 'b')).not.toContain('accepted');
+    expect(localStorage.getItem(LEGAL_ACCEPTED_KEY)).toBeNull();
+
+    await act(async () => {
+      b.resolve({ current: false, hasPrior: false });
+    });
+    expect(result.current.status).toBe('required');
+  });
+
+  it("drops a late intent-accept for the previous user (hint stays the current user's)", async () => {
+    recordIntent();
+    const rpcA = deferred();
+    api.accept.mockReturnValueOnce(rpcA.promise);
+    const { result, rerender } = renderRecorded({ id: 'a' });
+    await waitFor(() => expect(api.accept).toHaveBeenCalledTimes(1));
+
+    rerender({ user: { id: 'b' } });
+    await waitFor(() => expect(result.current.status).toBe('accepted'));
+    expect(storedHint().userId).toBe('b');
+
+    await act(async () => {
+      rpcA.resolve();
+    });
+    expect(storedHint().userId).toBe('b');
+    expect(result.current.status).toBe('accepted');
+  });
+
+  it("does not render 'checking' when an online retry refetches while required", async () => {
+    const { result, seen } = renderRecorded({ id: 'u1' });
+    await waitFor(() => expect(result.current.status).toBe('required'));
+    const mark = seen.length;
+
+    const again = deferred();
+    api.fetch.mockReturnValue(again.promise);
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await waitFor(() => expect(api.fetch).toHaveBeenCalledTimes(2));
+    expect(result.current.status).toBe('required');
+
+    await act(async () => {
+      again.resolve({ current: false, hasPrior: false });
+    });
+    expect(result.current.status).toBe('required');
+    expect(seen.slice(mark).map((s) => s.status)).not.toContain('checking');
+  });
+
+  it('keeps required when the online retry itself fails', async () => {
+    const { result, seen } = renderRecorded({ id: 'u1' });
+    await waitFor(() => expect(result.current.status).toBe('required'));
+    const mark = seen.length;
+
+    const again = deferred();
+    api.fetch.mockReturnValue(again.promise);
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    await waitFor(() => expect(api.fetch).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      again.reject(new Error('offline'));
+    });
+    expect(result.current.status).toBe('required');
+    expect(seen.slice(mark).map((s) => s.status)).toEqual(seen.slice(mark).map(() => 'required'));
+  });
+
+  it('accept() resolving after a switch neither accepts the new user nor writes the old hint', async () => {
+    const rpc = deferred();
+    api.accept.mockReturnValue(rpc.promise);
+    const { result, rerender, seen } = renderRecorded({ id: 'a' });
+    await waitFor(() => expect(result.current.status).toBe('required'));
+
+    let pending;
+    act(() => {
+      pending = result.current.accept();
+    });
+    rerender({ user: { id: 'b' } });
+    await waitFor(() => expect(api.fetch).toHaveBeenCalledWith('b'));
+    await waitFor(() => expect(result.current.status).toBe('required'));
+
+    let outcome;
+    await act(async () => {
+      rpc.resolve();
+      outcome = await pending;
+    });
+    expect(outcome.ok).toBe(false);
+    expect(result.current.status).toBe('required');
+    expect(statusesFor(seen, 'b')).not.toContain('accepted');
+    expect(localStorage.getItem(LEGAL_ACCEPTED_KEY)).toBeNull();
+  });
+});
