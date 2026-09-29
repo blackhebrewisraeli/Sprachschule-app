@@ -38,10 +38,16 @@ export const ROWS_PER_PAGE = 50;
  * A box-5 card whose interval has elapsed is both mastered and due, and a single
  * enum would have to drop one of those — which is precisely the row a learner
  * filtering for "due" is looking for.
+ *
+ * A card with no SRS row is `new` and NOT due. It was both until 2026-09-29, so
+ * every unstudied word in the browser wore a red "Due" pill and the Due filter
+ * listed the whole deck for a learner who had never answered a card. The New
+ * filter is how to find those; Due is reviews actually owed — the same rule as
+ * lib/srs getDueCount.
  */
 function reviewStateOf(srs, deckId, cardId, now) {
   const entry = srs?.[srsKey(deckId, cardId)];
-  if (!entry) return { status: 'new', due: true, box: null, nextDue: null, reps: 0 };
+  if (!entry) return { status: 'new', due: false, box: null, nextDue: null, reps: 0 };
 
   const box = Number.isFinite(entry.box) ? entry.box : 1;
   const nextDue = Number.isFinite(entry.nextDue) ? entry.nextDue : null;

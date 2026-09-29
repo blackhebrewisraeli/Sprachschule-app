@@ -87,6 +87,14 @@ describe('VocabTable', () => {
     expect(screen.queryByText('Learned')).not.toBeInTheDocument();
   });
 
+  it('labels a never-studied word New, with no red Due pill', () => {
+    // First launch: nothing has been studied, so nothing is owed. Every row
+    // used to carry "Due" beside "New".
+    render(<VocabTable rows={rowsOf([breadCard, waterCard], { srs: {} })} caption="Food" />);
+    expect(screen.getAllByText('New')).toHaveLength(2);
+    expect(screen.queryByText('Due')).toBeNull();
+  });
+
   it('renders the rows it is given — paging belongs to the caller', () => {
     const cards = Array.from({ length: ROWS_PER_PAGE + 10 }, (_, i) => ({
       id: `w-${i}`,
