@@ -59,9 +59,14 @@ export default function WelcomeBanner({ mobile, onDismiss }) {
         >
           {activePack.prompts.persona} gives you a task each round — order a coffee, introduce
           yourself, ask for directions. Type or tap the mic, and she'll correct you in real time.
-          Tabs <strong>02&ndash;04</strong> add alphabet drills, vocab cards, and translation
-          exercises; <strong>05 Stats</strong> tracks what you've learned and surfaces what to
-          review.
+          {/* Tabs by NAME, not number. This said "Tabs 02–04 … 05 Stats",
+              which went stale twice: Home took 01 and pushed every tab along
+              one, and Stats was renamed Profile. Below bp.tablet the nav is
+              icon-only, so the numbers were never on screen for most readers
+              anyway. */}{' '}
+          <strong>Alphabet</strong>, <strong>Vocab</strong> and <strong>Translate</strong> add
+          letter drills, vocab cards and translation exercises; <strong>Profile</strong> tracks what
+          you&rsquo;ve learned and surfaces what to review.
         </div>
       </div>
       <button

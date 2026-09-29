@@ -313,6 +313,27 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(leagues.fetchProfile).not.toHaveBeenCalled();
   });
 
+  it('leaves the guest sign-in out, rather than dead, when there is no backend', () => {
+    // StatsTab withholds onSignIn when auth is not configured. A button that
+    // can do nothing is PR #79's dead affordance; Settings stays reachable.
+    render(<UserProfile user={null} local={local} onOpenSettings={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /sign in/i })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByText('Your progress is saved on this device.')).toBeInTheDocument();
+  });
+
+  it('does not tell a guest that signing in is how badges are earned', () => {
+    // Guests earn badges locally — the Badges card on this same page shows
+    // them — so the note offers sync and the league, never badges.
+    render(<UserProfile user={null} local={local} onSignIn={vi.fn()} />);
+    expect(
+      screen.getByText(
+        'Your progress is saved on this device. Sign in to sync it across devices and join a weekly league.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/badge/i)).toBeNull();
+  });
+
   it('gives the guest note its required icon (no StatusNote console error)', () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     render(<UserProfile user={null} local={local} onSignIn={vi.fn()} />);
