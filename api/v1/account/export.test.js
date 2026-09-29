@@ -29,6 +29,7 @@ const USER_OWNED = [
   'feedback',
   'token_ledger',
   'user_devices',
+  'legal_acceptances',
 ];
 
 // Distinct rows per table. The previous fixture returned the SAME row for every
