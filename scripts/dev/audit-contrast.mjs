@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-const AUDIT_USER_ID = '00000000-0000-4000-8000-000000000001';
-process.on('unhandledRejection', (error) => {
-  console.error('Contrast audit failed:');
-  console.error(error?.stack || error);
-  process.exit(1);
-});
-process.on('uncaughtException', (error) => {
-  console.error('Contrast audit failed:');
-  console.error(error?.stack || error);
-  process.exit(1);
-});
-
 /**
  * Rendered-DOM contrast audit.
  *
@@ -53,6 +41,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TERMS_VERSION, PRIVACY_VERSION } from '../../src/lib/legalVersions.js';
 
 // The pinned vite binary, by absolute path, rather than `npx vite`.
 //
@@ -238,47 +227,9 @@ const MODALS = [
     timeout: 8000,
     open: async (page) => {
       const origin = new URL(page.url()).origin;
-      
-    // Ensure Supabase user endpoint is mocked so the session survives
-    await page.unroute('**/auth/v1/user').catch(() => {});
-    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
-      body: JSON.stringify({ id: AUDIT_USER_ID, aud: 'authenticated', role: 'authenticated' }), 
-      contentType: 'application/json' 
-    })).catch(() => {});
-    
-    const base = process.env.AUDIT_BASE;
-  if (!base) {
-    console.error('AUDIT_BASE is required, for example http://127.0.0.1:5290');
-    process.exit(1);
-  }
-  const target = new URL('/', base).toString();
-  
-  try {
-    await page.goto(target, {
-      waitUntil: 'domcontentloaded',
-      timeout: 30000,
-    });
-    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(500);
-  } catch (error) {
-    console.error('Contrast audit failed:', error);
-    if (error?.stack) console.error(error.stack);
-    process.exitCode = 1;
-  }
-
-    // Auto-click the AcceptanceGate if it blocks the UI
-    try {
-      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
-      if (await gateBox.isVisible({ timeout: 2500 })) {
-        console.log('    (Gate found in audit. Clicking through...)');
-        await gateBox.check();
-        await page.getByRole('button', { name: /Continue/i }).click();
-        await page.waitForTimeout(800); // Allow DOM to render the actual app
-      }
-    } catch (e) {
-      // Gate didn't appear, proceed normally
-    }
-  
+      await page.goto(`${origin}/?error=access_denied&error_code=otp_expired`, {
+        waitUntil: 'domcontentloaded',
+      });
       await page.waitForTimeout(400);
       // Native click: Playwright's actionability would refuse, because the
       // landing's scrim covers the WelcomeGate guest button. handleGuest only
@@ -297,31 +248,7 @@ const MODALS = [
       // overlay. applyTheme reloads the current URL; a leftover `?error=`
       // would block header sheets and the Sign in chip.
       const origin = new URL(page.url()).origin;
-      
-    // Ensure Supabase user endpoint is mocked so the session survives
-    await page.unroute('**/auth/v1/user').catch(() => {});
-    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
-      body: JSON.stringify({ id: AUDIT_USER_ID, aud: 'authenticated', role: 'authenticated' }), 
-      contentType: 'application/json' 
-    })).catch(() => {});
-    
-    await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
-    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(500);
-
-    // Auto-click the AcceptanceGate if it blocks the UI
-    try {
-      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
-      if (await gateBox.isVisible({ timeout: 2500 })) {
-        console.log('    (Gate found in audit. Clicking through...)');
-        await gateBox.check();
-        await page.getByRole('button', { name: /Continue/i }).click();
-        await page.waitForTimeout(800); // Allow DOM to render the actual app
-      }
-    } catch (e) {
-      // Gate didn't appear, proceed normally
-    }
-  
+      await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(400);
       await dismissEntryScreens(page);
     },
@@ -1167,7 +1094,7 @@ function seedSignedInSession(key) {
       expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'audit-stub-refresh',
       user: {
-        id: AUDIT_USER_ID,
+        id: '00000000-0000-4000-8000-000000000001',
         aud: 'authenticated',
         role: 'authenticated',
         email: 'auditor@example.test',
@@ -1188,46 +1115,62 @@ function seedSignedInSession(key) {
  * A fixture that cannot show the real surface cannot audit it.
  */
 async function stubAccountNetwork(page) {
-  const json = (body, status = 200) => ({
-    status,
+  const json = (body) => ({
+    status: 200,
     contentType: 'application/json',
     body: JSON.stringify(body),
   });
 
-  await page.route('**/auth/v1/user', (route) =>
-    route.fulfill(json({
-      id: AUDIT_USER_ID,
-      aud: 'authenticated',
-      role: 'authenticated',
-      email: 'auditor@example.test',
-      app_metadata: {},
-      user_metadata: {},
-    }))
+  // Monday of the current week, so the countdown renders a real remainder.
+  const now = new Date();
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  monday.setHours(0, 0, 0, 0);
+
+  await page.route('**/api/v1/league/join', (r) =>
+    r.fulfill(json({ league_id: 'audit-league', tier: 2, period_start: monday.toISOString() }))
+  );
+  await page.route('**/api/v1/league/refresh', (r) => r.fulfill(json({ ok: true })));
+  // `?leagueId=` is the standings' one identity read for every row (an array);
+  // `?userId=` is a single passport, for the profile card.
+  await page.route('**/api/v1/league/profile*', (r) =>
+    r.fulfill(
+      new URL(r.request().url()).searchParams.has('leagueId')
+        ? json([])
+        : json({
+            handle: 'Auditor',
+            tier: 2,
+            total_xp: 4200,
+            longest_streak: 31,
+          })
+    )
   );
 
-  await page.route('**/auth/v1/token', (route) => route.fulfill(json({})));
-
-  await page.route('**/api/v1/league/join', (route) =>
-    route.fulfill(json({ league_id: 'audit-league', tier: 2, period_start: new Date().toISOString() }))
+  // Enough rows to populate the promotion zone, the demotion zone and the
+  // untouched middle — the three row styles the widget colours differently.
+  await page.route('**/rest/v1/league_members*', (r) =>
+    r.fulfill(
+      json(
+        Array.from({ length: 12 }, (_, i) => ({
+          user_id: i === 3 ? '00000000-0000-4000-8000-000000000001' : `peer-${i}`,
+          handle: i === 3 ? 'Auditor' : `Lernende ${i + 1}`,
+          weekly_xp: 900 - i * 70,
+          rank: i + 1,
+        }))
+      )
+    )
   );
 
-  await page.route('**/api/v1/league/refresh', (route) => route.fulfill(json({ ok: true })));
-
-  await page.route('**/api/v1/league/profile*', (route) => {
-    const url = new URL(route.request().url());
-    return route.fulfill(
-      url.searchParams.has('leagueId') ? json([]) : json({ handle: 'Auditor', tier: 2, total_xp: 4200, longest_streak: 31 })
-    );
-  });
-
-  await page.route('**/rest/v1/league_members*', (route) =>
-    route.fulfill(json(Array.from({ length: 12 }, (_, i) => ({
-      user_id: i === 3 ? AUDIT_USER_ID : `peer-${i}`,
-      handle: i === 3 ? 'Auditor' : `Lernende ${i + 1}`,
-      weekly_xp: 900 - i * 70,
-      rank: i + 1,
-    }))))
+  // The account has accepted the current Terms + Privacy. Without a record the
+  // app holds a signed-in user behind the acceptance gate — no account chrome,
+  // no league section — and the whole signed-in pass audits nothing.
+  await page.route('**/rest/v1/legal_acceptances*', (r) =>
+    r.fulfill(json([{ terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION }]))
   );
+
+  // Any other Supabase traffic (token refresh, telemetry) fails closed rather
+  // than reaching the network from CI.
+  await page.route('**/auth/v1/**', (r) => r.fulfill(json({})));
 }
 
 /**
@@ -1323,20 +1266,15 @@ async function auditSignedIn(page, mode) {
   // Assert the league card painted, so a profile page that stopped rendering
   // its league section is REPORTED rather than silently contributing no
   // pairings — the failure mode this whole block exists to prevent.
-  const leagueSelector = '[data-testid="profile-league"]';
-try {
-      await page.waitForSelector(leagueSelector, {
-        state: 'visible',
-        timeout: 10000,
-      });
-    } catch {
-      throw new Error(
-        `audit-contrast: no visible league section on Profile (${mode}) after ` +
-          'waiting for async league data. Either the build lacks ' +
-          'VITE_LEAGUES_ENABLED=true, the league API fixtures are incorrect, ' +
-          'or the section moved.'
-      );
-    }
+  const onLeagues = await page.evaluate(
+    () => !!document.querySelector('[data-testid="profile-league"]')
+  );
+  if (!onLeagues) {
+    throw new Error(
+      `audit-contrast: no league section on Profile (${mode}) — either the ` +
+        'build lacks VITE_LEAGUES_ENABLED=true or the section moved.'
+    );
+  }
   // join -> refresh -> standings are three sequential round trips, and a fixed
   // sleep here is exactly how this pass first measured an EMPTY table and still
   // reported clean. Wait for the rows themselves; `rowsRendered` then gates the
@@ -1423,28 +1361,7 @@ async function main() {
   const page = await context.newPage();
 
   // Boot once so we can seed before the first themed reload.
-  
-    // Ensure Supabase user endpoint is mocked so the session survives
-    await page.unroute('**/auth/v1/user').catch(() => {});
-    /* removed duplicate route */
-    
-    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
-    await page.waitForTimeout(500);
-
-    // Auto-click the AcceptanceGate if it blocks the UI
-    try {
-      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
-      if (await gateBox.isVisible({ timeout: 2500 })) {
-        console.log('    (Gate found in audit. Clicking through...)');
-        await gateBox.check();
-        await page.getByRole('button', { name: /Continue/i }).click();
-        await page.waitForTimeout(800); // Allow DOM to render the actual app
-      }
-    } catch (e) {
-      // Gate didn't appear, proceed normally
-    }
-  
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await page.evaluate(seedPopulatedAccount);
 
   const findings = [];

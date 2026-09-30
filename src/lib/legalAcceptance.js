@@ -6,10 +6,9 @@
 // box across an OAuth redirect. Neither can make anyone "accepted" on its own
 // except the device that already saw the server confirm it.
 import { getSupabase } from './auth.js';
+import { TERMS_VERSION, PRIVACY_VERSION } from './legalVersions.js';
 
-/** Effective dates of the documents in src/components/legal. Bumping either re-asks everyone. */
-export const TERMS_VERSION = '2026-09-29';
-export const PRIVACY_VERSION = '2026-09-29';
+export { TERMS_VERSION, PRIVACY_VERSION };
 
 /**
  * The page's "Last Updated" line, from a document version: '2026-09-29' →

@@ -48,6 +48,7 @@ import { DECK_ID, STATE_KEY, learningPathSeed, openDeckPicker } from './learning
 // the zone dividers this smoke expects can never drift from the ones the app
 // draws. Importing it beats hardcoding 7/5 here.
 import { zoneCounts } from '../../src/lib/leagueZones.js';
+import { TERMS_VERSION, PRIVACY_VERSION } from '../../src/lib/legalVersions.js';
 
 // Absolute path to the pinned vite binary rather than bare `npx vite`: npx is
 // resolved through PATH and will fetch-and-execute an uninstalled name from
@@ -541,6 +542,13 @@ async function routeServerFixture(page, selfId) {
       }
       return route.fulfill(json(serverStandingsRows(selfId)));
     }
+    // A returning account that already accepted the current Terms + Privacy;
+    // with no record the app would hold it behind the acceptance gate.
+    if (url.includes('/legal_acceptances')) {
+      return route.fulfill(
+        json([{ terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION }])
+      );
+    }
     if (url.includes('/settings')) return route.fulfill(json([serverSettingsRow()]));
     if (url.includes('/stats_daily')) return route.fulfill(json(serverDailyRows()));
     return route.fulfill(json([]));
@@ -610,18 +618,6 @@ async function waitForReconcile(page, seen, timeoutMs = 20000) {
  * session) fails too.
  */
 async function stepRestoreSession(context, page, seed) {
-  // Auto-click the AcceptanceGate if it appears during session restore
-  try {
-    const gateBox = page.getByRole('checkbox', { name: /I agree/i });
-    if (await gateBox.isVisible({ timeout: 4000 })) {
-      console.log('    (Gate found. Clicking through...)');
-      await gateBox.check();
-      await page.getByRole('button', { name: /Continue/i }).click();
-    }
-  } catch (e) {
-    // Gate didn't appear, proceed normally
-  }
-
   void context;
   void seed;
 
@@ -1506,7 +1502,6 @@ async function walkViewport(context, page, vp, seed) {
   });
   await page.route('**/api/**', (r) => r.fulfill(json({ error: 'smoke-offline' }, 503)));
   await page.route('**/auth/v1/**', (r) => r.fulfill(json({})));
-  await page.route('**/auth/v1/user', (r) => r.fulfill({ body: JSON.stringify(stubSession().user), contentType: 'application/json' }));
   // Populated server + league API. Registered after the catch-alls so it wins.
   await routeServerFixture(page, stubSession().user.id);
   const posts = await captureProgressSync(page);
