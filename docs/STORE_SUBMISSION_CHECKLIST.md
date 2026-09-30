@@ -1,43 +1,29 @@
 # Store submission — owner checklist (sprachschule-app)
 
-> **RELEASE GATE — do this before merging or deploying the terms-acceptance
-> client.** Apply `supabase/migrations/20260929120000_legal_acceptances.sql` to
-> the production Supabase project (item 1). Until the table exists, the client
-> cannot confirm anyone's acceptance and every signed-in learner's sync pauses.
-> The migration file being merged is NOT the migration being applied.
+> **RELEASE GATE — DONE.** `legal_acceptances` was applied to production on
+> 2026-09-30 at 14:36 UTC, before the terms-acceptance client merged (#382,
+> 19:29 UTC). Verified read-only the same day: table, RLS, one read-own policy,
+> no anon access, RPC callable by `authenticated` only.
 
 Code alone does not make the app compliant. Each item below needs an account or
 a judgement only the owner has. Tick them in order: several gate the next.
 
 ## Before merging the terms-acceptance PR
 
-1. **Apply `supabase/migrations/20260929120000_legal_acceptances.sql` to
-   production FIRST.** Use Supabase's official Management API **Apply a
-   migration** endpoint from a clean checkout of the reviewed commit. This
-   applies the reviewed file and records the migration name, which the repo's
-   Migration Drift check requires. Create a short-lived scoped PAT restricted
-   to project `xcnnlczvxmuwcqwychox` with **Migrations: Read-write**, then run:
+1. ✅ **Applied `supabase/migrations/20260930143614_legal_acceptances.sql` to
+   production** through Supabase's Management API **Apply a migration**
+   endpoint, which records the migration name the Migration Drift check reads.
 
-   ```bash
-   read -s SUPABASE_MIGRATIONS_TOKEN
-   export SUPABASE_MIGRATIONS_TOKEN
-   jq -Rs --arg name legal_acceptances \
-     '{name: $name, query: .}' supabase/migrations/20260929120000_legal_acceptances.sql | \
-     curl --fail-with-body --silent --show-error \
-       -X POST https://api.supabase.com/v1/projects/xcnnlczvxmuwcqwychox/database/migrations \
-       -H "Authorization: Bearer ${SUPABASE_MIGRATIONS_TOKEN}" \
-       -H 'Content-Type: application/json' \
-       --data-binary @-
-   unset SUPABASE_MIGRATIONS_TOKEN
-   ```
+   That endpoint records the **apply time** as the version, not the file's
+   timestamp. The file was written as `20260929120000_…` and renamed to the
+   recorded `20260930143614_…` afterwards; until it was, the Supabase Preview
+   check on `main` failed with "Remote migration versions not found in local
+   migrations directory". Any future migration applied this way needs the same
+   rename, in a PR, to the version production records.
 
-   Never paste the migration into the production SQL Editor: direct SQL
-   bypasses migration history. Never use `db push`, `migration repair`, or MCP
-   `apply_migration` in this repo. If the client ships first, every signed-in
-   learner's sync pauses until the table exists. Verify the table and RPC in
-   the Dashboard, verify migration history contains the name
-   `legal_acceptances`, then trigger **Migration Drift** after the PR merges;
-   it must be green.
+   Never paste a migration into the production SQL Editor (it bypasses
+   migration history), and never use `db push`, `migration repair`, or MCP
+   `apply_migration` in this repo.
 
 2. **Keep the email-provider line true.** The policy names Supabase Auth as the
    sender of sign-in emails (owner answer, 2026-09-29, re-confirmed

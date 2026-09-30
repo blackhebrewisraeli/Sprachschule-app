@@ -1,4 +1,4 @@
--- supabase/migrations/20260929120000_legal_acceptances.sql
+-- supabase/migrations/20260930143614_legal_acceptances.sql
 --
 -- Versioned acceptance of the Terms of Service and Privacy Policy.
 --

@@ -1,6 +1,6 @@
 // Versioned acceptance of the Terms and Privacy Policy — language-blind.
 //
-// The AUTHORITY is public.legal_acceptances (20260929120000), written only by
+// The AUTHORITY is public.legal_acceptances (20260930143614), written only by
 // the accept_legal_terms RPC as auth.uid(). The two localStorage keys here are
 // hints: one lets a known device skip the network, the other carries a ticked
 // box across an OAuth redirect. Neither can make anyone "accepted" on its own
