@@ -122,6 +122,7 @@ import TutorialOverlay from './components/TutorialOverlay';
 import { Analytics } from '@vercel/analytics/react';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import TermsOfService from './components/legal/TermsOfService';
+import DeleteAccountPage from './components/legal/DeleteAccountPage';
 import { currentLegalRoute } from './lib/legalRoute';
 import { useWindowWidth, isMobile, isTiny, isTablet, bp } from './lib/useWindowWidth';
 import { apiUrl } from './lib/apiUrl';
@@ -1222,12 +1223,7 @@ export default function App() {
   // gate who picks "Sign in" instead must not be stamped A1 before their own
   // account's level has had a chance to arrive. From here on the learner has a
   // level, so the gate can never fire for them again, whatever they do next.
-  const placementPainting =
-    autoPlacement &&
-    !retakePlacement &&
-    !showGate &&
-    legalRoute !== 'privacy' &&
-    legalRoute !== 'terms';
+  const placementPainting = autoPlacement && !retakePlacement && !showGate && !legalRoute;
   useEffect(() => {
     if (!placementPainting) return;
     applyDefaultPlacement();
@@ -1285,6 +1281,7 @@ export default function App() {
 
   if (legalRoute === 'privacy') return <PrivacyPolicy onBack={closeLegal} />;
   if (legalRoute === 'terms') return <TermsOfService onBack={closeLegal} />;
+  if (legalRoute === 'delete-account') return <DeleteAccountPage onBack={closeLegal} />;
 
   if (showGate) {
     return (

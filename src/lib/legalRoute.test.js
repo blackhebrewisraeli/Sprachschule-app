@@ -16,6 +16,12 @@ describe('legalRouteFor', () => {
     expect(legalRouteFor({ pathname: '/', hash: '#/terms' })).toBe('terms');
   });
 
+  it('matches the account-deletion page, bare, slashed and hashed', () => {
+    expect(legalRouteFor({ pathname: '/delete-account', hash: '' })).toBe('delete-account');
+    expect(legalRouteFor({ pathname: '/delete-account/', hash: '' })).toBe('delete-account');
+    expect(legalRouteFor({ pathname: '/', hash: '#/delete-account' })).toBe('delete-account');
+  });
+
   it('does not claim the app root or unrelated routes', () => {
     expect(legalRouteFor({ pathname: '/', hash: '' })).toBeNull();
     expect(legalRouteFor({ pathname: '/vocab', hash: '' })).toBeNull();
