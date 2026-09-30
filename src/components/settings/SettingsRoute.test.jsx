@@ -269,6 +269,38 @@ describe('SettingsRoute — Learning level', () => {
   });
 });
 
+describe('SettingsRoute — guest Account panel', () => {
+  it('locks the profile editor instead of rendering fields a guest cannot save', () => {
+    renderRoute({ user: null, profile: null });
+    const note = screen.getByTestId('settings-profile-locked');
+    expect(note).toHaveTextContent(/belong to an account/i);
+    // The lock is a real icon on the documented status-note family.
+    expect(note.querySelector('.lucide-lock')).not.toBeNull();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /save profile/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /upload a picture/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /profile visibility/i })).not.toBeInTheDocument();
+  });
+
+  it('drops the Email heading a guest could only ever see empty', () => {
+    renderRoute({ user: null, profile: null });
+    expect(screen.queryByRole('heading', { name: /^email$/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps exactly one way in: the Account controls sign-in', () => {
+    renderRoute({ user: null, profile: null });
+    expect(screen.getAllByRole('button', { name: /sign in/i })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: /sign in to sync/i })).toBeInTheDocument();
+  });
+
+  it('still gives a signed-in learner the full editor and Email section', () => {
+    renderRoute();
+    expect(screen.queryByTestId('settings-profile-locked')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^email$/i })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /handle/i })).toBeInTheDocument();
+  });
+});
+
 describe('SettingsRoute — Admin', () => {
   it('hides Admin for a regular signed-in user', () => {
     renderRoute();

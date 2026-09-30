@@ -59,10 +59,12 @@ export function learningPathSeed({ remaining = 1 } = {}) {
     [DECK_ID]: Object.fromEntries(learnedCards.map((card) => [card.id, true])),
   };
 
-  // Park every curated card in a future box so `srs-due` does not outrank
-  // `deck-unfinished` on the Recommended row. `getDueCount` treats a missing
-  // SRS row as due, and without this seed the hop under test sits in Missionen
-  // instead of the two promoted cards.
+  // Park every curated card in a future box so no review is due and `srs-due`
+  // cannot outrank `deck-unfinished` on the Recommended row. Until 2026-09-29
+  // `getDueCount` treated a missing SRS row as due, so without this seed the hop
+  // under test sat in Missionen instead of the two promoted cards. Unseen cards
+  // are now new rather than due; the seed stays so every card's state is
+  // explicit rather than resting on that default.
   const later = Date.now() + 30 * 24 * 60 * 60 * 1000;
   const srs = {};
   for (const [id, deckCards] of Object.entries(activePack.content.decks)) {

@@ -215,16 +215,26 @@ export default function UserProfile({
   // from localStorage and are entirely real — an early return that dropped
   // `children` took the whole practice dashboard away from everyone who had
   // not signed in, which is most of the people who open this tab.
+  //
+  // This is the page's ONE sign-in button. StatsTab used to add a second,
+  // "Account & sync → Sign in to sync", four rows further down — two CTAs for
+  // one action on one screen, three counting the header. It also withholds
+  // `onSignIn` when there is no backend to sign in to, so the button is left
+  // out rather than rendered dead (PR #79's bug). The note says what is true
+  // either way: guests DO earn badges — the Badges card below shows them — so
+  // the old "sign in to earn badges" promised something they already had.
   if (!user) {
+    const leagueClause = LEAGUES_ENABLED ? ' and join a weekly league' : '';
+    const guestNote = onSignIn
+      ? `Your progress is saved on this device. Sign in to sync it across devices${leagueClause}.`
+      : 'Your progress is saved on this device.';
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: SPACE[6] }}>
         <div style={{ display: 'grid', gap: SPACE[4], justifyItems: 'start', minWidth: 0 }}>
           <Heading level={2}>Dein Profil</Heading>
-          <StatusNote icon={UserRound}>
-            Sign in to keep your progress, earn badges and join a weekly league.
-          </StatusNote>
+          <StatusNote icon={UserRound}>{guestNote}</StatusNote>
           <div style={{ display: 'flex', gap: SPACE[3], flexWrap: 'wrap' }}>
-            <Button onClick={onSignIn}>Sign in</Button>
+            {onSignIn && <Button onClick={onSignIn}>Sign in</Button>}
             {/* A guest still needs Settings — level, daily goal and sound all
                 live there, and none of them require an account. The segmented
                 control this page replaced was their ONLY way in; the account

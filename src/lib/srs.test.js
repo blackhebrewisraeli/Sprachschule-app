@@ -23,6 +23,7 @@ import {
   srsApply,
   getDueCards,
   getDueCount,
+  getNewCount,
   getMasteredCount,
   recordVocabAnswer,
 } from './srs';
@@ -231,18 +232,20 @@ describe('getDueCount', () => {
       'food:der Käse': { box: 5, nextDue: 999999999, lastReviewed: 0, reps: 10 },
     };
     // At now=200: Hallo due (100<=200), Brot not-due (5000>200), Käse not-due (future)
-    // Tschüss has no entry → counted as new (always "due")
-    expect(getDueCount(srs, decks, 200)).toBe(2); // Hallo + Tschüss
+    // Tschüss has no entry → NEW, not due
+    expect(getDueCount(srs, decks, 200)).toBe(1); // Hallo only
   });
 
-  it('counts new cards (no SRS entry) as due', () => {
+  // The first-launch rule. A brand-new learner has studied nothing, so nothing
+  // is owed: no "40 cards are due", no red DUE NOW, no "9+" nav badge.
+  it('does not count new cards (no SRS entry) as due', () => {
     const decks = {
       greetings: [
         { id: 'Hallo', de: 'Hallo' },
         { id: 'Tschüss', de: 'Tschüss' },
       ],
     };
-    expect(getDueCount({}, decks, 100)).toBe(2);
+    expect(getDueCount({}, decks, 100)).toBe(0);
   });
 
   it('returns 0 when everything is on a future review', () => {
@@ -256,9 +259,44 @@ describe('getDueCount', () => {
   it('keys on card.id, not the surface form', () => {
     const deck = [{ id: 'g1', de: 'Hallo', en: 'Hello' }];
     const srs = { 'greetings:g1': { box: 5, nextDue: 999999999, lastReviewed: 0, reps: 9 } };
-    // Entry exists under id 'g1', far-future → not due → 0.
-    // If the engine keyed on de ('Hallo') it would find no entry and count it as new → 1.
+    // Entry exists under id 'g1', overdue → due → 1. If the engine keyed on
+    // de ('Hallo') it would find no entry, read the card as new, and count 0.
+    const overdue = { 'greetings:g1': { box: 2, nextDue: 500, lastReviewed: 0, reps: 2 } };
+    expect(getDueCount(overdue, { greetings: deck }, 1000)).toBe(1);
     expect(getDueCount(srs, { greetings: deck }, 1000)).toBe(0);
+  });
+});
+
+// ─── getNewCount ──────────────────────────────────────────────
+
+describe('getNewCount', () => {
+  const decks = {
+    greetings: [
+      { id: 'Hallo', de: 'Hallo' },
+      { id: 'Tschüss', de: 'Tschüss' },
+    ],
+    food: [{ id: 'das Brot', de: 'das Brot' }],
+  };
+
+  it('counts every card as new when nothing has been studied', () => {
+    expect(getNewCount({}, decks)).toBe(3);
+  });
+
+  it('never counts a card as both new and due', () => {
+    const srs = {
+      // Overdue: due, not new.
+      'greetings:Hallo': { box: 1, nextDue: 100, lastReviewed: 50, reps: 1 },
+      // Scheduled ahead: neither.
+      'food:das Brot': { box: 3, nextDue: 9999, lastReviewed: 50, reps: 3 },
+    };
+    expect(getNewCount(srs, decks)).toBe(1); // Tschüss
+    expect(getDueCount(srs, decks, 200)).toBe(1); // Hallo
+  });
+
+  it('keys on card.id and the deck, so the same word in two decks is new in each', () => {
+    const shared = { a: [{ id: 'x', de: 'x' }], b: [{ id: 'x', de: 'x' }] };
+    const srs = { 'a:x': { box: 1, nextDue: 9999, lastReviewed: 0, reps: 1 } };
+    expect(getNewCount(srs, shared)).toBe(1); // only b:x
   });
 });
 

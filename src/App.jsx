@@ -1,5 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { User, BookOpen, MessageSquare, Type, Languages, Home, Shield, Search } from 'lucide-react';
+import {
+  User,
+  BookOpen,
+  MessageSquare,
+  Type,
+  Languages,
+  Home,
+  Shield,
+  Search,
+  Snowflake,
+} from 'lucide-react';
 import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW, Z } from './lib/theme';
 import { loadState, saveState } from './lib/storage';
 import { stampSettings } from './lib/settingsStamp';
@@ -1433,10 +1443,21 @@ export default function App() {
             </span>
             {game.freezes > 0 && (
               <span
+                role="img"
+                aria-label={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
                 title={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
-                style={{ fontSize: mobile ? 14 : 16 }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontFamily: FONT_MONO,
+                  fontSize: mobile ? 12 : 14,
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
               >
-                ❄️{game.freezes}
+                <Snowflake size={mobile ? 14 : 16} aria-hidden="true" />
+                {game.freezes}
               </span>
             )}
             {/* Both social endpoints require auth (see socialEndpoints.js), so
@@ -1736,7 +1757,7 @@ export default function App() {
           it, never both at once. */}
         <TutorialOverlay anchors={tutorialAnchors} />
 
-        <Analytics />
+        {!isNativeApp() && <Analytics />}
         {authOverlay}
         {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
       </div>

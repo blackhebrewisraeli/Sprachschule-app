@@ -167,6 +167,32 @@ describe('HomeTab', () => {
     expect(screen.getByTestId('home-today-stack')).toHaveStyle({ gap: `${SPACE[3]}px` });
   });
 
+  it('does not claim "nothing due" when Recommended took every open mission', () => {
+    // Two open missions, both promoted. MissionBoard used to receive the empty
+    // remainder and print "Alles erledigt — Nothing due today" directly above
+    // the Recommended card saying cards were due.
+    render(
+      <HomeTab
+        {...hubProps}
+        cefrLevel="a1"
+        missions={[
+          { id: 'srs-due', count: 40, tab: 'vocab', priority: 0 },
+          { id: 'goal-remaining', count: 20, tab: 'chat', priority: 2 },
+        ]}
+        quests={[{ id: 'answer-cards', target: 7, progress: 3, done: false, tab: 'vocab' }]}
+      />
+    );
+    expect(screen.queryByText(/alles erledigt/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /missionen/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('region', { name: /recommended/i })).toHaveTextContent(/40/);
+    expect(screen.getByRole('region', { name: /tagesaufgaben/i })).toBeInTheDocument();
+  });
+
+  it('keeps the all-clear on a day with genuinely nothing open', () => {
+    render(<HomeTab {...hubProps} cefrLevel="a1" missions={[]} />);
+    expect(screen.getByRole('region', { name: /missionen/i })).toHaveTextContent(/alles erledigt/i);
+  });
+
   it('caps the page at a readable width and centres it, instead of spanning the 1400px frame', () => {
     render(<HomeTab {...hubProps} />);
     const page = screen.getByRole('region', { name: /guten tag/i }).parentElement;

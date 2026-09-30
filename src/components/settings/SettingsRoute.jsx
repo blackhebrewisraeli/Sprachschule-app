@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { Lock } from 'lucide-react';
 import { FONTS, FONT_SIZE, FONT_WEIGHT, LETTER_SPACING, SPACE, TEXT } from '../../lib/theme';
 import { Stack } from '../ui/Layout';
 import Heading from '../ui/Heading';
 import Surface from '../ui/Surface';
+import StatusNote from '../ui/StatusNote';
 import SegmentedPicker from '../ui/SegmentedPicker';
 import { Body } from '../ui/Text';
 import LevelSwitcher from '../ui/LevelSwitcher';
@@ -21,6 +23,7 @@ import { replayTutorial } from '../../lib/tutorialPref';
 import { isPushAvailable } from '../../lib/pushNotifications';
 import { userTierOf } from '../../lib/ai-routing/preference.js';
 import { getThemeModeForUI, setThemePreference } from '../../lib/themeMode';
+import { isAuthConfigured } from '../../lib/auth.js';
 import { writeLevel, LEVEL_NAMES, LEVEL_MODES } from '../../lib/levelPref';
 import { PLACEMENT_OFFER_XP } from '../../lib/placementOffer';
 import { LEVEL_MULTIPLIERS } from '../../lib/gameConfig';
@@ -146,18 +149,38 @@ export default function SettingsRoute({
                 </Body>
               ) : null}
 
-              <Subsection title="Profile">
-                <ProfileSection
-                  profile={profile}
-                  userId={user?.id}
-                  onSaved={onProfileSaved}
-                  onToast={onToast}
-                />
-              </Subsection>
+              {user ? (
+                <>
+                  <Subsection title="Profile">
+                    <ProfileSection
+                      profile={profile}
+                      userId={user.id}
+                      onSaved={onProfileSaved}
+                      onToast={onToast}
+                    />
+                  </Subsection>
 
-              <Subsection title="Email">
-                <EmailSection user={user} onToast={onToast} onReauth={onSignIn} />
-              </Subsection>
+                  <Subsection title="Email">
+                    <EmailSection user={user} onToast={onToast} onReauth={onSignIn} />
+                  </Subsection>
+                </>
+              ) : (
+                // A guest has no row to write. This used to render the whole
+                // editor anyway — picture upload, name fields, handle,
+                // visibility and a Save that stayed grey with no reason given
+                // — then an "Email" heading over nothing, since EmailSection
+                // returns null without a user. One locked note says what the
+                // fields are for instead. It carries no button: the sign-in
+                // is Account controls, directly below, and a second one here
+                // would be a duplicate control.
+                <Subsection title="Profile">
+                  <StatusNote icon={Lock} data-testid="settings-profile-locked">
+                    {isAuthConfigured()
+                      ? 'Your name, handle, picture and email belong to an account. Sign in below to set them.'
+                      : 'Your name, handle, picture and email belong to an account.'}
+                  </StatusNote>
+                </Subsection>
+              )}
 
               <Subsection title="Account controls">
                 <AccountSection

@@ -169,7 +169,9 @@ export default function StatsTab({
           user={user}
           profile={profile}
           tokens={tokens}
-          onSignIn={onSignIn}
+          // Withheld with no backend: UserProfile leaves its sign-in button out
+          // rather than render one that can do nothing.
+          onSignIn={isAuthConfigured() ? onSignIn : undefined}
           onSelectUser={setSelectedUser}
           onOpenSettings={openSettings}
           onOpenFollowList={setFollowListKind}
@@ -180,12 +182,6 @@ export default function StatsTab({
             <section>
               <SectionLabel num="0" text="Fortschritt" />
               <LevelCard lvl={sc} totalXp={sc.totalXp} learnedCount={stats.learnedCount ?? 0} />
-              {!user && isAuthConfigured() && (
-                <div style={{ marginTop: SPACE[5] }}>
-                  <SectionLabel num="·" text="Account & sync" />
-                  <Button onClick={onSignIn}>Sign in to sync →</Button>
-                </div>
-              )}
             </section>
 
             <section>
