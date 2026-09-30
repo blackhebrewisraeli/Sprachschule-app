@@ -9,6 +9,7 @@ import { THEME_MODE_KEY } from './lib/themeMode';
 import { loadState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
 import { MAX_CUSTOM_DECKS } from './lib/customDecks';
+import { locationReset } from './lib/clearUserState';
 
 vi.mock('@vercel/analytics/react', () => ({ Analytics: () => null }));
 
@@ -53,6 +54,8 @@ beforeEach(() => {
   adminSessionMock.status = 'ready';
   adminSessionMock.me = { isAdmin: false, isSystemAccount: false, blocked: false };
   profileMock.fetchMyProfile.mockReset().mockResolvedValue(null);
+  legalMock.status = 'accepted';
+  legalMock.hasPrior = true;
 });
 
 const authMock = vi.hoisted(() => ({
@@ -96,6 +99,21 @@ vi.mock('./lib/auth', async (importOriginal) => ({
     user: authMock.status === 'authenticated' ? { id: 'u1', email: 'a@b.co' } : null,
     status: authMock.status,
   }),
+}));
+
+// Where the signed-in account stands on the current terms. Defaults to
+// 'accepted' so every test written before the gate keeps its meaning: a
+// signed-in account there is one that has already accepted.
+const legalMock = vi.hoisted(() => ({
+  status: 'accepted',
+  hasPrior: true,
+  accept: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock('./lib/useLegalAcceptance', () => ({
+  useLegalAcceptance: (user) =>
+    user
+      ? { status: legalMock.status, hasPrior: legalMock.hasPrior, accept: legalMock.accept }
+      : { status: 'none', hasPrior: false, accept: legalMock.accept },
 }));
 
 // The league standing is a network read, so App tests inject it directly. It is
@@ -3032,5 +3050,217 @@ describe('placement gate while a signed-in level is still in flight', () => {
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
 
     expect(placement()).toBeInTheDocument();
+  });
+});
+
+// ── Terms acceptance (spec §6.4–§6.8) ─────────────────────────────────────
+// A signed-in account without a current acceptance record must behave like a
+// session that is still restoring: nothing syncs, flushes, joins or registers,
+// and the only thing on top is the non-dismissible gate.
+describe('terms acceptance gate', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'authenticated';
+    authMock.mayHaveSession = true;
+    syncMock.reset();
+    syncMock.enabled = true;
+    syncMock.start.mockClear();
+    progressFlushMock.start.mockClear();
+    leagueStandingMock.calls = [];
+    legalMock.accept.mockClear();
+    authSignOutMock.mockClear();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    syncMock.enabled = false;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    window.history.replaceState(null, '', '/');
+    vi.restoreAllMocks();
+  });
+
+  it('holds sync, progress flush, league reads and the level boost while acceptance is required', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = false;
+    setLevelBoostEnabled(true);
+    render(<App />);
+    expect(await screen.findByRole('alertdialog', { name: 'One more step' })).toBeInTheDocument();
+    expect(syncMock.start).not.toHaveBeenCalled();
+    expect(progressFlushMock.start).not.toHaveBeenCalled();
+    expect(leagueStandingMock.calls.length).toBeGreaterThan(0);
+    expect(leagueStandingMock.calls.every((id) => id == null)).toBe(true);
+    expect(isLevelBoostEnabled()).toBe(false);
+  });
+
+  it('holds everything while the check is unknown, and shows no gate', () => {
+    legalMock.status = 'unknown';
+    render(<App />);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(syncMock.start).not.toHaveBeenCalled();
+    expect(progressFlushMock.start).not.toHaveBeenCalled();
+  });
+
+  it('starts sync once accepted (returning user: no gate)', async () => {
+    legalMock.status = 'accepted';
+    render(<App />);
+    await waitFor(() => expect(syncMock.start).toHaveBeenCalledWith('u1'));
+    expect(progressFlushMock.start).toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks an account that accepted an older version to review the update', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = true;
+    render(<App />);
+    expect(
+      await screen.findByRole('alertdialog', { name: "We've updated our terms" })
+    ).toBeInTheDocument();
+  });
+
+  it('Continue records the acceptance through the hook', async () => {
+    legalMock.status = 'required';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(legalMock.accept).toHaveBeenCalledTimes(1);
+  });
+
+  it('declining on a device that never synced keeps guest progress', async () => {
+    legalMock.status = 'required';
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    // A leftover ticked-box intent must not survive the decline and be
+    // credited to whichever account signs in next.
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    expect(authSignOutMock).toHaveBeenCalled();
+    expect(localStorage.getItem('deutsch-app-state-v1')).toContain('"box":2');
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+  });
+
+  it('declining on a device that already synced gets the full sign-out reset', async () => {
+    legalMock.status = 'required';
+    const go = vi.spyOn(locationReset, 'go').mockImplementation(() => {});
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    localStorage.setItem(
+      'deutsch-app-sync-meta-v1',
+      JSON.stringify({ lastSyncedCounters: {}, lastSyncedAt: '2026-09-29T10:00:00Z' })
+    );
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(go).toHaveBeenCalled());
+    expect(authSignOutMock).toHaveBeenCalled();
+    expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
+  });
+
+  it('deleting from the gate on a never-synced device keeps guest progress', async () => {
+    legalMock.status = 'required';
+    authMock.token = 'tok';
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue({ ok: true, status: 204, clone: () => ({}), json: async () => ({}) });
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    render(<App />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete this account instead' })
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /type delete to confirm/i }),
+      'DELETE'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+    await waitFor(() => expect(authSignOutMock).toHaveBeenCalled());
+    const call = fetchSpy.mock.calls.find(([url]) => String(url).includes('/account/delete'));
+    expect(call?.[1].method).toBe('DELETE');
+    expect(localStorage.getItem('deutsch-app-state-v1')).toContain('"box":2');
+  });
+
+  it('the gate links reach /terms and come back to a still-ticked, focused box', async () => {
+    legalMock.status = 'required';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Terms of Service' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
+    const box = await screen.findByRole('checkbox', { name: /i agree/i });
+    expect(box).toBeChecked();
+    expect(box).toHaveFocus();
+  });
+});
+
+describe('create sheet keeps its draft across the legal pages', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+    vi.restoreAllMocks();
+  });
+
+  it('email, tick and focus survive a trip to /privacy', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await userEvent.type(screen.getByLabelText('Email'), 'kept@b.co');
+    await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Privacy Policy' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
+    expect(await screen.findByRole('dialog', { name: /create your account/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('kept@b.co');
+    const box = screen.getByRole('checkbox', { name: /i agree/i });
+    expect(box).toBeChecked();
+    expect(box).toHaveFocus();
+  });
+
+  it('dismissing the sheet clears the tick and the intent (no false acceptance)', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    await userEvent.click(screen.getByRole('button', { name: /close sign-in/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.getByRole('checkbox', { name: /i agree/i })).not.toBeChecked();
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+  });
+});
+
+describe('guest mode is unchanged by the terms work', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    syncMock.start.mockClear();
+  });
+
+  it('"Try it first — free" needs no checkbox and enters the app', async () => {
+    render(<App />);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /try it first/i }));
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(syncMock.start).not.toHaveBeenCalled();
+  });
+
+  it('legal pages render on a cold load while signed out', () => {
+    window.history.replaceState(null, '', '/terms');
+    render(<App />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    window.history.replaceState(null, '', '/#/privacy');
+    render(<App />);
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: 'Privacy Policy' }).length
+    ).toBeGreaterThan(0);
+    window.history.replaceState(null, '', '/');
   });
 });

@@ -22,6 +22,9 @@ vi.mock('../../lib/auth.js', () => ({
   },
 }));
 
+const { clearIntent } = vi.hoisted(() => ({ clearIntent: vi.fn() }));
+vi.mock('../../lib/legalAcceptance.js', () => ({ clearIntent }));
+
 import AuthCallbackLanding from './AuthCallbackLanding';
 
 describe('AuthCallbackLanding', () => {
@@ -29,7 +32,34 @@ describe('AuthCallbackLanding', () => {
     isAuthConfigured.mockReturnValue(true);
     authCallbackKind.mockReturnValue(null);
     authCallbackReason.mockReturnValue(null);
+    clearIntent.mockClear();
     window.history.replaceState({}, '', '/');
+  });
+
+  // A failed or cancelled callback ends the flow a ticked box was for; the
+  // intent must not outlive it and be credited to a later sign-in.
+  it('an error callback clears any pending terms intent', () => {
+    authCallbackKind.mockReturnValue('error');
+    authCallbackReason.mockReturnValue('cancelled');
+    render(
+      <AuthCallbackLanding status="anonymous" onSignedIn={() => {}} onRequestNew={() => {}} />
+    );
+    expect(clearIntent).toHaveBeenCalled();
+  });
+
+  it('a native error callback clears it too', () => {
+    render(
+      <AuthCallbackLanding status="anonymous" onSignedIn={() => {}} onRequestNew={() => {}} />
+    );
+    expect(clearIntent).not.toHaveBeenCalled();
+    act(() => native.emit({ kind: 'error', reason: 'cancelled' }));
+    expect(clearIntent).toHaveBeenCalled();
+  });
+
+  it('a pending callback keeps the intent for the session it is about to deliver', () => {
+    authCallbackKind.mockReturnValue('pending');
+    render(<AuthCallbackLanding status="loading" onSignedIn={() => {}} onRequestNew={() => {}} />);
+    expect(clearIntent).not.toHaveBeenCalled();
   });
 
   it('renders nothing when the URL is not an auth callback', () => {

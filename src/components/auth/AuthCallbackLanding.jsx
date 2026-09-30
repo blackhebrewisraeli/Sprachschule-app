@@ -7,6 +7,7 @@ import {
   onNativeAuthCallback,
 } from '../../lib/auth.js';
 import { SIGNUP_NOT_ALLOWED_MESSAGE } from '../../lib/signupAllowlist.js';
+import { clearIntent } from '../../lib/legalAcceptance.js';
 import Button from '../ui/Button';
 import useFocusTrap from '../../lib/useFocusTrap.js';
 
@@ -69,6 +70,12 @@ export default function AuthCallbackLanding({
     }, 15000);
     return () => clearTimeout(t);
   }, [kind, phase, status, onSignedIn, signupRejected]);
+
+  // A failed or cancelled callback ends the flow a ticked box was for. The
+  // intent must not outlive it and be credited to some later sign-in.
+  useEffect(() => {
+    if (phase === 'error') clearIntent();
+  }, [phase]);
 
   useEffect(() => {
     if (!signupRejected) return;
