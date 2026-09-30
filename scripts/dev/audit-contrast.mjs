@@ -258,8 +258,8 @@ const MODALS = [
       timeout: 30000,
     });
   } catch (error) {
-    console.error(`Contrast audit could not load ${target}`);
-    console.error(error);
+    console.error('Contrast audit failed:', error);
+    if (error?.stack) console.error(error.stack);
     process.exitCode = 1;
   }
 

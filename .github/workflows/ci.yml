@@ -146,7 +146,7 @@ jobs:
           done
 
           echo '--- Contrast audit ---'
-          AUDIT_BASE="$AUDIT_BASE" npm run audit:contrast
+          AUDIT_BASE="$AUDIT_BASE" npm run audit:contrast 2>&1
       - name: Checkout
         uses: actions/checkout@v4
 
