@@ -172,13 +172,23 @@ describe('register_push_device: time zone (20261001120000)', () => {
     expect(row.time_zone).toBeNull();
   });
 
+  // Self-contained: it seeds its own zone, so it proves the clearing whether it
+  // runs alone, reordered, or after the others.
   it('an older client that sends no zone clears the stale one (latest report wins)', async () => {
+    const seeded = await A.client.rpc('register_push_device', {
+      p_token: token('tz-cleared'),
+      p_platform: 'android',
+      p_time_zone: 'Europe/Berlin',
+    });
+    expect(seeded.error).toBeNull();
+    expect((await ownerOf(token('tz-cleared'))).time_zone).toBe('Europe/Berlin');
+
     const { error } = await A.client.rpc('register_push_device', {
-      p_token: token('tz-known'),
+      p_token: token('tz-cleared'),
       p_platform: 'android',
     });
     expect(error).toBeNull();
-    expect((await ownerOf(token('tz-known'))).time_zone).toBeNull();
+    expect((await ownerOf(token('tz-cleared'))).time_zone).toBeNull();
   });
 });
 
