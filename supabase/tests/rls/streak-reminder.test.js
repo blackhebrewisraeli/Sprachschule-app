@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { execFileSync } from 'node:child_process';
 import { adminClient, anonClient, createSignedInUser } from './helpers.js';
 
 // claim_streak_reminders (20261001120000): who is due a streak reminder at a
@@ -7,6 +8,16 @@ import { adminClient, anonClient, createSignedInUser } from './helpers.js';
 // other suites write for the current week.
 //
 // Requires the local stack: `supabase start` (Docker), then `npm run test:rls`.
+
+const DB_URL = process.env.DB_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+const FN =
+  'public.claim_streak_reminders(timestamptz,integer,integer,integer,text,integer,uuid,boolean)';
+
+// has_function_privilege() lives in pg_catalog, which PostgREST does not expose.
+function flag(expr) {
+  const q = `select case when (${expr}) then 't' else 'f' end`;
+  return execFileSync('psql', [DB_URL, '-At', '-c', q], { encoding: 'utf8' }).trim();
+}
 
 const admin = adminClient();
 const RUN = `${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
@@ -22,7 +33,7 @@ const PARAMS = {
   p_window_hours: 3,
   p_default_goal: 50,
   p_pack_id: 'de',
-  p_limit: 10000,
+  p_limit: 100,
 };
 
 const DUE_AT_NOW = [
@@ -153,6 +164,15 @@ afterAll(async () => {
 });
 
 describe('claim_streak_reminders: privilege and parameters', () => {
+  // The function returns other learners' FCM tokens, so the EXECUTE revoke has
+  // to be proven on its own: the two client-call tests below also fail for any
+  // other error, so neither isolates it.
+  it('only service_role holds EXECUTE (catalog)', () => {
+    expect(flag(`has_function_privilege('anon', '${FN}', 'EXECUTE')`)).toBe('f');
+    expect(flag(`has_function_privilege('authenticated', '${FN}', 'EXECUTE')`)).toBe('f');
+    expect(flag(`has_function_privilege('service_role', '${FN}', 'EXECUTE')`)).toBe('t');
+  });
+
   it('anon cannot execute it', async () => {
     const { error } = await anonClient().rpc('claim_streak_reminders', {
       p_now: NOW,
@@ -169,6 +189,16 @@ describe('claim_streak_reminders: privilege and parameters', () => {
       p_dry_run: true,
     });
     expect(error).not.toBeNull();
+  });
+
+  it('rejects a batch larger than PostgREST will return', async () => {
+    const { error } = await admin.rpc('claim_streak_reminders', {
+      p_now: NOW,
+      ...PARAMS,
+      p_limit: 101,
+      p_dry_run: true,
+    });
+    expect(error?.code).toBe('22023');
   });
 
   it('rejects a window that runs past midnight', async () => {
@@ -240,13 +270,11 @@ describe('claim_streak_reminders: claiming', () => {
 
   it('prunes claims older than eight days on a real run', async () => {
     await must(
-      admin
-        .from('push_reminder_claims')
-        .insert({
-          user_id: users['no-streak'].id,
-          local_day: '2026-09-01',
-          claimed_at: '2026-09-01T18:00:00Z',
-        })
+      admin.from('push_reminder_claims').insert({
+        user_id: users['no-streak'].id,
+        local_day: '2026-09-01',
+        claimed_at: '2026-09-01T18:00:00Z',
+      })
     );
     await claim();
     const { data } = await admin
@@ -270,5 +298,14 @@ describe('claim_streak_reminders: clocks', () => {
     const rows = ours(await claim({ p_now: '2026-10-01T13:40:00Z', p_dry_run: true }));
     expect(labels(rows)).toEqual(['kolkata']);
     expect(new Date(rows[0].expires_at).toISOString()).toBe('2026-10-01T18:30:00.000Z');
+  });
+});
+
+// Last on purpose: the clock tests above dry-run against kolkata and need it unclaimed.
+describe('claim_streak_reminders: overlapping runs', () => {
+  it('two concurrent real runs claim a learner exactly once between them', async () => {
+    const at = '2026-10-01T13:40:00Z'; // 19:10 in Kolkata
+    const [a, b] = await Promise.all([claim({ p_now: at }), claim({ p_now: at })]);
+    expect([...labels(a), ...labels(b)]).toEqual(['kolkata']);
   });
 });

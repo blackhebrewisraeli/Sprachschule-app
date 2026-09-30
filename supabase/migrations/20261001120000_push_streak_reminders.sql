@@ -142,6 +142,10 @@ grant select, insert, delete on table public.push_reminder_claims to service_rol
 -- simulation (spec §6). The goal is settings.data.goal when it is a number in
 -- [1, 1000], else p_default_goal (the sender passes DEFAULT_GOAL).
 --
+-- PostgREST returns at most max_rows (1000) rows from an RPC; one row per device
+-- and at most 10 devices per learner, so a call claims at most 100 learners; the
+-- sender pages through batches.
+--
 -- ponytail: resolving zones scans user_devices once per tick. That is fine to
 -- ~1e5 devices; past that, precompute a UTC-offset bucket per device.
 create or replace function public.claim_streak_reminders(
@@ -165,7 +169,7 @@ begin
      or p_window_hours is null or p_window_hours < 1
      or p_start_hour + p_window_hours > 24
      or p_default_goal is null or p_default_goal < 1
-     or p_limit is null or p_limit not between 1 and 10000
+     or p_limit is null or p_limit not between 1 and 100
      or p_pack_id is null then
     raise exception 'invalid reminder parameters' using errcode = '22023';
   end if;
