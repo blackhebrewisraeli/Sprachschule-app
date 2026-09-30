@@ -3214,6 +3214,44 @@ describe('terms acceptance gate', () => {
     expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
   });
 
+  // D1 accounts meet the gate on an old session, so the delete endpoint's
+  // re-auth window has usually lapsed. The sign-in sheet it opens must sit ON
+  // TOP of the gate (not hidden behind its scrim with focus trapped inside),
+  // and backing out of it must not cost the gate its tick.
+  it('a re-auth demanded by delete opens the sign-in sheet above the gate, tick intact', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = false;
+    authMock.token = 'tok';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      clone() {
+        return this;
+      },
+      json: async () => ({ error: { code: 'reauth_required', message: 'Please sign in again.' } }),
+    });
+    render(<App />);
+    const gate = await screen.findByRole('alertdialog', { name: 'One more step' });
+    await userEvent.click(within(gate).getByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(
+      within(gate).getByRole('button', { name: 'Delete this account instead' })
+    );
+    await userEvent.type(
+      within(gate).getByRole('textbox', { name: /type delete to confirm/i }),
+      'DELETE'
+    );
+    await userEvent.click(within(gate).getByRole('button', { name: 'Delete account' }));
+
+    const sheet = await screen.findByRole('dialog', { name: /^sign in$/i });
+    const zOf = (el) => Number(el.parentElement.style.zIndex);
+    expect(zOf(sheet)).toBeGreaterThan(zOf(gate));
+    expect(sheet.contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
+    expect(within(gate).getByRole('checkbox', { name: /i agree/i })).toBeChecked();
+  });
+
   it('deleting from the gate on a never-synced device keeps guest progress', async () => {
     legalMock.status = 'required';
     authMock.token = 'tok';

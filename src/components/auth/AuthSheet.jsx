@@ -47,6 +47,10 @@ export default function AuthSheet({
   onDraftChange,
   onNavigateLegal,
   focusConsent = false,
+  // Stacking level. The default sits under the callback landing (80); App
+  // raises it above the acceptance gate when a re-auth has to happen on top
+  // of it.
+  zIndex = 70,
 }) {
   const sheetRef = useRef(null);
   const openerRef = useRef(null);
@@ -144,7 +148,7 @@ export default function AuthSheet({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 70,
+        zIndex,
         padding: SPACE[6],
         boxSizing: 'border-box',
       }}

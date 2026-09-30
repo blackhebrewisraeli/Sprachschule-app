@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { User, BookOpen, MessageSquare, Type, Languages, Home, Shield, Search } from 'lucide-react';
-import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW } from './lib/theme';
+import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW, Z } from './lib/theme';
 import { loadState, saveState } from './lib/storage';
 import { stampSettings } from './lib/settingsStamp';
 import { readLevel, LEVEL_CHANGE_EVENT, hasStoredLevel } from './lib/levelPref';
@@ -426,6 +426,7 @@ export default function App() {
   const user = legalAccepted ? rawAuth.user : null;
   const authStatus = rawAuth.user ? (legalAccepted ? 'authenticated' : 'loading') : rawAuth.status;
   const { signupRejected } = rawAuth;
+  const acceptanceGateUp = Boolean(rawAuth.user) && legal.status === 'required';
   const adminSession = useAdminSession(user);
   const isAdmin = Boolean(user && adminSession.me?.isAdmin);
   useEffect(() => {
@@ -481,11 +482,16 @@ export default function App() {
   const [authDraft, setAuthDraft] = useState(EMPTY_AUTH_DRAFT);
   const patchAuthDraft = (patch) => setAuthDraft((d) => ({ ...d, ...patch }));
   const setDraftAccepted = (accepted) => patchAuthDraft({ accepted });
-  // Dismissing the sheet ends the flow the tick was for, so reopening always
-  // starts unticked and no intent is left to credit a later sign-in.
+  // Ending the sheet's flow resets its draft, so reopening always starts
+  // unticked. While the acceptance gate is up the sheet is only a re-auth
+  // detour on top of it, and the tick belongs to the gate, so it survives.
+  const resetAuthDraft = () =>
+    setAuthDraft((d) => ({ ...EMPTY_AUTH_DRAFT, accepted: acceptanceGateUp && d.accepted }));
+  // Dismissing the sheet also drops the intent, so none is left to credit a
+  // later sign-in.
   const closeAuthSheet = () => {
     setAuthModal(null);
-    setAuthDraft(EMPTY_AUTH_DRAFT);
+    resetAuthDraft();
     clearIntent();
   };
   const [searchOpen, setSearchOpen] = useState(false);
@@ -495,7 +501,7 @@ export default function App() {
   };
   const handleAuthDone = () => {
     setAuthModal(null);
-    setAuthDraft(EMPTY_AUTH_DRAFT);
+    resetAuthDraft();
     setGateDismissed(true);
     // Nothing reads this key any more; kept because AGENTS.md forbids removing
     // or migrating a storage key.
@@ -1238,8 +1244,11 @@ export default function App() {
         onDraftChange={patchAuthDraft}
         onNavigateLegal={openLegalFromConsent}
         focusConsent={focusConsent}
+        // A delete from the gate can demand a fresh sign-in; the sheet for it
+        // must stack above the gate, not open hidden behind its scrim.
+        zIndex={acceptanceGateUp ? Z.modal + 1 : undefined}
       />
-      {rawAuth.user && legal.status === 'required' && (
+      {acceptanceGateUp && (
         <AcceptanceGate
           hasPrior={legal.hasPrior}
           accepted={authDraft.accepted}
