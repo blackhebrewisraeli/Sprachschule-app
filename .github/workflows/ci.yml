@@ -105,24 +105,27 @@ jobs:
       # what users get, so it is what gets audited — not the dev server.
       - name: Audit contrast against the production build
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
 
           npx --no -- vite preview \
             --host 127.0.0.1 \
             --port 5290 \
-            --strictPort > preview.log 2>&1 &
+            --strictPort >preview.log 2>&1 &
           PREVIEW_PID=$!
 
           cleanup() {
+            status=$?
             kill "$PREVIEW_PID" 2>/dev/null || true
+            echo '--- Vite preview log ---'
             cat preview.log
+            exit "$status"
           }
           trap cleanup EXIT
 
           for i in $(seq 1 60); do
             if curl --fail --silent --show-error \
                 --connect-timeout 1 \
-                "$AUDIT_BASE/" > /dev/null; then
+                "$AUDIT_BASE/" >/dev/null; then
               echo "preview server up after ${i}s"
               break
             fi
@@ -142,7 +145,7 @@ jobs:
             sleep 1
           done
 
-          npm run audit:contrast
+          AUDIT_BASE="$AUDIT_BASE" npm run audit:contrast
       - name: Checkout
         uses: actions/checkout@v4
 

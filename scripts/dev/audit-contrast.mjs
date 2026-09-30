@@ -1,3 +1,14 @@
+process.on('unhandledRejection', (error) => {
+  console.error('Contrast audit failed:');
+  console.error(error?.stack || error);
+  process.exit(1);
+});
+process.on('uncaughtException', (error) => {
+  console.error('Contrast audit failed:');
+  console.error(error?.stack || error);
+  process.exit(1);
+});
+
 #!/usr/bin/env node
 /**
  * Rendered-DOM contrast audit.
