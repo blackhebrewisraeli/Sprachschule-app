@@ -331,12 +331,18 @@ const SERVER_ONLY = {
     filterCol: 'push_token',
     filterVal: 'deny-probe',
   },
+  push_reminder_claims: {
+    insert: { user_id: null, local_day: '2026-10-01' },
+    update: { local_day: '2026-10-02' },
+    filterCol: 'local_day',
+    filterVal: '2026-10-01',
+  },
 };
 
 // Tables whose insert fixture names its owner. Filled in with the signed-in
 // caller for the authenticated pass, so a denial there cannot be blamed on a
 // row claiming somebody else.
-const OWNED_INSERT = new Set(['progress_events_seen', 'user_devices']);
+const OWNED_INSERT = new Set(['progress_events_seen', 'user_devices', 'push_reminder_claims']);
 
 async function expectEveryVerbDenied(client, table, spec) {
   const select = await client.from(table).select('*');

@@ -22,6 +22,7 @@ const TABLES = [
   'profile_follows',
   'token_ledger',
   'user_devices',
+  'push_reminder_claims',
 ];
 const CLIENT_ROLES = ['anon', 'authenticated'];
 const DML = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
@@ -40,6 +41,8 @@ const SERVICE_ROLE_DML = {
   // 20260927120000: the future sender reads by user and prunes dead tokens;
   // the register/unregister RPCs run as the definer.
   user_devices: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  // 20261001120000: the sender claims, releases and prunes; never edits a claim.
+  push_reminder_claims: ['SELECT', 'INSERT', 'DELETE'],
 };
 
 function sql(q) {
@@ -102,6 +105,7 @@ describe('server-only tables: catalog (advisor 0008 hygiene)', () => {
     expect(policies.map((p) => `${p.tablename}.${p.policyname}`).sort()).toEqual([
       'profile_follows.no client access',
       'progress_events_seen.no client access',
+      'push_reminder_claims.no client access',
       'rate_limits.no client access',
       'token_ledger.no client access',
       'user_devices.no client access',
