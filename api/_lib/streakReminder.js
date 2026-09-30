@@ -146,7 +146,8 @@ export async function runStreakReminders({
             expiresAt: user.expiresAt,
             now: now(),
           });
-          const { outcome } = await fcm.send(message).catch(() => ({ outcome: 'fatal' }));
+          const result = await fcm.send(message).catch(() => null);
+          const outcome = result?.outcome ?? 'fatal';
           outcomes.push(outcome);
           if (outcome === 'sent') summary.sent += 1;
           else if (outcome === 'dead') {
@@ -168,22 +169,27 @@ export async function runStreakReminders({
   // Page through due learners, batchSize at a time. Claims are released only
   // after the whole run, so a later batch can never re-claim a learner this
   // run already failed to reach.
-  let budget = config.maxUsersPerRun;
-  while (budget > 0 && !summary.aborted) {
-    if (now() - started > config.deadlineMs) {
-      summary.aborted = 'deadline';
-      break;
+  let failure = null;
+  try {
+    let budget = config.maxUsersPerRun;
+    while (budget > 0 && !summary.aborted) {
+      if (now() - started > config.deadlineMs) {
+        summary.aborted = 'deadline';
+        break;
+      }
+      const limit = Math.min(config.batchSize, budget);
+      const rows = await claimBatch(limit);
+      const users = groupByUser(rows);
+      summary.due += users.size;
+      summary.devices += rows.length;
+      budget -= users.size;
+      // A dry run claims nothing, so asking again would return the same learners.
+      if (dryRun || users.size === 0) break;
+      await sendTo(users);
+      if (users.size < limit) break; // the last page
     }
-    const limit = Math.min(config.batchSize, budget);
-    const rows = await claimBatch(limit);
-    const users = groupByUser(rows);
-    summary.due += users.size;
-    summary.devices += rows.length;
-    budget -= users.size;
-    // A dry run claims nothing, so asking again would return the same learners.
-    if (dryRun || users.size === 0) break;
-    await sendTo(users);
-    if (users.size < limit) break; // the last page
+  } catch (error) {
+    if (!dryRun) failure = error;
   }
   if (dryRun) return summary;
 
@@ -208,5 +214,6 @@ export async function runStreakReminders({
     }
   }
 
+  if (failure) throw failure;
   return summary;
 }

@@ -86,6 +86,13 @@ describe('buildReminderMessage', () => {
     expect(message.notification).toEqual({ title: COPY.title, body: COPY.body });
   });
 
+  it('notification text uses correct quotation marks', () => {
+    expect(message.notification).toEqual({
+      title: 'Keep your streak alive',
+      body: "You haven't reached today's goal yet. A few minutes of practice keeps your streak going.",
+    });
+  });
+
   it('never asks for a TTL below a minute', () => {
     const late = buildReminderMessage({
       token: 't',
@@ -299,5 +306,38 @@ describe('runStreakReminders', () => {
     });
     expect(db.rpc).toHaveBeenCalledTimes(1);
     expect(summary).toMatchObject({ sent: 2, aborted: 'deadline' });
+  });
+
+  it('releases what it could not reach even when a later page fails, then rethrows', async () => {
+    const pages = [[row('u1', 'a'), row('u2', 'b')], new Error('page 2 failed')];
+    const { db, deletes } = fakeDb();
+    db.rpc.mockImplementation(async () => {
+      const next = pages.shift();
+      if (next instanceof Error) throw next;
+      return { data: next, error: null };
+    });
+    const fcm = fakeFcm({ a: 'retry', b: 'dead' });
+    await expect(
+      runStreakReminders({
+        db,
+        fcm,
+        now: () => NOW,
+        config: { ...REMINDER, batchSize: 2, concurrency: 1 },
+      })
+    ).rejects.toThrow('page 2 failed');
+    expect(released(deletes)).toEqual(['u1']);
+    expect(deletedTokens(deletes)).toEqual(['b']);
+  });
+
+  it('treats a malformed send result as fatal', async () => {
+    const { db, deletes } = fakeDb([row('u1', 'a'), row('u2', 'b')]);
+    const fcm = fakeFcm();
+    fcm.send.mockImplementation(async (message) => {
+      if (message.token === 'a') return undefined;
+      return { outcome: 'sent' };
+    });
+    const summary = await runStreakReminders({ db, fcm, now: () => NOW });
+    expect(summary.aborted).toBe('fatal');
+    expect(released(deletes)).toEqual(['u1']);
   });
 });
