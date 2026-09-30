@@ -245,9 +245,23 @@ const MODALS = [
       contentType: 'application/json' 
     })).catch(() => {});
     
-    await page.goto(`${origin}/?error=access_denied&error_code=otp_expired`, {
-        waitUntil: 'domcontentloaded',
-      });
+    const base = process.env.AUDIT_BASE;
+  if (!base) {
+    console.error('AUDIT_BASE is required, for example http://127.0.0.1:5290');
+    process.exit(1);
+  }
+  const target = new URL('/', base).toString();
+  
+  try {
+    await page.goto(target, {
+      waitUntil: 'networkidle',
+      timeout: 30000,
+    });
+  } catch (error) {
+    console.error(`Contrast audit could not load ${target}`);
+    console.error(error);
+    process.exitCode = 1;
+  }
 
     // Auto-click the AcceptanceGate if it blocks the UI
     try {
