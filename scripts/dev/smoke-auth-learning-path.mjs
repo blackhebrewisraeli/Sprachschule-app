@@ -610,6 +610,18 @@ async function waitForReconcile(page, seen, timeoutMs = 20000) {
  * session) fails too.
  */
 async function stepRestoreSession(context, page, seed) {
+  // Auto-click the AcceptanceGate if it appears during session restore
+  try {
+    const gateBox = page.getByRole('checkbox', { name: /I agree/i });
+    if (await gateBox.isVisible({ timeout: 4000 })) {
+      console.log('    (Gate found. Clicking through...)');
+      await gateBox.check();
+      await page.getByRole('button', { name: /Continue/i }).click();
+    }
+  } catch (e) {
+    // Gate didn't appear, proceed normally
+  }
+
   void context;
   void seed;
 
@@ -1494,6 +1506,7 @@ async function walkViewport(context, page, vp, seed) {
   });
   await page.route('**/api/**', (r) => r.fulfill(json({ error: 'smoke-offline' }, 503)));
   await page.route('**/auth/v1/**', (r) => r.fulfill(json({})));
+  await page.route('**/auth/v1/user', (r) => r.fulfill({ body: JSON.stringify(stubSession().user), contentType: 'application/json' }));
   // Populated server + league API. Registered after the catch-alls so it wins.
   await routeServerFixture(page, stubSession().user.id);
   const posts = await captureProgressSync(page);
