@@ -1303,7 +1303,7 @@ async function auditSignedIn(page, mode) {
   // its league section is REPORTED rather than silently contributing no
   // pairings — the failure mode this whole block exists to prevent.
   const onLeagues = await page.evaluate(
-    () => !!document.querySelector('[data-testid="profile-league"]')
+    () => !!document.querySelector('[data-testid="profile-league"], [data-testid="league-panel"]')
   );
   if (!onLeagues) {
     throw new Error(
