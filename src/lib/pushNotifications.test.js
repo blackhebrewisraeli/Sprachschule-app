@@ -48,6 +48,7 @@ import {
   disablePush,
   forgetPushDevice,
   resumePushRegistration,
+  deviceTimeZone,
 } from './pushNotifications.js';
 
 // What Capacitor's native runtime injects before any page script runs.
@@ -81,12 +82,18 @@ beforeEach(() => {
 
   backend.rpc = vi.fn(async () => ({ data: null, error: null }));
   backend.client = { rpc: (...args) => backend.rpc(...args) };
+
+  // A fixed zone, so the RPC arguments are the same on every machine.
+  vi.spyOn(Intl, 'DateTimeFormat').mockImplementation(function () {
+    return { resolvedOptions: () => ({ timeZone: 'Europe/Berlin' }) };
+  });
 });
 
 afterEach(() => {
   delete window.Capacitor;
   vi.unstubAllEnvs();
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe('availability', () => {
@@ -165,6 +172,7 @@ describe('enablePush', () => {
     expect(backend.rpc).toHaveBeenCalledWith('register_push_device', {
       p_token: 'device-token-1',
       p_platform: 'ios',
+      p_time_zone: 'Europe/Berlin',
     });
     expect(readPushDevice()).toEqual({
       token: 'device-token-1',
@@ -179,6 +187,7 @@ describe('enablePush', () => {
     expect(backend.rpc).toHaveBeenCalledWith('register_push_device', {
       p_token: 'device-token-1',
       p_platform: 'android',
+      p_time_zone: 'Europe/Berlin',
     });
   });
 
@@ -375,6 +384,7 @@ describe('resumePushRegistration (launch)', () => {
     expect(backend.rpc).toHaveBeenCalledWith('register_push_device', {
       p_token: 'rotated-token',
       p_platform: 'ios',
+      p_time_zone: 'Europe/Berlin',
     });
     expect(readPushDevice().token).toBe('rotated-token');
   });
@@ -465,5 +475,31 @@ describe('native wiring', () => {
     const gradle = readFileSync('android/app/build.gradle', 'utf8');
     expect(gradle).toContain("file('google-services.json')");
     expect(gradle).toContain("apply plugin: 'com.google.gms.google-services'");
+  });
+});
+
+describe('deviceTimeZone', () => {
+  // The same clock todayKey() reads. The server needs it to know when the
+  // learner's day ends; locale and language are never consulted.
+  it('reports the zone of the device clock', () => {
+    Intl.DateTimeFormat.mockImplementation(function () {
+      return { resolvedOptions: () => ({ timeZone: 'Asia/Kolkata' }) };
+    });
+    expect(deviceTimeZone()).toBe('Asia/Kolkata');
+  });
+
+  it('is null when the platform cannot say, and opting in still works', async () => {
+    Intl.DateTimeFormat.mockImplementation(function () {
+      throw new RangeError('no ICU data');
+    });
+    expect(deviceTimeZone()).toBeNull();
+    goNative('android');
+    pushOn();
+    expect(await enablePush('u1')).toEqual({ ok: true });
+    expect(backend.rpc).toHaveBeenCalledWith('register_push_device', {
+      p_token: 'device-token-1',
+      p_platform: 'android',
+      p_time_zone: null,
+    });
   });
 });

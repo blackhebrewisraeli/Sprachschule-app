@@ -158,8 +158,27 @@ async function rpc(fn, args) {
   if (error) throw error;
 }
 
+/**
+ * The IANA zone of this device's clock, the one todayKey() (stats.js) uses to
+ * name "today". The sender needs it to know when the learner's day ends
+ * (docs/superpowers/specs/2026-10-01-push-sender-design.md §5). Never inferred
+ * from locale. Null when the platform cannot say; the server then simply does
+ * not remind this device.
+ */
+export function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
 function saveToken(token, platform) {
-  return rpc('register_push_device', { p_token: token, p_platform: platform });
+  return rpc('register_push_device', {
+    p_token: token,
+    p_platform: platform,
+    p_time_zone: deviceTimeZone(),
+  });
 }
 
 // Both halves of "stop ringing" report success rather than throw, so a caller
