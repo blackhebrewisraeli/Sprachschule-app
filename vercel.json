@@ -6,6 +6,9 @@
     "api/v1/league/settle.js": {
       "maxDuration": 300
     },
+    "api/v1/push/streak-reminder.js": {
+      "maxDuration": 300
+    },
     "api/**/*.js": {
       "maxDuration": 30
     }
