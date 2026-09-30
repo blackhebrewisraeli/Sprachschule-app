@@ -89,8 +89,10 @@ describe('buildReminderMessage', () => {
   it('notification text uses correct quotation marks', () => {
     expect(message.notification).toEqual({
       title: 'Keep your streak alive',
-      body: "You haven't reached today's goal yet. A few minutes of practice keeps your streak going.",
+      body: 'You haven’t reached today’s goal yet. A few minutes of practice keeps your streak going.',
     });
+    expect(COPY.body).not.toContain("'");
+    expect(COPY.body.match(/’/g)).toHaveLength(2);
   });
 
   it('never asks for a TTL below a minute', () => {

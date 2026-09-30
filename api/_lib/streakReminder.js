@@ -24,7 +24,7 @@ export const REMINDER = {
 // so the notification can never disagree with the app.
 export const COPY = {
   title: 'Keep your streak alive',
-  body: "You haven't reached today's goal yet. A few minutes of practice keeps your streak going.",
+  body: 'You haven’t reached today’s goal yet. A few minutes of practice keeps your streak going.',
 };
 
 const COLLAPSE = 'streak_reminder';
