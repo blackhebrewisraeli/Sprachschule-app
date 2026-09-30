@@ -1302,12 +1302,19 @@ async function auditSignedIn(page, mode) {
   // Assert the league card painted, so a profile page that stopped rendering
   // its league section is REPORTED rather than silently contributing no
   // pairings — the failure mode this whole block exists to prevent.
-  const onLeagues = await page.evaluate(
-    () => !!document.querySelector('[data-testid="profile-league"], [data-testid="league-panel"]')
+  const leagueSelector = '[data-testid="profile-league"]';
+try {
+  await page.waitForSelector(leagueSelector, {
+    state: 'visible',
+    timeout: 10000,
+  });
+} catch {
+  throw new Error(
+    `audit-contrast: no visible league section on Profile (${mode}) after ` +
+      'waiting for async league data. Check VITE_LEAGUES_ENABLED, the ' +
+      'league API fixtures, and the profile selector.'
   );
-  if (!onLeagues) {
-    throw new Error(
-      `audit-contrast: no league section on Profile (${mode}) — either the ` +
+}) — either the ` +
         'build lacks VITE_LEAGUES_ENABLED=true or the section moved.'
     );
   }
