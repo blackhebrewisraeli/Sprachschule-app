@@ -1,9 +1,13 @@
 import { it, expect, vi, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
+// A raw session is ALWAYS present here. The section is handed the terms-gated
+// user by UserProfile (spec §6.4: nothing joins a league before acceptance) and
+// must use only that; one that went back to reading useAuth() itself would see
+// this account instead and fail the tests below.
 vi.mock('../../lib/auth.js', () => ({
-  useAuth: vi.fn(),
+  useAuth: vi.fn(() => ({ user: { id: 'raw-session' } })),
   getSupabase: vi.fn(),
 }));
 vi.mock('../../lib/leagues.js', () => ({
@@ -21,7 +25,6 @@ import LeaderboardSection from './LeaderboardSection.jsx';
 import { LEAGUE_ROW_COLUMNS } from '../league/leagueFormat';
 import { LEAGUE_SIZE } from '../../lib/leagueZones.js';
 import { RADIUS } from '../../lib/theme.js';
-import { useAuth } from '../../lib/auth.js';
 import {
   joinLeague,
   refreshLeague,
@@ -29,7 +32,13 @@ import {
   fetchLeagueProfiles,
 } from '../../lib/leagues.js';
 
+// The gated user the parent hands down; `null` is signed out OR not yet
+// accepted — the section cannot tell the two apart, and must not need to.
+let authUser = null;
+const Section = (props) => <LeaderboardSection user={authUser} {...props} />;
+
 afterEach(() => {
+  authUser = null;
   cleanup();
   vi.clearAllMocks();
   vi.unstubAllEnvs();
@@ -54,7 +63,7 @@ const currentMonday = () => {
 };
 
 const signIn = (rows, tier = 0) => {
-  useAuth.mockReturnValue({ user: { id: 'me' } });
+  authUser = { id: 'me' };
   joinLeague.mockResolvedValue({
     league_id: 'L1',
     tier,
@@ -66,10 +75,21 @@ const signIn = (rows, tier = 0) => {
 };
 
 it('shows the sign-in teaser when signed out', () => {
-  useAuth.mockReturnValue({ user: null });
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  authUser = null;
+  render(<Section onSelectUser={() => {}} />);
   expect(screen.getByText(/sign in to join/i)).toBeTruthy();
   expect(document.querySelector('[data-ui="status-note"]')).not.toBeNull();
+});
+
+// The raw session in the auth mock is live the whole time. A section handed no
+// user (signed out, or signed in but not yet past the terms gate) must never
+// write a membership for it.
+it('never joins or refreshes for a session it was not handed', async () => {
+  authUser = null;
+  render(<Section onSelectUser={() => {}} />);
+  await act(async () => {});
+  expect(joinLeague).not.toHaveBeenCalled();
+  expect(refreshLeague).not.toHaveBeenCalled();
 });
 
 it('renders standings, a countdown, and the sparse note for a small league', async () => {
@@ -77,7 +97,7 @@ it('renders standings, a countdown, and the sparse note for a small league', asy
     { user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null },
     { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
   ]);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
   expect(screen.getByRole('heading', { name: 'Rangliste' })).toBeTruthy();
   expect(screen.getByText(/Ends in/)).toBeTruthy();
@@ -91,7 +111,7 @@ it('states no tier of its own — the league card above owns that', async () => 
   // settle those are different numbers, printed six pixels apart. This section
   // reports its tier UPWARD now; printing one again would restore the bug.
   signIn(pair, 2);
-  const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
+  const { container } = render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   for (const tier of ['Bronze', 'Silver', 'Gold', 'Sapphire', 'Ruby']) {
     expect(container).not.toHaveTextContent(tier);
@@ -110,7 +130,7 @@ it('reports the live league upward, with the derived rank and cohort size', asyn
     ],
     3
   );
-  render(<LeaderboardSection onSelectUser={() => {}} onLeague={onLeague} />);
+  render(<Section onSelectUser={() => {}} onLeague={onLeague} />);
   await waitFor(() => expect(onLeague).toHaveBeenCalled());
   expect(onLeague).toHaveBeenCalledWith({
     tier: 3,
@@ -124,9 +144,9 @@ it('clears the reported league when the load fails', async () => {
   // Otherwise the parent keeps painting a tier beside an error note that says
   // the league could not be loaded.
   const onLeague = vi.fn();
-  useAuth.mockReturnValue({ user: { id: 'me' } });
+  authUser = { id: 'me' };
   joinLeague.mockRejectedValue(new Error('boom'));
-  render(<LeaderboardSection onSelectUser={() => {}} onLeague={onLeague} />);
+  render(<Section onSelectUser={() => {}} onLeague={onLeague} />);
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
   expect(onLeague).toHaveBeenCalledWith(null);
@@ -138,11 +158,11 @@ it('does not re-join when the parent passes a fresh callback identity', async ()
   // the effect's dependency list, every re-render of the profile page would
   // replay join + refresh.
   signIn(pair);
-  const { rerender } = render(<LeaderboardSection onSelectUser={() => {}} onLeague={() => {}} />);
+  const { rerender } = render(<Section onSelectUser={() => {}} onLeague={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   expect(joinLeague).toHaveBeenCalledTimes(1);
 
-  rerender(<LeaderboardSection onSelectUser={() => {}} onLeague={() => {}} />);
+  rerender(<Section onSelectUser={() => {}} onLeague={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Me')).toBeTruthy());
   expect(joinLeague).toHaveBeenCalledTimes(1);
 });
@@ -155,7 +175,7 @@ it('shows promotion and relegation zone labels in a full league (no sparse note)
     rank: null,
   }));
   signIn(rows);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@User0')).toBeTruthy());
   expect(screen.getByText(/Promotion/)).toBeTruthy();
   expect(screen.getByText(/Relegation/)).toBeTruthy();
@@ -177,7 +197,7 @@ const threeRows = [
 it('puts every league row in the tab order, in standings order', async () => {
   const user = userEvent.setup();
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival B')).toBeTruthy());
 
   const rows = screen.getAllByRole('button');
@@ -198,7 +218,7 @@ it.each([
   const user = userEvent.setup();
   const onSelectUser = vi.fn();
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={onSelectUser} />);
+  render(<Section onSelectUser={onSelectUser} />);
   await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
 
   await user.tab();
@@ -213,7 +233,7 @@ it('still selects a row on a mouse click', async () => {
   const user = userEvent.setup();
   const onSelectUser = vi.fn();
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={onSelectUser} />);
+  render(<Section onSelectUser={onSelectUser} />);
   await waitFor(() => expect(screen.getByText('@Rival B')).toBeTruthy());
 
   await user.click(screen.getByText('@Rival B'));
@@ -222,7 +242,7 @@ it('still selects a row on a mouse click', async () => {
 
 it('names each row for a screen reader from its rank, handle, and XP', async () => {
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
 
   expect(screen.getByRole('button', { name: 'Rank 2: @Rival A, 20 XP' })).toBeTruthy();
@@ -233,9 +253,9 @@ it('names each row for a screen reader from its rank, handle, and XP', async () 
 // ── Error recovery ───────────────────────────────────────────────────────
 
 it('announces a league load failure and offers a way back', async () => {
-  useAuth.mockReturnValue({ user: { id: 'me' } });
+  authUser = { id: 'me' };
   joinLeague.mockRejectedValue(new Error('boom'));
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
 
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load your league.");
   expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
@@ -243,7 +263,7 @@ it('announces a league load failure and offers a way back', async () => {
 
 it('refetches when Retry is pressed', async () => {
   const user = userEvent.setup();
-  useAuth.mockReturnValue({ user: { id: 'me' } });
+  authUser = { id: 'me' };
   joinLeague.mockRejectedValueOnce(new Error('boom'));
   joinLeague.mockResolvedValue({
     league_id: 'L1',
@@ -254,7 +274,7 @@ it('refetches when Retry is pressed', async () => {
   refreshLeague.mockResolvedValue({ weekly_xp: 0 });
   fetchStandings.mockResolvedValue(pair);
 
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await user.click(await screen.findByRole('button', { name: 'Retry' }));
 
   // Assert on the recovered UI, not on a call count: the count is an
@@ -265,7 +285,7 @@ it('refetches when Retry is pressed', async () => {
 
 it('shows loading feedback between two consecutive failures, not a frozen error', async () => {
   const user = userEvent.setup();
-  useAuth.mockReturnValue({ user: { id: 'me' } });
+  authUser = { id: 'me' };
 
   // The second call's promise is held open deliberately (not
   // mockRejectedValueOnce twice), so we can inspect the DOM at a moment we
@@ -278,7 +298,7 @@ it('shows loading feedback between two consecutive failures, not a frozen error'
   });
   joinLeague.mockReturnValueOnce(first).mockReturnValueOnce(second);
 
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load your league.");
 
   await user.click(screen.getByRole('button', { name: 'Retry' }));
@@ -301,7 +321,7 @@ it('lists only the members in the league — no open-seat rows for unfilled plac
     { user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null },
     { user_id: 'x', handle: 'Rival', weekly_xp: 10, rank: null },
   ]);
-  const { container } = render(<LeaderboardSection onSelectUser={() => {}} />);
+  const { container } = render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
 
   // A two-member cohort is two rows, far short of LEAGUE_SIZE.
@@ -316,7 +336,7 @@ it('marks the learner’s own row and prints their own name from the page’s pr
   // caller's own profile row, so their row can show who they actually are.
   signIn(threeRows);
   const { container } = render(
-    <LeaderboardSection
+    <Section
       onSelectUser={() => {}}
       selfProfile={{ display_name: 'Sam Vimes', handle: 'Me', is_private: false }}
     />
@@ -333,7 +353,7 @@ it('marks the learner’s own row and prints their own name from the page’s pr
 
 it('shares the Home table design: one panel, the same row grid', async () => {
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival A')).toBeTruthy());
 
   expect(screen.getByTestId('profile-leaderboard')).toHaveStyle({
@@ -350,7 +370,7 @@ it('shares the Home table design: one panel, the same row grid', async () => {
 it('draws nothing when the learner is the only member, but still reports the league', async () => {
   const onLeague = vi.fn();
   signIn([{ user_id: 'me', handle: 'Me', weekly_xp: 30, rank: null }], 1);
-  const { container } = render(<LeaderboardSection onSelectUser={() => {}} onLeague={onLeague} />);
+  const { container } = render(<Section onSelectUser={() => {}} onLeague={onLeague} />);
   // The league card above still needs the tier and rank.
   await waitFor(() =>
     expect(onLeague).toHaveBeenCalledWith({ tier: 1, leagueId: 'L1', rank: 1, cohortSize: 1 })
@@ -363,7 +383,7 @@ it('draws nothing when the learner is the only member, but still reports the lea
 it('starts folded behind a participants row that opens and closes the list', async () => {
   const user = userEvent.setup();
   signIn(threeRows);
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   const details = await screen.findByTestId('league-panel-disclosure');
   const summary = details.querySelector('summary');
 
@@ -392,7 +412,7 @@ it("draws each member's uploaded avatar and name on their row, from one league r
     { user_id: 'me', display_name: 'Server Me', handle: 'Me', avatar_path: null },
   ]);
   const { container } = render(
-    <LeaderboardSection
+    <Section
       onSelectUser={() => {}}
       selfProfile={{ display_name: 'Sam Vimes', handle: 'Me', avatar_path: 'me/new.webp' }}
     />
@@ -416,7 +436,7 @@ it("draws each member's uploaded avatar and name on their row, from one league r
 it('keeps the table on handles when the league identity read fails', async () => {
   signIn(pair);
   fetchLeagueProfiles.mockRejectedValue(new Error('403'));
-  render(<LeaderboardSection onSelectUser={() => {}} />);
+  render(<Section onSelectUser={() => {}} />);
   await waitFor(() => expect(screen.getByText('@Rival')).toBeTruthy());
   expect(fetchLeagueProfiles).toHaveBeenCalled();
   expect(screen.queryByRole('alert')).toBeNull();

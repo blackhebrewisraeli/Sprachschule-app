@@ -75,7 +75,7 @@ After the change, the Redirect URLs list should read:
   device that asked for it. That is a security property, not a bug:
   intercepting the link through the URL scheme gains nothing. The **6-digit
   code** in the same email works from any device, as before.
-- **iOS** may ask "Open in Deutsch App?" the first time. That prompt comes from
+- **iOS** may ask "Open in sprachschule-app?" the first time. That prompt comes from
   the OS and is expected.
 
 ## Verify

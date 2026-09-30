@@ -10,7 +10,7 @@ import {
   Search,
   Snowflake,
 } from 'lucide-react';
-import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW } from './lib/theme';
+import { COLORS, FONT_DISPLAY, FONT_MONO, FONT_BODY, RADIUS, SHADOW, Z } from './lib/theme';
 import { loadState, saveState } from './lib/storage';
 import { stampSettings } from './lib/settingsStamp';
 import { readLevel, LEVEL_CHANGE_EVENT, hasStoredLevel } from './lib/levelPref';
@@ -71,6 +71,9 @@ import { useAdminSession } from './lib/useAdminSession.js';
 // Settings lives inside the Profile tab. The hash keeps that view deep-linkable
 // and reload-safe; the separate seventh nav slot is reserved for verified admins.
 const SETTINGS_HASH = '#/settings';
+// The create-account draft App holds so it survives a trip to /terms or
+// /privacy (spec §6.6). The six-digit code is not part of it.
+const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
 import { fetchMyProfile } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
 import ChatTab from './components/ChatTab';
@@ -84,6 +87,7 @@ import PlacementTest from './components/PlacementTest';
 import TrialWall from './components/TrialWall';
 import AuthSheet from './components/auth/AuthSheet';
 import AuthCallbackLanding from './components/auth/AuthCallbackLanding';
+import AcceptanceGate from './components/auth/AcceptanceGate';
 import AccountChip from './components/AccountChip';
 import ThemeChip from './components/ThemeChip';
 import SearchModal from './components/social/SearchModal';
@@ -94,9 +98,13 @@ import {
   mayHaveSession,
   signInWithGoogle,
   signInWithGitHub,
+  signOut,
   humanAuthError,
 } from './lib/auth';
 import { signOutAndReset } from './lib/clearUserState';
+import { useLegalAcceptance } from './lib/useLegalAcceptance';
+import { clearIntent } from './lib/legalAcceptance';
+import { loadSyncMeta } from './lib/sync/syncMeta';
 import { isNativeApp, hideLaunchScreen } from './lib/nativeApp';
 import { resumePushRegistration } from './lib/pushNotifications';
 import { SYNC_ENABLED, start, stop, markDirty, loadRemoteDaily } from './lib/sync';
@@ -415,8 +423,23 @@ export default function App() {
   // gives way" rule the wordmark already follows.
   const navIconOnly = isTablet(width);
 
-  // Auth
-  const { user, status: authStatus, signupRejected } = useAuth();
+  // Auth, gated on the terms (spec §6.4). Every consumer below — sync, the
+  // progress flush, leagues, admin, push, the level boost, the trial wall and
+  // the entry gate — reads the GATED values, so a signed-in account with no
+  // acceptance record for the current versions behaves like a session that is
+  // still restoring: nothing reaches the server until the record exists. Only
+  // AuthCallbackLanding reads the raw status, so its success/timeout behaviour
+  // is unchanged.
+  const rawAuth = useAuth();
+  const legal = useLegalAcceptance(rawAuth.user);
+  const legalAccepted = legal.status === 'accepted';
+  const user = legalAccepted ? rawAuth.user : null;
+  let authStatus = rawAuth.status;
+  if (rawAuth.user) {
+    authStatus = legalAccepted ? 'authenticated' : 'loading';
+  }
+  const { signupRejected } = rawAuth;
+  const acceptanceGateUp = Boolean(rawAuth.user) && legal.status === 'required';
   const adminSession = useAdminSession(user);
   const isAdmin = Boolean(user && adminSession.me?.isAdmin);
   useEffect(() => {
@@ -466,6 +489,24 @@ export default function App() {
   // there a session", so it comes back on the next load for anyone without one.
   const [gateDismissed, setGateDismissed] = useState(false);
   const [authModal, setAuthModal] = useState(null); // 'create' | 'signin' | null
+  // Shared by the create sheet, the trial wall and the acceptance gate. Patches
+  // merge FUNCTIONALLY: MagicLinkForm reports `{ sent: true }` after an await,
+  // by which time a spread over the render-time value would be stale.
+  const [authDraft, setAuthDraft] = useState(EMPTY_AUTH_DRAFT);
+  const patchAuthDraft = (patch) => setAuthDraft((d) => ({ ...d, ...patch }));
+  const setDraftAccepted = (accepted) => patchAuthDraft({ accepted });
+  // Ending the sheet's flow resets its draft, so reopening always starts
+  // unticked. While the acceptance gate is up the sheet is only a re-auth
+  // detour on top of it, and the tick belongs to the gate, so it survives.
+  const resetAuthDraft = () =>
+    setAuthDraft((d) => ({ ...EMPTY_AUTH_DRAFT, accepted: acceptanceGateUp && d.accepted }));
+  // Dismissing the sheet also drops the intent, so none is left to credit a
+  // later sign-in.
+  const closeAuthSheet = () => {
+    setAuthModal(null);
+    resetAuthDraft();
+    clearIntent();
+  };
   const [searchOpen, setSearchOpen] = useState(false);
 
   const handleGuest = () => {
@@ -473,6 +514,7 @@ export default function App() {
   };
   const handleAuthDone = () => {
     setAuthModal(null);
+    resetAuthDraft();
     setGateDismissed(true);
     // Nothing reads this key any more; kept because AGENTS.md forbids removing
     // or migrating a storage key.
@@ -513,8 +555,20 @@ export default function App() {
     if (error || isNativeApp()) setOAuthBusy(null);
     if (error) showToast(humanAuthError(error));
   };
-  const handleGoogle = () => startOAuth('google', signInWithGoogle);
-  const handleGitHub = () => startOAuth('github', signInWithGitHub);
+  // The welcome screen's buttons and the Sign-in sheet are sign-in surfaces
+  // (spec D3): a stale intent from an abandoned create must not ride along.
+  // The create sheet and the trial wall record the intent themselves, after
+  // the box is ticked, and use the *Create variants.
+  const handleGoogle = () => {
+    clearIntent();
+    return startOAuth('google', signInWithGoogle);
+  };
+  const handleGitHub = () => {
+    clearIntent();
+    return startOAuth('github', signInWithGitHub);
+  };
+  const handleGoogleCreate = () => startOAuth('google', signInWithGoogle);
+  const handleGitHubCreate = () => startOAuth('github', signInWithGitHub);
   const googleBusy = oauthBusy === 'google';
   const gitHubBusy = oauthBusy === 'github';
 
@@ -565,27 +619,6 @@ export default function App() {
     window.dispatchEvent(new CustomEvent('deutsch:progress'));
   };
 
-  const authOverlay = (
-    <>
-      <AuthCallbackLanding
-        status={authStatus}
-        signupRejected={signupRejected}
-        onSignedIn={handleAuthDone}
-        onRequestNew={requestSignIn}
-      />
-      <AuthSheet
-        open={Boolean(authModal)}
-        intent={authModal ?? 'signin'}
-        onClose={() => setAuthModal(null)}
-        onSuccess={handleAuthDone}
-        onGoogle={handleGoogle}
-        googleBusy={googleBusy}
-        onGitHub={handleGitHub}
-        gitHubBusy={gitHubBusy}
-      />
-    </>
-  );
-
   const showToast = (title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'info' }]);
 
   // supabase.auth.signOut() can revoke the local session (header → SIGN IN)
@@ -594,6 +627,18 @@ export default function App() {
   // signOutAndReset owns the load-bearing order — signOut settles, then the
   // storage wipe, then the exact document load. No React reset, no early return.
   const handleSignOut = () => signOutAndReset();
+  // Declining the terms. A device that has never completed a reconcile still
+  // holds only guest data (sync waits for acceptance), so a plain sign-out
+  // keeps it; one that has synced holds the account's data and gets the full
+  // reset any sign-out gets. The plain branch wipes nothing, so it drops the
+  // ticked-box intent and the draft itself — neither may carry over to the
+  // next account or the next create sheet.
+  const leaveAccount = () => {
+    if (loadSyncMeta().lastSyncedAt) return signOutAndReset();
+    clearIntent();
+    setAuthDraft(EMPTY_AUTH_DRAFT);
+    return signOut();
+  };
 
   const handleExport = async () => {
     const token = await getAccessToken();
@@ -621,7 +666,7 @@ export default function App() {
   // Throws on every failure path so AccountSection keeps the typed phrase armed:
   // the common rejection is reauth_required, and re-typing DELETE after signing
   // in again would be pure friction.
-  const handleDelete = async (confirm) => {
+  const handleDelete = async (confirm, { after = signOutAndReset } = {}) => {
     const token = await getAccessToken();
     if (!token) {
       showToast('Please sign in again.');
@@ -656,7 +701,9 @@ export default function App() {
     // local state is wiped (theme preserved) and the document hard-reloads.
     // This path used to clear localStorage before signing out, which is the
     // same ordering bug that once left XP on screen under a SIGN IN header.
-    await signOutAndReset();
+    // The acceptance gate passes `leaveAccount` instead, so a device that never
+    // synced keeps its guest progress.
+    await after();
   };
 
   useEffect(() => {
@@ -816,6 +863,18 @@ export default function App() {
     else window.history.pushState(null, '', '/');
     setLegalRoute(null);
   }, []);
+  // A consent link opens the page through here, so the checkbox it came from
+  // takes focus again when the reader comes back (spec §6.6).
+  const [focusConsent, setFocusConsent] = useState(false);
+  const openLegalFromConsent = (to) => {
+    setFocusConsent(true);
+    openLegal(to);
+  };
+  // The consent control has mounted (and taken focus) in the commit that closed
+  // the legal page; clear the flag so later renders do not steal focus again.
+  useEffect(() => {
+    if (!legalRoute && focusConsent) setFocusConsent(false);
+  }, [legalRoute, focusConsent]);
 
   // Settings lives inside the Profile tab (id still `stats`). The hash keeps
   // the deep link; it is not a seventh nav tab. The WelcomeGate still wins
@@ -1027,9 +1086,7 @@ export default function App() {
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield, num: '07' }] : []),
   ];
 
-  // Stats nav badge — count of wrong items + vocab reviews actually owed.
-  // Unseen cards are NEW, not due (see getDueCount), so a brand-new learner
-  // opens the app to no red badge at all.
+  // Stats nav badge — count of wrong items + due vocab cards.
   // Read fresh from storage on every render so it reflects exercises taken in
   // other tabs since the last App re-render. Cheap (single localStorage hit).
   const liveState = loadState() ?? {};
@@ -1176,6 +1233,55 @@ export default function App() {
     applyDefaultPlacement();
     setFirstRunPlacement(true);
   }, [placementPainting]);
+
+  // Rendered by the gate, placement and main branches alike; the legal routes
+  // return first so the consent links work from every surface below.
+  const authOverlay = (
+    <>
+      <AuthCallbackLanding
+        status={rawAuth.status}
+        signupRejected={signupRejected}
+        onSignedIn={handleAuthDone}
+        onRequestNew={requestSignIn}
+      />
+      <AuthSheet
+        open={Boolean(authModal)}
+        intent={authModal ?? 'signin'}
+        onClose={closeAuthSheet}
+        onSuccess={handleAuthDone}
+        onGoogle={authModal === 'create' ? handleGoogleCreate : handleGoogle}
+        googleBusy={googleBusy}
+        onGitHub={authModal === 'create' ? handleGitHubCreate : handleGitHub}
+        gitHubBusy={gitHubBusy}
+        draft={authDraft}
+        onDraftChange={patchAuthDraft}
+        onNavigateLegal={openLegalFromConsent}
+        focusConsent={focusConsent}
+        // A delete from the gate can demand a fresh sign-in; the sheet for it
+        // must stack above the gate, not open hidden behind its scrim.
+        zIndex={acceptanceGateUp ? Z.modal + 1 : undefined}
+      />
+      {acceptanceGateUp && (
+        <AcceptanceGate
+          hasPrior={legal.hasPrior}
+          accepted={authDraft.accepted}
+          onAcceptedChange={setDraftAccepted}
+          onContinue={async () => {
+            const result = await legal.accept();
+            if (result.ok) setAuthDraft(EMPTY_AUTH_DRAFT);
+            return result;
+          }}
+          onSignOut={leaveAccount}
+          // handleDelete has already toasted any failure; it rethrows only so
+          // AccountSection keeps its typed phrase armed, and the gate keeps its
+          // own, so the rejection ends here rather than going unhandled.
+          onDelete={(phrase) => handleDelete(phrase, { after: leaveAccount }).catch(() => {})}
+          onNavigateLegal={openLegalFromConsent}
+          focusConsent={focusConsent}
+        />
+      )}
+    </>
+  );
 
   if (legalRoute === 'privacy') return <PrivacyPolicy onBack={closeLegal} />;
   if (legalRoute === 'terms') return <TermsOfService onBack={closeLegal} />;
@@ -1338,13 +1444,6 @@ export default function App() {
                 size={mobile ? 42 : 52}
               />
             </span>
-            {/* A line icon, not the ❄️ emoji. The emoji rendered in each
-                platform's own colour font — a different glyph on iOS, Android
-                and desktop, and blue on a charcoal bar in both themes — where
-                every other header mark is a currentColor SVG (#368, #369). The
-                count is set in the mono label face the chips use. `title` is a
-                hover-only tooltip, so the name also rides on role="img" +
-                aria-label for touch and screen readers. */}
             {game.freezes > 0 && (
               <span
                 role="img"
@@ -1620,10 +1719,16 @@ export default function App() {
                   mobile={mobile}
                   onCreateAccount={() => setAuthModal('create')}
                   onSignIn={requestSignIn}
-                  onGoogle={handleGoogle}
+                  onGoogle={handleGoogleCreate}
                   googleBusy={googleBusy}
-                  onGitHub={handleGitHub}
+                  onGitHub={handleGitHubCreate}
                   gitHubBusy={gitHubBusy}
+                  // Both halves, always: with either missing the wall falls
+                  // back to its pre-consent one-tap provider path.
+                  accepted={authDraft.accepted}
+                  onAcceptedChange={setDraftAccepted}
+                  onNavigateLegal={openLegalFromConsent}
+                  focusConsent={focusConsent}
                 />
               )}
             </div>
@@ -1655,11 +1760,6 @@ export default function App() {
           it, never both at once. */}
         <TutorialOverlay anchors={tutorialAnchors} />
 
-        {/* Web only. The script loads from /_vercel/insights/, relative to
-            the page, and the native app serves the bundle from its own local
-            origin (no server.url in capacitor.config.ts) — so in the store
-            build it 404'd on every launch, logged a console error, and
-            counted nothing. main.jsx gates SpeedInsights the same way. */}
         {!isNativeApp() && <Analytics />}
         {authOverlay}
         {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}

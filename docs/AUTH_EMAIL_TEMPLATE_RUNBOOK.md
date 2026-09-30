@@ -23,6 +23,12 @@ Owner-applied 2026-09-18:
 Re-paste the template after any future `magic_link.html` edit — hosted
 Auth does not read the file automatically.
 
+**Rename pending (2026-09-30):** the repo template and `config.toml` subject
+now say `sprachschule-app`, but the hosted copy applied 2026-09-18 still says
+`Deutsch · Sprachschule` until you re-paste the subject and body (steps below).
+"Sprachschule" in the heading above is the Supabase dashboard project label,
+which is unchanged.
+
 ## Why this exists
 
 B2 designed every sign-in email to carry **both** a magic link
@@ -39,7 +45,7 @@ one-time (and on-change) sync into production.
    sign-in).
 3. Set the **Subject** to match `supabase/config.toml`:
 
-   `Your sign-in code for Deutsch · Sprachschule`
+   `Your sign-in code for sprachschule-app`
 
 4. Replace the **Body** with the full contents of
    `supabase/templates/magic_link.html` (HTML source). Confirm both of these

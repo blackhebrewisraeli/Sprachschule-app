@@ -4,13 +4,27 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { COLORS } from '../../lib/theme';
 
-const { isAuthConfigured, isGoogleAuthConfigured, isGitHubAuthConfigured, signInWithGoogle } =
-  vi.hoisted(() => ({
-    isAuthConfigured: vi.fn(() => true),
-    isGoogleAuthConfigured: vi.fn(() => false),
-    isGitHubAuthConfigured: vi.fn(() => false),
-    signInWithGoogle: vi.fn(() => Promise.resolve({ error: null })),
-  }));
+const {
+  isAuthConfigured,
+  isGoogleAuthConfigured,
+  isGitHubAuthConfigured,
+  signInWithGoogle,
+  recordIntent,
+  clearIntent,
+  formProps,
+  formMode,
+} = vi.hoisted(() => ({
+  isAuthConfigured: vi.fn(() => true),
+  isGoogleAuthConfigured: vi.fn(() => false),
+  isGitHubAuthConfigured: vi.fn(() => false),
+  signInWithGoogle: vi.fn(() => Promise.resolve({ error: null })),
+  recordIntent: vi.fn(),
+  clearIntent: vi.fn(),
+  // Every prop the (mocked) MagicLinkForm was rendered with, and a switch that
+  // swaps the mock for the real form in the one test that types into it.
+  formProps: vi.fn(),
+  formMode: { real: false },
+}));
 
 vi.mock('../../lib/auth.js', () => ({
   isAuthConfigured,
@@ -21,11 +35,22 @@ vi.mock('../../lib/auth.js', () => ({
   verifyCode: vi.fn(() => Promise.resolve({ error: null })),
 }));
 
-vi.mock('./MagicLinkForm', () => ({
-  default: function MockForm({ heading }) {
-    return <div data-testid="magic-link-form">{heading}</div>;
-  },
-}));
+vi.mock('../../lib/legalAcceptance.js', () => ({ recordIntent, clearIntent }));
+
+vi.mock('./MagicLinkForm', async () => {
+  const { default: RealForm } = await vi.importActual('./MagicLinkForm');
+  return {
+    default: function MockForm(props) {
+      formProps(props);
+      if (formMode.real) return <RealForm {...props} />;
+      return (
+        <button type="button" data-testid="magic-link-form" onClick={() => props.beforeStart?.()}>
+          {props.heading}
+        </button>
+      );
+    },
+  };
+});
 
 import AuthSheet from './AuthSheet';
 
@@ -36,6 +61,10 @@ describe('AuthSheet', () => {
     isGoogleAuthConfigured.mockReturnValue(false);
     isGitHubAuthConfigured.mockReturnValue(false);
     signInWithGoogle.mockClear();
+    recordIntent.mockClear();
+    clearIntent.mockClear();
+    formProps.mockClear();
+    formMode.real = false;
   });
 
   it('renders nothing when closed', () => {
@@ -367,6 +396,188 @@ describe('AuthSheet', () => {
       render(<Harness />);
       await user.click(screen.getByRole('button', { name: 'Sign in trigger' }));
       expect(screen.getByRole('button', { name: /continue with github/i })).toHaveFocus();
+    });
+  });
+});
+
+describe('AuthSheet — terms consent', () => {
+  const draft = { email: '', sent: false, accepted: false };
+  const base = { open: true, onClose: () => {}, onSuccess: () => {}, onDraftChange: () => {} };
+
+  beforeEach(() => {
+    isAuthConfigured.mockReturnValue(true);
+    isGoogleAuthConfigured.mockReturnValue(false);
+    isGitHubAuthConfigured.mockReturnValue(false);
+    recordIntent.mockClear();
+    clearIntent.mockClear();
+    formProps.mockClear();
+    formMode.real = false;
+  });
+
+  it('create sheet shows the unchecked consent; sign-in sheet does not', () => {
+    const { rerender } = render(<AuthSheet {...base} intent="create" draft={draft} />);
+    expect(screen.getByRole('checkbox', { name: /i agree/i })).not.toBeChecked();
+    rerender(<AuthSheet {...base} intent="signin" draft={draft} />);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+
+  it('unchecked: Google does not start, error shown, focus on the box', async () => {
+    isGoogleAuthConfigured.mockReturnValue(true);
+    const onGoogle = vi.fn();
+    render(<AuthSheet {...base} intent="create" draft={draft} onGoogle={onGoogle} />);
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }));
+    expect(onGoogle).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(/^Required:/);
+    expect(screen.getByRole('checkbox')).toHaveFocus();
+    expect(recordIntent).not.toHaveBeenCalled();
+  });
+
+  it('unchecked: GitHub does not start either', async () => {
+    isGitHubAuthConfigured.mockReturnValue(true);
+    const onGitHub = vi.fn();
+    render(<AuthSheet {...base} intent="create" draft={draft} onGitHub={onGitHub} />);
+    await userEvent.click(screen.getByRole('button', { name: /continue with github/i }));
+    expect(onGitHub).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(recordIntent).not.toHaveBeenCalled();
+  });
+
+  it('checked: Google starts and the intent is recorded', async () => {
+    isGoogleAuthConfigured.mockReturnValue(true);
+    const onGoogle = vi.fn();
+    render(
+      <AuthSheet
+        {...base}
+        intent="create"
+        draft={{ ...draft, accepted: true }}
+        onGoogle={onGoogle}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }));
+    expect(recordIntent).toHaveBeenCalledTimes(1);
+    expect(onGoogle).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('checked: GitHub starts and the intent is recorded', async () => {
+    isGitHubAuthConfigured.mockReturnValue(true);
+    const onGitHub = vi.fn();
+    render(
+      <AuthSheet
+        {...base}
+        intent="create"
+        draft={{ ...draft, accepted: true }}
+        onGitHub={onGitHub}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: /continue with github/i }));
+    expect(recordIntent).toHaveBeenCalledTimes(1);
+    expect(onGitHub).toHaveBeenCalledTimes(1);
+  });
+
+  it('unchecked: the email path is refused too', async () => {
+    render(<AuthSheet {...base} intent="create" draft={draft} />);
+    await userEvent.click(screen.getByTestId('magic-link-form'));
+    expect(recordIntent).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    expect(screen.getByRole('checkbox')).toHaveFocus();
+  });
+
+  it('checked: the email path is allowed and records the intent', async () => {
+    render(<AuthSheet {...base} intent="create" draft={{ ...draft, accepted: true }} />);
+    await userEvent.click(screen.getByTestId('magic-link-form'));
+    expect(recordIntent).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('sign-in sheet clears any stale intent and never blocks', async () => {
+    isGoogleAuthConfigured.mockReturnValue(true);
+    const onGoogle = vi.fn();
+    render(<AuthSheet {...base} intent="signin" draft={draft} onGoogle={onGoogle} />);
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }));
+    expect(clearIntent).toHaveBeenCalled();
+    expect(recordIntent).not.toHaveBeenCalled();
+    expect(onGoogle).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('sign-in sheet: the email path clears the intent and is never blocked', async () => {
+    render(<AuthSheet {...base} intent="signin" draft={draft} />);
+    await userEvent.click(screen.getByTestId('magic-link-form'));
+    expect(clearIntent).toHaveBeenCalledTimes(1);
+    expect(recordIntent).not.toHaveBeenCalled();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('ticking the box reports upward', async () => {
+    const onDraftChange = vi.fn();
+    render(<AuthSheet {...base} intent="create" draft={draft} onDraftChange={onDraftChange} />);
+    await userEvent.click(screen.getByRole('checkbox'));
+    expect(onDraftChange).toHaveBeenCalledWith({ accepted: true });
+  });
+
+  it('ticking the box clears a shown error', async () => {
+    render(<AuthSheet {...base} intent="create" draft={draft} />);
+    await userEvent.click(screen.getByTestId('magic-link-form'));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('checkbox'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('a reopened sheet starts without the previous error', async () => {
+    const { rerender } = render(<AuthSheet {...base} intent="create" draft={draft} />);
+    await userEvent.click(screen.getByTestId('magic-link-form'));
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    rerender(<AuthSheet {...base} open={false} intent="create" draft={draft} />);
+    rerender(<AuthSheet {...base} intent="create" draft={draft} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('the terms link navigates in-app through onNavigateLegal', async () => {
+    const onNavigateLegal = vi.fn();
+    render(<AuthSheet {...base} intent="create" draft={draft} onNavigateLegal={onNavigateLegal} />);
+    await userEvent.click(screen.getByRole('link', { name: /terms of service/i }));
+    expect(onNavigateLegal).toHaveBeenCalledWith('/terms');
+  });
+
+  it('focusConsent puts focus on the box', () => {
+    render(<AuthSheet {...base} intent="create" draft={draft} focusConsent />);
+    expect(screen.getByRole('checkbox')).toHaveFocus();
+  });
+
+  describe('the email draft', () => {
+    it('is handed to the form, without the consent flag, when the caller lifts it', () => {
+      const onDraftChange = vi.fn();
+      render(
+        <AuthSheet
+          {...base}
+          intent="create"
+          draft={{ email: 'a@b.de', sent: true, accepted: true }}
+          onDraftChange={onDraftChange}
+        />
+      );
+      const props = formProps.mock.lastCall[0];
+      expect(props.draft).toEqual({ email: 'a@b.de', sent: true });
+      expect(props.onDraftChange).toBe(onDraftChange);
+    });
+
+    it('is not forced on the form when the caller omits it — the email field stays typeable', async () => {
+      formMode.real = true;
+      render(<AuthSheet open intent="create" onClose={() => {}} onSuccess={() => {}} />);
+      const props = formProps.mock.lastCall[0];
+      expect(props.draft).toBeUndefined();
+      expect(props.onDraftChange).toBeUndefined();
+      await userEvent.type(screen.getByLabelText('Email'), 'a@b.de');
+      expect(screen.getByLabelText('Email')).toHaveValue('a@b.de');
+    });
+
+    it('is not forced on the form when only one of the two is given', () => {
+      render(
+        <AuthSheet open intent="create" draft={draft} onClose={() => {}} onSuccess={() => {}} />
+      );
+      const props = formProps.mock.lastCall[0];
+      expect(props.draft).toBeUndefined();
+      expect(props.onDraftChange).toBeUndefined();
     });
   });
 });

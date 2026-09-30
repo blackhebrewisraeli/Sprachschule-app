@@ -41,6 +41,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { TERMS_VERSION, PRIVACY_VERSION } from '../../src/lib/legalVersions.js';
 
 // The pinned vite binary, by absolute path, rather than `npx vite`.
 //
@@ -1158,6 +1159,13 @@ async function stubAccountNetwork(page) {
         }))
       )
     )
+  );
+
+  // The account has accepted the current Terms + Privacy. Without a record the
+  // app holds a signed-in user behind the acceptance gate — no account chrome,
+  // no league section — and the whole signed-in pass audits nothing.
+  await page.route('**/rest/v1/legal_acceptances*', (r) =>
+    r.fulfill(json([{ terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION }]))
   );
 
   // Any other Supabase traffic (token refresh, telemetry) fails closed rather

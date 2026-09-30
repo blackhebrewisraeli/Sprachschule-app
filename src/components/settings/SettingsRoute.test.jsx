@@ -28,6 +28,7 @@ vi.mock('../../lib/pushNotifications', () => ({
   readPushDevice: () => null,
   enablePush: vi.fn(),
   disablePush: vi.fn(),
+  nativePlatform: () => 'ios',
 }));
 const user = { id: 'u1', email: 'sam@example.com' };
 const profile = { handle: 'sam' };

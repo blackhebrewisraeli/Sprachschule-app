@@ -518,6 +518,7 @@ export default function UserProfile({
               The caller's own profile rides along so their row shows their
               real name and avatar; the standings read carries handles only. */}
           <LeaderboardSection
+            user={user}
             onSelectUser={onSelectUser}
             onLeague={setLiveLeague}
             selfProfile={profile}

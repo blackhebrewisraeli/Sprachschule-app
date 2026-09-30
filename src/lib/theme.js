@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════
-//  DESIGN SYSTEM — Deutsch App
+//  DESIGN SYSTEM — sprachschule-app
 //
 //  Colour values are CSS custom properties written by applyTheme().
 //  The export shape is stable — components keep using COLORS.ink etc.

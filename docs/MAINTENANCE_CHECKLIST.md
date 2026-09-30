@@ -1,4 +1,4 @@
-# Deutsch App — Beta Maintenance Checklist
+# sprachschule-app — Beta Maintenance Checklist
 
 Run this smoke test after a production deployment, dependency update, or AI
 model change. Use the [pre-beta owner checklist](PRE_BETA_OWNER_CHECKLIST.md)

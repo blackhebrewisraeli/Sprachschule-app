@@ -45,7 +45,7 @@ Turning it on takes **two** things, and neither works without the other:
 2. **APIs & Services → OAuth consent screen**.
 3. User type: **External**. (Internal requires a Google Workspace org.)
 4. Fill in:
-   - **App name** — `Deutsch · Sprachschule`
+   - **App name** — `sprachschule-app`
    - **User support email** — your address
    - **Developer contact information** — your address
 5. Save and continue through Scopes and Test users. The default scopes

@@ -36,10 +36,30 @@ no web implementation, so it is never even downloaded there.
 
 ## 1. Apply the migration
 
-Dashboard SQL editor on Sprachschule (`xcnnlczvxmuwcqwychox`), after the PR
-merges: paste `supabase/migrations/20260927120000_user_devices.sql`. Never
-`migration repair`, `db push` or MCP `apply_migration` (AGENTS.md). The
-Migration Drift check reports it missing until then, which is expected.
+Use Supabase's official Management API **Apply a migration** endpoint from a
+clean checkout of the reviewed commit. This applies the reviewed file and
+records the migration name, which the repo's Migration Drift check requires.
+Create a short-lived scoped PAT restricted to project
+`xcnnlczvxmuwcqwychox` with **Migrations: Read-write**, then run:
+
+```bash
+read -s SUPABASE_MIGRATIONS_TOKEN
+export SUPABASE_MIGRATIONS_TOKEN
+jq -Rs --arg name user_devices \
+  '{name: $name, query: .}' supabase/migrations/20260927120000_user_devices.sql | \
+  curl --fail-with-body --silent --show-error \
+    -X POST https://api.supabase.com/v1/projects/xcnnlczvxmuwcqwychox/database/migrations \
+    -H "Authorization: Bearer ${SUPABASE_MIGRATIONS_TOKEN}" \
+    -H 'Content-Type: application/json' \
+    --data-binary @-
+unset SUPABASE_MIGRATIONS_TOKEN
+```
+
+Never paste the migration into the production SQL Editor: direct SQL bypasses
+migration history. Never use `db push`, `migration repair`, or MCP
+`apply_migration` in this repo. Verify the table and RPCs in the Dashboard,
+verify migration history contains the name `user_devices`, then trigger
+**Migration Drift** after the PR merges; it must be green.
 
 Order does not matter against the flag: without the migration the switch shows
 "Could not turn on push notifications" and saves nothing. But apply it first
@@ -79,24 +99,25 @@ directly, or registers them with FCM first if it wants one API for both.
 
 ## 4. Turn the flag on for native builds
 
-Add to `.env.production.local` (see `docs/NATIVE_BUILD.md` §1):
+`npm run build:mobile` pins `VITE_PUSH_ENABLED=false`, so no local env file can
+turn push on by accident. Turn it on only after every push item in
+`docs/STORE_SUBMISSION_CHECKLIST.md` is done: change that pin to `true` in
+`package.json`, on a machine that has step 2's `google-services.json`, then
+`npm run build:mobile`.
 
-```bash
-VITE_PUSH_ENABLED=true
-```
-
-Only on a machine that has step 2's `google-services.json`. Then rebuild:
-`npm run build:mobile`. Vite inlines the flag at build time, so an existing
-build does not change.
+Do not flip it until the sender is built and configured and end-to-end delivery
+has been verified on real iOS and Android devices. Flip it in a release commit,
+only for a build machine that has google-services.json, and update
+src/lib/buildMobileScript.test.js in the same commit (it pins =false on purpose).
 
 Leave it **off** in Vercel. The web never shows the switch anyway, and keeping
 the flag a native-build decision keeps it next to the file it depends on.
 
 ## 5. Privacy policy
 
-A device push token is new personal data. The privacy policy is supplied legal
-copy (`src/components/legal/PrivacyPolicy.jsx` reproduces it verbatim), so its
-new wording has to come from you before push is switched on for real learners.
+The push wording is in the Privacy Policy (section 2, "Push Notifications") and
+in the Settings disclosure. Follow docs/STORE_SUBMISSION_CHECKLIST.md item 9
+before turning push on.
 
 ## On-device check
 

@@ -3,6 +3,7 @@ import { FONTS, SPACE } from '../../lib/theme';
 import Button from '../ui/Button';
 import { Body } from '../ui/Text';
 import { usePushNotifications } from '../../lib/usePushNotifications';
+import { nativePlatform } from '../../lib/pushNotifications';
 
 // Push opt-in for this device. Native-only: in a browser, or in a native build
 // without push set up, the hook reports 'unavailable' and this renders nothing.
@@ -14,6 +15,11 @@ const OUTCOME = {
   denied: 'Notifications are blocked for this app. Allow them in your phone’s Settings.',
   enableFailed: 'Could not turn on push notifications. Try again.',
   disableFailed: 'Could not turn off push notifications. Try again.',
+};
+
+const PUSH_SERVICE = {
+  ios: 'Apple Push Notification service',
+  android: 'Firebase Cloud Messaging by Google',
 };
 
 function outcomeMessage(turningOn, result) {
@@ -44,7 +50,11 @@ export default function NotificationsSection({ userId, onToast }) {
   return (
     <div style={{ fontFamily: FONTS.body }}>
       <Body size="sm" tone="soft" style={{ marginBottom: SPACE[3], overflowWrap: 'break-word' }}>
-        Streak reminders and league updates on this device.
+        Get streak reminders and league updates on this device. If you turn this on, we’ll ask for
+        your permission, then save a notification token for this device to your account.
+        Notifications are delivered through {PUSH_SERVICE[nativePlatform()] ?? PUSH_SERVICE.ios}.
+        They’re optional — the app works the same without them — and you can turn them off here or
+        in your device’s settings at any time.
       </Body>
       <Button
         variant="secondary"

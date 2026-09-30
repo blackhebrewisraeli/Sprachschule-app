@@ -7,6 +7,7 @@ import {
   onNativeAuthCallback,
 } from '../../lib/auth.js';
 import { SIGNUP_NOT_ALLOWED_MESSAGE } from '../../lib/signupAllowlist.js';
+import { clearIntent } from '../../lib/legalAcceptance.js';
 import Button from '../ui/Button';
 import useFocusTrap from '../../lib/useFocusTrap.js';
 
@@ -69,6 +70,14 @@ export default function AuthCallbackLanding({
     }, 15000);
     return () => clearTimeout(t);
   }, [kind, phase, status, onSignedIn, signupRejected]);
+
+  // A failed, cancelled or allowlist-rejected callback ends the flow a ticked
+  // box was for, and none of them delivers a user for the session-side check
+  // to consume the intent. It must not outlive the flow and be credited to
+  // some later sign-in.
+  useEffect(() => {
+    if (phase === 'error' || phase === 'rejected') clearIntent();
+  }, [phase]);
 
   useEffect(() => {
     if (!signupRejected) return;

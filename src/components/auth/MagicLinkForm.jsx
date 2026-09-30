@@ -7,9 +7,22 @@ import Button from '../ui/Button';
 // carries both a 6-digit code (typed here — the installed-PWA path) and a
 // magic link (browser convenience). Copy is code-first. onSuccess fires
 // after verifyOtp.
-export default function MagicLinkForm({ heading, onSuccess }) {
-  const [sent, setSent] = useState(false);
-  const [email, setEmail] = useState('');
+//
+// `draft` / `onDraftChange` lift { email, sent } to the parent: the create-account
+// sheet unmounts this form on a trip to /terms or /privacy and must get the
+// draft back. Uncontrolled (local state) when no `draft` is passed. `beforeStart`
+// gates send, resend AND verify — `false` aborts with no network call.
+export default function MagicLinkForm({
+  heading,
+  onSuccess,
+  draft,
+  onDraftChange,
+  beforeStart = () => true,
+}) {
+  const [localDraft, setLocalDraft] = useState({ email: '', sent: false });
+  const { email, sent } = draft ?? localDraft;
+  const update = onDraftChange ?? ((patch) => setLocalDraft((d) => ({ ...d, ...patch })));
+  const setEmail = (value) => update({ email: value });
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -52,17 +65,17 @@ export default function MagicLinkForm({ heading, onSuccess }) {
   };
 
   const send = async () => {
-    if (busy) return;
+    if (busy || !beforeStart()) return;
     setBusy(true);
     setError('');
     const { error: e } = await signInWithMagicLink(email.trim());
     setBusy(false);
     if (e) setError(humanAuthError(e));
-    else setSent(true);
+    else update({ sent: true });
   };
 
   const resend = async () => {
-    if (busy || resendCooldown > 0) return;
+    if (busy || resendCooldown > 0 || !beforeStart()) return;
     setBusy(true);
     setError('');
     const { error: e } = await signInWithMagicLink(email.trim());
@@ -72,7 +85,7 @@ export default function MagicLinkForm({ heading, onSuccess }) {
   };
 
   const verify = async () => {
-    if (busy) return;
+    if (busy || !beforeStart()) return;
     setBusy(true);
     setError('');
     const { error: e } = await verifyCode(email.trim(), code.trim());

@@ -209,6 +209,9 @@ export const EXPORTED_TABLES = {
   // The learner's own token movements. Unlike progress_events_seen these are
   // not recoverable from anything else in the payload.
   token_ledger: 'tokenLedger',
+  // Which Terms/Privacy versions the learner accepted, and when. Their own
+  // record, and the proof a data request most often asks for.
+  legal_acceptances: 'legalAcceptances',
 };
 
 /**

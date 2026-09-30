@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, RADIUS, SHADOW, SPACE } from '../lib/theme';
 import { isGitHubAuthConfigured, isGoogleAuthConfigured } from '../lib/auth.js';
+import { recordIntent } from '../lib/legalAcceptance.js';
 import Button from './ui/Button';
 import GoogleButton from './auth/GoogleButton';
 import GitHubButton from './auth/GitHubButton';
+import LegalConsent from './auth/LegalConsent';
 
 // The mono caption treatment used twice below — small uppercase mute label,
 // the same voice as WelcomeGate's tagline.
@@ -37,7 +40,12 @@ export default function TrialWall({
   googleBusy = false,
   onGitHub,
   gitHubBusy = false,
+  accepted,
+  onAcceptedChange,
+  onNavigateLegal,
+  focusConsent = false,
 }) {
+  const [consentInvalid, setConsentInvalid] = useState(false);
   // Clearance under App's sticky header + nav, which stack to ~113px on mobile
   // and ~132px on desktop. The masthead now grows by inset-top, so this offset
   // does too — otherwise the card docks under a taller header on a notched
@@ -57,6 +65,21 @@ export default function TrialWall({
   const googleOn = isGoogleAuthConfigured();
   const gitHubOn = !googleOn && isGitHubAuthConfigured();
   const providerOn = googleOn || gitHubOn;
+  // App adopts these controlled props in the next integration step. Until
+  // then, its existing provider buttons keep their original one-tap path.
+  const consentControlled = typeof accepted === 'boolean' && typeof onAcceptedChange === 'function';
+
+  const startProvider =
+    (fn) =>
+    (...args) => {
+      if (!consentControlled) return fn?.(...args);
+      if (!accepted) {
+        setConsentInvalid(true);
+        return;
+      }
+      recordIntent();
+      fn?.();
+    };
 
   return (
     <div
@@ -118,11 +141,24 @@ export default function TrialWall({
           Create a free account to keep going — every round you've practised comes with you.
         </p>
 
+        {providerOn && consentControlled && (
+          <LegalConsent
+            checked={accepted}
+            onChange={(next) => {
+              setConsentInvalid(false);
+              onAcceptedChange(next);
+            }}
+            invalid={consentInvalid}
+            onNavigate={onNavigateLegal}
+            focusOnMount={focusConsent}
+          />
+        )}
+
         {/* autoFocus rides Button's ...rest through to the <button>: focus has
             to follow the wall, which interrupts the practice flow. It belongs
             on whichever action is currently primary. */}
-        {googleOn && <GoogleButton onClick={onGoogle} busy={googleBusy} autoFocus />}
-        {gitHubOn && <GitHubButton onClick={onGitHub} busy={gitHubBusy} autoFocus />}
+        {googleOn && <GoogleButton onClick={startProvider(onGoogle)} busy={googleBusy} autoFocus />}
+        {gitHubOn && <GitHubButton onClick={startProvider(onGitHub)} busy={gitHubBusy} autoFocus />}
         <Button
           variant={providerOn ? 'secondary' : 'primary'}
           autoFocus={!providerOn}

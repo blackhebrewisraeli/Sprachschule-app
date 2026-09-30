@@ -2,15 +2,21 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TermsOfService from './TermsOfService';
+import { TERMS_VERSION } from '../../lib/legalAcceptance';
 
 describe('TermsOfService', () => {
-  it('renders the document title and the updated stamp', () => {
+  it('renders the document title', () => {
     render(<TermsOfService />);
     expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
-    expect(screen.getByText('Last Updated: September 2026')).toBeInTheDocument();
   });
 
-  it('carries all five numbered clauses, in order', () => {
+  it('shows the effective date, derived from TERMS_VERSION', () => {
+    expect(TERMS_VERSION).toBe('2026-09-29');
+    render(<TermsOfService />);
+    expect(screen.getByText('Last Updated: September 29, 2026')).toBeInTheDocument();
+  });
+
+  it('carries the eight numbered sections, in order', () => {
     render(<TermsOfService />);
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       '1. Eligibility',
@@ -18,19 +24,27 @@ describe('TermsOfService', () => {
       '3. App Usage and Leagues',
       '4. User-Generated Content',
       '5. "As Is" Disclaimer',
+      '6. Changes to These Terms',
+      '7. Privacy',
+      '8. AI-Generated Content',
     ]);
   });
 
-  // Supplied legal copy — see the note in PrivacyPolicy.test.jsx.
-  it('reproduces the supplied copy verbatim', () => {
+  it('never names the old brand', () => {
+    const { container } = render(<TermsOfService />);
+    expect(container.textContent).not.toMatch(/Deutsch App/);
+  });
+
+  it('reproduces the approved copy verbatim', () => {
     render(<TermsOfService />);
     for (const phrase of [
-      'By accessing or using Deutsch App, you agree to be bound by these Terms of Service.',
+      'By accessing or using sprachschule-app, you agree to be bound by these Terms of Service.',
       'You must be at least 13 years old to use this app. By creating an account, you confirm that you meet this age requirement.',
-      "You are responsible for maintaining the security of your account. We reserve the right to suspend or terminate accounts that violate these terms or abuse the platform's systems.",
-      'We reserve the right to reset, modify, or adjust league standings, points, or progression logic at any time, especially during this pre-beta phase, to ensure a fair experience for all users.',
-      'If you upload an avatar or any other content, you must ensure you have the rights to use it.',
-      'The service is provided "AS IS" and "AS AVAILABLE," without warranties of any kind.',
+      'sprachschule-app includes gamified elements like Leagues and Streaks.',
+      'sprachschule-app is currently in a pre-beta stage.',
+      'We may update these Terms. When we do, we will update the "Last Updated" date',
+      'Our Privacy Policy explains how we collect and use your information.',
+      'sprachschule-app uses artificial intelligence to generate tutor replies, answer feedback and practice content. AI-generated content can be inaccurate.',
     ]) {
       expect(
         screen.getByText(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))

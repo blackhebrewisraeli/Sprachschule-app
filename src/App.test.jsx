@@ -9,6 +9,7 @@ import { THEME_MODE_KEY } from './lib/themeMode';
 import { loadState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
 import { MAX_CUSTOM_DECKS } from './lib/customDecks';
+import { locationReset } from './lib/clearUserState';
 
 // Counts renders so the web-only gate can be asserted without the real
 // script-injecting component.
@@ -61,6 +62,8 @@ beforeEach(() => {
   adminSessionMock.status = 'ready';
   adminSessionMock.me = { isAdmin: false, isSystemAccount: false, blocked: false };
   profileMock.fetchMyProfile.mockReset().mockResolvedValue(null);
+  legalMock.status = 'accepted';
+  legalMock.hasPrior = true;
 });
 
 const authMock = vi.hoisted(() => ({
@@ -104,6 +107,21 @@ vi.mock('./lib/auth', async (importOriginal) => ({
     user: authMock.status === 'authenticated' ? { id: 'u1', email: 'a@b.co' } : null,
     status: authMock.status,
   }),
+}));
+
+// Where the signed-in account stands on the current terms. Defaults to
+// 'accepted' so every test written before the gate keeps its meaning: a
+// signed-in account there is one that has already accepted.
+const legalMock = vi.hoisted(() => ({
+  status: 'accepted',
+  hasPrior: true,
+  accept: vi.fn(async () => ({ ok: true })),
+}));
+vi.mock('./lib/useLegalAcceptance', () => ({
+  useLegalAcceptance: (user) =>
+    user
+      ? { status: legalMock.status, hasPrior: legalMock.hasPrior, accept: legalMock.accept }
+      : { status: 'none', hasPrior: false, accept: legalMock.accept },
 }));
 
 // The league standing is a network read, so App tests inject it directly. It is
@@ -1042,9 +1060,12 @@ describe('guest trial wall', () => {
 
   // The wall's Google button must reach the real signInWithGoogle through
   // App's single handler — not a second sign-in path bolted onto the wall.
+  // The wall is a create surface (spec D3), so every provider test below ticks
+  // the terms box first; the unticked case has its own test further down.
   it('starts the Google flow from the wall when the flag is on', async () => {
     const user = userEvent.setup();
     await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
     expect(signInWithGoogle).toHaveBeenCalledTimes(1);
   });
@@ -1061,6 +1082,7 @@ describe('guest trial wall', () => {
   it('does not start a second flow on a double tap', async () => {
     const user = userEvent.setup();
     await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     const button = screen.getByRole('button', { name: 'Continue with Google' });
     await user.click(button);
     await user.click(button);
@@ -1075,6 +1097,7 @@ describe('guest trial wall', () => {
     try {
       const user = userEvent.setup();
       await renderApp({ googleOn: true });
+      await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
       const button = screen.getByRole('button', { name: 'Continue with Google' });
       await user.click(button);
       await waitFor(() => expect(button).not.toHaveAttribute('aria-busy', 'true'));
@@ -1090,9 +1113,62 @@ describe('guest trial wall', () => {
   it('starts the GitHub flow from the wall when only GitHub is on', async () => {
     const user = userEvent.setup();
     await renderApp({ gitHubOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     await user.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
     expect(signInWithGitHub).toHaveBeenCalledTimes(1);
     expect(signInWithGoogle).not.toHaveBeenCalled();
+  });
+
+  // App must hand the wall BOTH controlled consent props: with either missing
+  // the wall falls back to its pre-consent one-tap path (Task 8 ruling).
+  it('does not start a provider from the wall until the terms box is ticked', async () => {
+    const user = userEvent.setup();
+    await renderApp({ googleOn: true });
+    const box = screen.getByRole('checkbox', { name: /i agree/i });
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).not.toHaveBeenCalled();
+    expect(box).toHaveAttribute('aria-invalid', 'true');
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+
+    await user.click(box);
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    // The session-side check consumes this after the redirect.
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).not.toBeNull();
+  });
+
+  // The create sheet records the intent after the tick; its provider buttons
+  // must not then run through the sign-in handler that clears it.
+  it('the create sheet opened from the wall keeps the intent it records', async () => {
+    const user = userEvent.setup();
+    await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('button', { name: 'Create a free account' }));
+    const sheet = screen.getByRole('dialog', { name: /create your account/i });
+    await user.click(within(sheet).getByRole('checkbox', { name: /i agree/i }));
+    await user.click(within(sheet).getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).not.toBeNull();
+  });
+
+  it('keeps the wall tick across a trip to /terms and focuses it on return', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    try {
+      const user = userEvent.setup();
+      await renderApp({ googleOn: true });
+      await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
+      await user.click(screen.getByRole('link', { name: 'Terms of Service' }));
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Terms of Service' })
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /back to the app/i }));
+      expect(wall()).toBeInTheDocument();
+      const box = screen.getByRole('checkbox', { name: /i agree/i });
+      expect(box).toBeChecked();
+      expect(box).toHaveFocus();
+    } finally {
+      scrollTo.mockRestore();
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   // The in-flight guard is shared across providers: once Google is on its way
@@ -3133,5 +3209,389 @@ describe('placement gate while a signed-in level is still in flight', () => {
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
 
     expect(placement()).toBeInTheDocument();
+  });
+});
+
+// ── Terms acceptance (spec §6.4–§6.8) ─────────────────────────────────────
+// A signed-in account without a current acceptance record must behave like a
+// session that is still restoring: nothing syncs, flushes, joins or registers,
+// and the only thing on top is the non-dismissible gate.
+describe('terms acceptance gate', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'authenticated';
+    authMock.mayHaveSession = true;
+    syncMock.reset();
+    syncMock.enabled = true;
+    syncMock.start.mockClear();
+    progressFlushMock.start.mockClear();
+    leagueStandingMock.calls = [];
+    legalMock.accept.mockClear();
+    authSignOutMock.mockClear();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    syncMock.enabled = false;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    window.history.replaceState(null, '', '/');
+    vi.restoreAllMocks();
+  });
+
+  it('holds sync, progress flush, league reads and the level boost while acceptance is required', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = false;
+    setLevelBoostEnabled(true);
+    render(<App />);
+    expect(await screen.findByRole('alertdialog', { name: 'One more step' })).toBeInTheDocument();
+    expect(syncMock.start).not.toHaveBeenCalled();
+    expect(progressFlushMock.start).not.toHaveBeenCalled();
+    expect(leagueStandingMock.calls.length).toBeGreaterThan(0);
+    expect(leagueStandingMock.calls.every((id) => id == null)).toBe(true);
+    expect(isLevelBoostEnabled()).toBe(false);
+  });
+
+  it('holds everything while the check is unknown, and shows no gate', () => {
+    legalMock.status = 'unknown';
+    render(<App />);
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(syncMock.start).not.toHaveBeenCalled();
+    expect(progressFlushMock.start).not.toHaveBeenCalled();
+  });
+
+  it('starts sync once accepted (returning user: no gate)', async () => {
+    legalMock.status = 'accepted';
+    render(<App />);
+    await waitFor(() => expect(syncMock.start).toHaveBeenCalledWith('u1'));
+    expect(progressFlushMock.start).toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+  });
+
+  it('asks an account that accepted an older version to review the update', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = true;
+    render(<App />);
+    expect(
+      await screen.findByRole('alertdialog', { name: "We've updated our terms" })
+    ).toBeInTheDocument();
+  });
+
+  it('Continue records the acceptance through the hook', async () => {
+    legalMock.status = 'required';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(legalMock.accept).toHaveBeenCalledTimes(1);
+  });
+
+  it('declining on a device that never synced keeps guest progress', async () => {
+    legalMock.status = 'required';
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    // A leftover ticked-box intent must not survive the decline and be
+    // credited to whichever account signs in next.
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    expect(authSignOutMock).toHaveBeenCalled();
+    expect(localStorage.getItem('deutsch-app-state-v1')).toContain('"box":2');
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+  });
+
+  it('declining on a device that already synced gets the full sign-out reset', async () => {
+    legalMock.status = 'required';
+    const go = vi.spyOn(locationReset, 'go').mockImplementation(() => {});
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    localStorage.setItem(
+      'deutsch-app-sync-meta-v1',
+      JSON.stringify({ lastSyncedCounters: {}, lastSyncedAt: '2026-09-29T10:00:00Z' })
+    );
+    render(<App />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => expect(go).toHaveBeenCalled());
+    expect(authSignOutMock).toHaveBeenCalled();
+    expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
+  });
+
+  // D1 accounts meet the gate on an old session, so the delete endpoint's
+  // re-auth window has usually lapsed. The sign-in sheet it opens must sit ON
+  // TOP of the gate (not hidden behind its scrim with focus trapped inside),
+  // and backing out of it must not cost the gate its tick.
+  it('a re-auth demanded by delete opens the sign-in sheet above the gate, tick intact', async () => {
+    legalMock.status = 'required';
+    legalMock.hasPrior = false;
+    authMock.token = 'tok';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue({
+      ok: false,
+      status: 401,
+      clone() {
+        return this;
+      },
+      json: async () => ({ error: { code: 'reauth_required', message: 'Please sign in again.' } }),
+    });
+    render(<App />);
+    const gate = await screen.findByRole('alertdialog', { name: 'One more step' });
+    await userEvent.click(within(gate).getByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(
+      within(gate).getByRole('button', { name: 'Delete this account instead' })
+    );
+    await userEvent.type(
+      within(gate).getByRole('textbox', { name: /type delete to confirm/i }),
+      'DELETE'
+    );
+    await userEvent.click(within(gate).getByRole('button', { name: 'Delete account' }));
+
+    const sheet = await screen.findByRole('dialog', { name: /^sign in$/i });
+    const zOf = (el) => Number(el.parentElement.style.zIndex);
+    expect(zOf(sheet)).toBeGreaterThan(zOf(gate));
+    expect(sheet.contains(document.activeElement)).toBe(true);
+
+    await userEvent.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
+    expect(within(gate).getByRole('checkbox', { name: /i agree/i })).toBeChecked();
+  });
+
+  it('deleting from the gate on a never-synced device keeps guest progress', async () => {
+    legalMock.status = 'required';
+    authMock.token = 'tok';
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue({ ok: true, status: 204, clone: () => ({}), json: async () => ({}) });
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
+    render(<App />);
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Delete this account instead' })
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: /type delete to confirm/i }),
+      'DELETE'
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete account' }));
+    await waitFor(() => expect(authSignOutMock).toHaveBeenCalled());
+    const call = fetchSpy.mock.calls.find(([url]) => String(url).includes('/account/delete'));
+    expect(call?.[1].method).toBe('DELETE');
+    expect(localStorage.getItem('deutsch-app-state-v1')).toContain('"box":2');
+  });
+
+  it('the gate links reach /terms and come back to a still-ticked, focused box', async () => {
+    legalMock.status = 'required';
+    render(<App />);
+    await userEvent.click(await screen.findByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Terms of Service' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
+    const box = await screen.findByRole('checkbox', { name: /i agree/i });
+    expect(box).toBeChecked();
+    expect(box).toHaveFocus();
+  });
+});
+
+describe('create sheet keeps its draft across the legal pages', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+    vi.restoreAllMocks();
+  });
+
+  it('email, tick and focus survive a trip to /privacy', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await userEvent.type(screen.getByLabelText('Email'), 'kept@b.co');
+    await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Privacy Policy' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
+    expect(await screen.findByRole('dialog', { name: /create your account/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveValue('kept@b.co');
+    const box = screen.getByRole('checkbox', { name: /i agree/i });
+    expect(box).toBeChecked();
+    expect(box).toHaveFocus();
+  });
+
+  it('dismissing the sheet clears the tick and the intent (no false acceptance)', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    await userEvent.click(screen.getByRole('button', { name: /close sign-in/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(screen.getByRole('checkbox', { name: /i agree/i })).not.toBeChecked();
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+  });
+});
+
+describe('guest mode is unchanged by the terms work', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    authMock.configured = true;
+    authMock.status = 'anonymous';
+    authMock.mayHaveSession = false;
+    syncMock.start.mockClear();
+  });
+
+  it('"Try it first — free" needs no checkbox and enters the app', async () => {
+    render(<App />);
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: /try it first/i }));
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(syncMock.start).not.toHaveBeenCalled();
+  });
+
+  it('legal pages render on a cold load while signed out', () => {
+    window.history.replaceState(null, '', '/terms');
+    render(<App />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    window.history.replaceState(null, '', '/#/privacy');
+    render(<App />);
+    expect(
+      screen.getAllByRole('heading', { level: 1, name: 'Privacy Policy' }).length
+    ).toBeGreaterThan(0);
+    window.history.replaceState(null, '', '/');
+  });
+});
+
+// Spec D3 / §6.7: the welcome screen's provider buttons are sign-in surfaces.
+// A ticked-box intent left behind by an abandoned create must not ride along
+// and be credited to whichever account signs in there.
+describe('welcome-screen sign-in drops a stale terms intent', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    vi.resetModules();
+  });
+
+  it('clears the intent before starting Google', async () => {
+    const signInWithGoogle = vi.fn(() => Promise.resolve({ error: null }));
+    vi.doMock('./lib/auth.js', () => ({
+      isAuthConfigured: () => true,
+      isGoogleAuthConfigured: () => true,
+      isGitHubAuthConfigured: () => false,
+      signInWithGoogle,
+      signInWithGitHub: vi.fn(() => Promise.resolve({ error: null })),
+      humanAuthError: () => 'Something went wrong — try again.',
+      useAuth: () => ({ user: null, session: null, status: 'anonymous' }),
+      signOut: vi.fn(() => Promise.resolve({ error: null })),
+      getAccessToken: vi.fn(() => Promise.resolve(null)),
+      signInWithMagicLink: vi.fn(() => Promise.resolve({ error: null })),
+      verifyCode: vi.fn(() => Promise.resolve({ error: null })),
+      mayHaveSession: () => false,
+      authCallbackKind: () => null,
+      authCallbackReason: () => null,
+      onNativeAuthCallback: () => () => {},
+      getSupabase: () => Promise.resolve(null),
+    }));
+    const { default: AppWithAuth } = await import('./App.jsx');
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    render(<AppWithAuth />);
+    await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+  });
+});
+
+// The standings section is the only surface that WRITES league state from the
+// client (joinLeague puts the learner in a cohort where others can see their
+// handle). It must follow the gated user like everything else: an account
+// that has not accepted the current terms must not be joined.
+describe('league join waits for the terms', () => {
+  const league = {
+    joinLeague: vi.fn(),
+    refreshLeague: vi.fn(),
+  };
+  // Mutable so one test can play a guest who signs in without a reload.
+  const session = { user: null };
+
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    setViewportWidth(1280);
+    session.user = { id: 'u1', email: 'a@b.co' };
+    league.joinLeague
+      .mockReset()
+      .mockResolvedValue({ league_id: 'L1', tier: 0, period_start: '2026-09-28', handle: 'Me' });
+    league.refreshLeague.mockReset().mockResolvedValue({ weekly_xp: 0 });
+    vi.resetModules();
+    // Self-contained: earlier blocks leave their own doMock of auth.js behind.
+    vi.doMock('./lib/auth.js', async (orig) => ({
+      ...(await orig()),
+      isAuthConfigured: () => true,
+      isGoogleAuthConfigured: () => false,
+      isGitHubAuthConfigured: () => false,
+      mayHaveSession: () => Boolean(session.user),
+      getAccessToken: async () => null,
+      useAuth: () => ({
+        session: null,
+        user: session.user,
+        status: session.user ? 'authenticated' : 'anonymous',
+      }),
+    }));
+    vi.doMock('./lib/leagues.js', async (orig) => ({
+      ...(await orig()),
+      LEAGUES_ENABLED: true,
+      joinLeague: league.joinLeague,
+      refreshLeague: league.refreshLeague,
+      fetchStandings: vi.fn(async () => []),
+      fetchLeagueProfiles: vi.fn(async () => []),
+      fetchMyResults: vi.fn(async () => []),
+      fetchProfile: vi.fn(async () => null),
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock('./lib/leagues.js');
+  });
+
+  const profileTab = () =>
+    within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' });
+  // Let any join the section would start get as far as calling the client.
+  const settle = () => act(async () => {});
+
+  it.each(['required', 'unknown'])('does not join or refresh a league while %s', async (status) => {
+    legalMock.status = status;
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    render(<AppWithLeagues />);
+    fireEvent.click(profileTab());
+    await settle();
+    expect(league.joinLeague).not.toHaveBeenCalled();
+    expect(league.refreshLeague).not.toHaveBeenCalled();
+  });
+
+  it('does not join a guest who signs in on the Profile tab before accepting', async () => {
+    session.user = null;
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    const { rerender } = render(<AppWithLeagues />);
+    fireEvent.click(screen.getByRole('button', { name: /try it first/i }));
+    fireEvent.click(profileTab());
+    // The code is verified in-app: the session arrives with no reload.
+    session.user = { id: 'u1', email: 'a@b.co' };
+    legalMock.status = 'required';
+    rerender(<AppWithLeagues />);
+    await settle();
+    expect(
+      screen.getByRole('alertdialog', { name: /one more step|updated our terms/i })
+    ).toBeInTheDocument();
+    expect(league.joinLeague).not.toHaveBeenCalled();
+    expect(league.refreshLeague).not.toHaveBeenCalled();
+  });
+
+  it('joins once the account has accepted (positive control)', async () => {
+    legalMock.status = 'accepted';
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    render(<AppWithLeagues />);
+    fireEvent.click(profileTab());
+    await waitFor(() => expect(league.joinLeague).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(league.refreshLeague).toHaveBeenCalledTimes(1));
   });
 });

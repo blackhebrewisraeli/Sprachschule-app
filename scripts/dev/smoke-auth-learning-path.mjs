@@ -48,6 +48,7 @@ import { DECK_ID, STATE_KEY, learningPathSeed, openDeckPicker } from './learning
 // the zone dividers this smoke expects can never drift from the ones the app
 // draws. Importing it beats hardcoding 7/5 here.
 import { zoneCounts } from '../../src/lib/leagueZones.js';
+import { TERMS_VERSION, PRIVACY_VERSION } from '../../src/lib/legalVersions.js';
 
 // Absolute path to the pinned vite binary rather than bare `npx vite`: npx is
 // resolved through PATH and will fetch-and-execute an uninstalled name from
@@ -540,6 +541,13 @@ async function routeServerFixture(page, selfId) {
         return route.fulfill(json([{ league_id: CLAIMED_LEAGUE_ID, rank: 1, result: 'won' }]));
       }
       return route.fulfill(json(serverStandingsRows(selfId)));
+    }
+    // A returning account that already accepted the current Terms + Privacy;
+    // with no record the app would hold it behind the acceptance gate.
+    if (url.includes('/legal_acceptances')) {
+      return route.fulfill(
+        json([{ terms_version: TERMS_VERSION, privacy_version: PRIVACY_VERSION }])
+      );
     }
     if (url.includes('/settings')) return route.fulfill(json([serverSettingsRow()]));
     if (url.includes('/stats_daily')) return route.fulfill(json(serverDailyRows()));

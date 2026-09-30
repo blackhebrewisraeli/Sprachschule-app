@@ -5,7 +5,9 @@ const { isGoogleAuthConfigured, isGitHubAuthConfigured } = vi.hoisted(() => ({
   isGoogleAuthConfigured: vi.fn(() => false),
   isGitHubAuthConfigured: vi.fn(() => false),
 }));
+const { recordIntent } = vi.hoisted(() => ({ recordIntent: vi.fn() }));
 vi.mock('../lib/auth.js', () => ({ isGoogleAuthConfigured, isGitHubAuthConfigured }));
+vi.mock('../lib/legalAcceptance.js', () => ({ recordIntent }));
 
 import TrialWall from './TrialWall';
 
@@ -23,6 +25,7 @@ describe('TrialWall', () => {
     // Flags off is the merge state and the one CI runs.
     isGoogleAuthConfigured.mockReturnValue(false);
     isGitHubAuthConfigured.mockReturnValue(false);
+    recordIntent.mockClear();
   });
 
   it('renders the spec copy', () => {
@@ -111,6 +114,7 @@ describe('TrialWall', () => {
   it('keeps the two-CTA wall unchanged while Google is off', () => {
     setup();
     expect(screen.queryByRole('button', { name: /continue with google/i })).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: /i agree/i })).toBeNull();
     const buttons = screen.getAllByRole('button');
     expect(buttons).toHaveLength(2);
     expect(buttons[0]).toHaveAccessibleName('Create a free account');
@@ -149,9 +153,18 @@ describe('TrialWall', () => {
     it('routes Google to the handler App passes', async () => {
       const user = userEvent.setup();
       const onGoogle = vi.fn();
-      setup({ onGoogle });
+      setup({ onGoogle, accepted: true, onAcceptedChange: () => {} });
       await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
       expect(onGoogle).toHaveBeenCalledTimes(1);
+    });
+
+    it('preserves the prior provider start when consent-control props are omitted', async () => {
+      const onGoogle = vi.fn();
+      setup({ onGoogle });
+      expect(screen.queryByRole('checkbox', { name: /i agree/i })).toBeNull();
+      await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+      expect(onGoogle).toHaveBeenCalledTimes(1);
+      expect(recordIntent).not.toHaveBeenCalled();
     });
 
     it('is still not dismissible', async () => {
@@ -182,9 +195,19 @@ describe('TrialWall', () => {
     it('routes GitHub to the handler App passes', async () => {
       const user = userEvent.setup();
       const onGitHub = vi.fn();
-      setup({ onGitHub });
+      setup({ onGitHub, accepted: true, onAcceptedChange: () => {} });
       await user.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
       expect(onGitHub).toHaveBeenCalledTimes(1);
+      expect(recordIntent).toHaveBeenCalledTimes(1);
+    });
+
+    it('blocks GitHub and shows consent error when unchecked', async () => {
+      const onGitHub = vi.fn();
+      setup({ onGitHub, accepted: false, onAcceptedChange: () => {} });
+      await userEvent.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
+      expect(onGitHub).not.toHaveBeenCalled();
+      expect(recordIntent).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Required:/);
     });
 
     // Both on: Google keeps the slot and the wall does NOT grow a fourth
@@ -197,6 +220,85 @@ describe('TrialWall', () => {
       expect(buttons[0]).toHaveAccessibleName('Continue with Google');
       expect(screen.queryByRole('button', { name: /continue with github/i })).toBeNull();
       expect(buttons[0]).toHaveFocus();
+    });
+  });
+
+  describe('terms consent', () => {
+    const base = {
+      roundsUsed: 12,
+      onCreateAccount: () => {},
+      onSignIn: () => {},
+      onNavigateLegal: () => {},
+    };
+
+    beforeEach(() => isGoogleAuthConfigured.mockReturnValue(true));
+
+    it('shows the unchecked consent above the provider button', () => {
+      render(
+        <TrialWall {...base} accepted={false} onAcceptedChange={() => {}} onGoogle={() => {}} />
+      );
+      const checkbox = screen.getByRole('checkbox', { name: /i agree/i });
+      expect(checkbox).not.toBeChecked();
+      expect(
+        checkbox.compareDocumentPosition(screen.getByRole('button', { name: /google/i }))
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('unchecked: Google does not start and the error is shown', async () => {
+      const onGoogle = vi.fn();
+      render(
+        <TrialWall {...base} accepted={false} onAcceptedChange={() => {}} onGoogle={onGoogle} />
+      );
+      await userEvent.click(screen.getByRole('button', { name: /google/i }));
+      expect(onGoogle).not.toHaveBeenCalled();
+      expect(recordIntent).not.toHaveBeenCalled();
+      expect(screen.getByRole('alert')).toHaveTextContent(/^Required:/);
+    });
+
+    it('checked: Google starts and the intent is recorded', async () => {
+      const onGoogle = vi.fn();
+      render(<TrialWall {...base} accepted onAcceptedChange={() => {}} onGoogle={onGoogle} />);
+      await userEvent.click(screen.getByRole('button', { name: /google/i }));
+      expect(recordIntent).toHaveBeenCalledTimes(1);
+      expect(onGoogle).toHaveBeenCalledTimes(1);
+    });
+
+    it('Sign in stays one tap and never needs the box', async () => {
+      const onSignIn = vi.fn();
+      render(
+        <TrialWall
+          {...base}
+          onSignIn={onSignIn}
+          accepted={false}
+          onAcceptedChange={() => {}}
+          onGoogle={() => {}}
+        />
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'I already have an account' }));
+      expect(onSignIn).toHaveBeenCalledTimes(1);
+      expect(recordIntent).not.toHaveBeenCalled();
+    });
+
+    it('passes checkbox changes and legal navigation to the parent', async () => {
+      const onAcceptedChange = vi.fn();
+      const onNavigateLegal = vi.fn();
+      render(
+        <TrialWall
+          {...base}
+          onNavigateLegal={onNavigateLegal}
+          accepted={false}
+          onAcceptedChange={onAcceptedChange}
+        />
+      );
+      await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
+      expect(onAcceptedChange).toHaveBeenCalledWith(true);
+      await userEvent.click(screen.getByRole('link', { name: 'Terms of Service' }));
+      expect(onNavigateLegal).toHaveBeenCalledWith('/terms');
+    });
+
+    it('focuses consent when requested', () => {
+      render(<TrialWall {...base} accepted={false} onAcceptedChange={() => {}} focusConsent />);
+      expect(screen.getByRole('checkbox', { name: /i agree/i })).toHaveFocus();
     });
   });
 });

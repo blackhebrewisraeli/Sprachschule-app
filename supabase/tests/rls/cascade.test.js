@@ -32,6 +32,7 @@ const USER_OWNED = [
   'feedback',
   'token_ledger',
   'user_devices',
+  'legal_acceptances',
 ];
 
 let admin;
@@ -87,6 +88,9 @@ beforeAll(async () => {
     admin
       .from('user_devices')
       .insert({ push_token: `cascade-probe-${userId}`, user_id: userId, platform: 'ios' }),
+    admin
+      .from('legal_acceptances')
+      .insert({ user_id: userId, terms_version: '2026-10-01', privacy_version: '2026-10-01' }),
   ];
   for (const q of seed) {
     const { error } = await q;

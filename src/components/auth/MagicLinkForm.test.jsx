@@ -143,3 +143,90 @@ describe('MagicLinkForm', () => {
     expect(screen.getByRole('button', { name: /resend email/i })).not.toBeDisabled();
   });
 });
+
+describe('MagicLinkForm — consent guard and lifted draft', () => {
+  beforeEach(() => {
+    signInWithMagicLink.mockClear();
+    verifyCode.mockClear();
+  });
+
+  it('does not send when beforeStart refuses', async () => {
+    render(
+      <MagicLinkForm heading="Create your account" onSuccess={() => {}} beforeStart={() => false} />
+    );
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
+    expect(signInWithMagicLink).not.toHaveBeenCalled();
+  });
+
+  it('sends when beforeStart allows', async () => {
+    render(
+      <MagicLinkForm heading="Create your account" onSuccess={() => {}} beforeStart={() => true} />
+    );
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
+    expect(signInWithMagicLink).toHaveBeenCalledWith('a@b.co');
+  });
+
+  it('re-checks before verifying the code', async () => {
+    const beforeStart = vi.fn(() => true);
+    render(
+      <MagicLinkForm
+        heading="x"
+        onSuccess={() => {}}
+        beforeStart={beforeStart}
+        draft={{ email: 'a@b.co', sent: true }}
+        onDraftChange={() => {}}
+      />
+    );
+    beforeStart.mockReturnValue(false);
+    await userEvent.type(screen.getByLabelText('Code'), '123456');
+    await userEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    expect(verifyCode).not.toHaveBeenCalled();
+  });
+
+  it('re-checks before resending the email', async () => {
+    const beforeStart = vi.fn(() => true);
+    render(
+      <MagicLinkForm
+        heading="x"
+        onSuccess={() => {}}
+        beforeStart={beforeStart}
+        draft={{ email: 'a@b.co', sent: true }}
+        onDraftChange={() => {}}
+      />
+    );
+    beforeStart.mockReturnValue(false);
+    await userEvent.click(screen.getByRole('button', { name: /resend email/i }));
+    expect(signInWithMagicLink).not.toHaveBeenCalled();
+  });
+
+  it('renders from a lifted draft and reports edits upward', async () => {
+    const onDraftChange = vi.fn();
+    render(
+      <MagicLinkForm
+        heading="x"
+        onSuccess={() => {}}
+        draft={{ email: 'kept@b.co', sent: false }}
+        onDraftChange={onDraftChange}
+      />
+    );
+    expect(screen.getByLabelText('Email')).toHaveValue('kept@b.co');
+    await userEvent.type(screen.getByLabelText('Email'), 'x');
+    expect(onDraftChange).toHaveBeenLastCalledWith({ email: 'kept@b.cox' });
+  });
+
+  it('reports the sent state upward once the email goes out', async () => {
+    const onDraftChange = vi.fn();
+    render(
+      <MagicLinkForm
+        heading="x"
+        onSuccess={() => {}}
+        draft={{ email: 'a@b.co', sent: false }}
+        onDraftChange={onDraftChange}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
+    await waitFor(() => expect(onDraftChange).toHaveBeenLastCalledWith({ sent: true }));
+  });
+});
