@@ -1329,20 +1329,18 @@ async function auditSignedIn(page, mode) {
   // pairings — the failure mode this whole block exists to prevent.
   const leagueSelector = '[data-testid="profile-league"]';
 try {
-  await page.waitForSelector(leagueSelector, {
-    state: 'visible',
-    timeout: 10000,
-  });
-} catch {
-  throw new Error(
-    `audit-contrast: no visible league section on Profile (${mode}) after ` +
-      'waiting for async league data. Check VITE_LEAGUES_ENABLED, the ' +
-      'league API fixtures, and the profile selector.'
-  );
-}) — either the ` +
-        'build lacks VITE_LEAGUES_ENABLED=true or the section moved.'
-    );
-  }
+      await page.waitForSelector(leagueSelector, {
+        state: 'visible',
+        timeout: 10000,
+      });
+    } catch {
+      throw new Error(
+        `audit-contrast: no visible league section on Profile (${mode}) after ` +
+          'waiting for async league data. Either the build lacks ' +
+          'VITE_LEAGUES_ENABLED=true, the league API fixtures are incorrect, ' +
+          'or the section moved.'
+      );
+    }
   // join -> refresh -> standings are three sequential round trips, and a fixed
   // sleep here is exactly how this pass first measured an EMPTY table and still
   // reported clean. Wait for the rows themselves; `rowsRendered` then gates the
