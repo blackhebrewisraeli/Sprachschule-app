@@ -104,6 +104,8 @@ jobs:
       # guaranteed to outlive the shell that started it. The production build is
       # what users get, so it is what gets audited — not the dev server.
       - name: Audit contrast against the production build
+        env:
+          AUDIT_BASE: http://127.0.0.1:5290
         run: |
           set -Eeuo pipefail
 
@@ -146,7 +148,19 @@ jobs:
           done
 
           echo '--- Contrast audit ---'
-          AUDIT_BASE="$AUDIT_BASE" npm run audit:contrast 2>&1
+          node --trace-uncaught scripts/dev/audit-contrast.mjs
+
+      - name: Upload contrast-audit diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: contrast-audit-failure
+          path: |
+            preview.log
+            contrast-*.png
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Checkout
         uses: actions/checkout@v4
 
