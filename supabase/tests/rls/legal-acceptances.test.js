@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { adminClient, anonClient, createSignedInUser } from './helpers.js';
 
-// legal_acceptances: 20260929120000. Clients read their own rows; the only
+// legal_acceptances: 20260930143614. Clients read their own rows; the only
 // write path is accept_legal_terms, which acts as auth.uid().
 // Requires the local stack: `supabase start`, then `npm run test:rls`.
 
