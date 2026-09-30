@@ -434,7 +434,10 @@ export default function App() {
   const legal = useLegalAcceptance(rawAuth.user);
   const legalAccepted = legal.status === 'accepted';
   const user = legalAccepted ? rawAuth.user : null;
-  const authStatus = rawAuth.user ? (legalAccepted ? 'authenticated' : 'loading') : rawAuth.status;
+  let authStatus = rawAuth.status;
+  if (rawAuth.user) {
+    authStatus = legalAccepted ? 'authenticated' : 'loading';
+  }
   const { signupRejected } = rawAuth;
   const acceptanceGateUp = Boolean(rawAuth.user) && legal.status === 'required';
   const adminSession = useAdminSession(user);

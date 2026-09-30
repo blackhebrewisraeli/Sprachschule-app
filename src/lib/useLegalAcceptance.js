@@ -56,7 +56,7 @@ export function useLegalAcceptance(user) {
     let active = true;
     const live = () => active && currentUserId.current === userId;
     const settle = (next) => setState({ userId, ...next });
-    (async () => {
+    void (async () => {
       try {
         const { current, hasPrior } = await fetchAcceptances(userId);
         if (!live()) return;
