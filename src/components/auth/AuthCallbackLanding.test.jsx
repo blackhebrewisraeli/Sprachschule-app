@@ -47,6 +47,21 @@ describe('AuthCallbackLanding', () => {
     expect(clearIntent).toHaveBeenCalled();
   });
 
+  // An allowlist reject never delivers a user, so the session-side check never
+  // runs to consume the intent; left alone it would outlive the flow by up to
+  // 30 minutes and could be credited to a later sign-in.
+  it('an allowlist-rejected callback clears it too', () => {
+    render(
+      <AuthCallbackLanding
+        status="anonymous"
+        signupRejected
+        onSignedIn={() => {}}
+        onRequestNew={() => {}}
+      />
+    );
+    expect(clearIntent).toHaveBeenCalled();
+  });
+
   it('a native error callback clears it too', () => {
     render(
       <AuthCallbackLanding status="anonymous" onSignedIn={() => {}} onRequestNew={() => {}} />

@@ -71,10 +71,12 @@ export default function AuthCallbackLanding({
     return () => clearTimeout(t);
   }, [kind, phase, status, onSignedIn, signupRejected]);
 
-  // A failed or cancelled callback ends the flow a ticked box was for. The
-  // intent must not outlive it and be credited to some later sign-in.
+  // A failed, cancelled or allowlist-rejected callback ends the flow a ticked
+  // box was for, and none of them delivers a user for the session-side check
+  // to consume the intent. It must not outlive the flow and be credited to
+  // some later sign-in.
   useEffect(() => {
-    if (phase === 'error') clearIntent();
+    if (phase === 'error' || phase === 'rejected') clearIntent();
   }, [phase]);
 
   useEffect(() => {
