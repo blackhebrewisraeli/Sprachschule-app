@@ -432,6 +432,20 @@ describe('AuthSheet — terms consent', () => {
     expect(recordIntent).not.toHaveBeenCalled();
   });
 
+  it('bounds and scrolls the sheet when the consent error expands it', async () => {
+    isGoogleAuthConfigured.mockReturnValue(true);
+    render(<AuthSheet {...base} intent="create" draft={draft} onGoogle={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /continue with google/i }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/^Required:/);
+
+    // jsdom cannot measure viewport layout, so guard the CSS contract that keeps
+    // the close button and the submit on screen at 320×568 (they were clipped).
+    expect(screen.getByRole('dialog', { name: 'Create your account' })).toHaveStyle({
+      maxHeight: '100%',
+      overflowY: 'auto',
+    });
+  });
+
   it('unchecked: GitHub does not start either', async () => {
     isGitHubAuthConfigured.mockReturnValue(true);
     const onGitHub = vi.fn();
