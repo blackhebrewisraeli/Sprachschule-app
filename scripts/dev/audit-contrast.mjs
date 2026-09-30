@@ -1,3 +1,4 @@
+const AUDIT_USER_ID = '00000000-0000-4000-8000-000000000001';
 #!/usr/bin/env node
 process.on('unhandledRejection', (error) => {
   console.error('Contrast audit failed:');
@@ -241,7 +242,7 @@ const MODALS = [
     // Ensure Supabase user endpoint is mocked so the session survives
     await page.unroute('**/auth/v1/user').catch(() => {});
     await page.route('**/auth/v1/user', (r) => r.fulfill({ 
-      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
+      body: JSON.stringify({ id: AUDIT_USER_ID, aud: 'authenticated', role: 'authenticated' }), 
       contentType: 'application/json' 
     })).catch(() => {});
     
@@ -298,7 +299,7 @@ const MODALS = [
     // Ensure Supabase user endpoint is mocked so the session survives
     await page.unroute('**/auth/v1/user').catch(() => {});
     await page.route('**/auth/v1/user', (r) => r.fulfill({ 
-      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
+      body: JSON.stringify({ id: AUDIT_USER_ID, aud: 'authenticated', role: 'authenticated' }), 
       contentType: 'application/json' 
     })).catch(() => {});
     
@@ -1162,7 +1163,7 @@ function seedSignedInSession(key) {
       expires_at: Math.floor(Date.now() / 1000) + 3600,
       refresh_token: 'audit-stub-refresh',
       user: {
-        id: '00000000-0000-4000-8000-000000000001',
+        id: AUDIT_USER_ID,
         aud: 'authenticated',
         role: 'authenticated',
         email: 'auditor@example.test',
@@ -1183,55 +1184,46 @@ function seedSignedInSession(key) {
  * A fixture that cannot show the real surface cannot audit it.
  */
 async function stubAccountNetwork(page) {
-  const json = (body) => ({
-    status: 200,
+  const json = (body, status = 200) => ({
+    status,
     contentType: 'application/json',
     body: JSON.stringify(body),
   });
 
-  // Monday of the current week, so the countdown renders a real remainder.
-  const now = new Date();
-  const monday = new Date(now);
-  monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
-  monday.setHours(0, 0, 0, 0);
-
-  await page.route('**/api/v1/league/join', (r) =>
-    r.fulfill(json({ league_id: 'audit-league', tier: 2, period_start: monday.toISOString() }))
-  );
-  await page.route('**/api/v1/league/refresh', (r) => r.fulfill(json({ ok: true })));
-  // `?leagueId=` is the standings' one identity read for every row (an array);
-  // `?userId=` is a single passport, for the profile card.
-  await page.route('**/api/v1/league/profile*', (r) =>
-    r.fulfill(
-      new URL(r.request().url()).searchParams.has('leagueId')
-        ? json([])
-        : json({
-            handle: 'Auditor',
-            tier: 2,
-            total_xp: 4200,
-            longest_streak: 31,
-          })
-    )
+  await page.route('**/auth/v1/user', (route) =>
+    route.fulfill(json({
+      id: AUDIT_USER_ID,
+      aud: 'authenticated',
+      role: 'authenticated',
+      email: 'auditor@example.test',
+      app_metadata: {},
+      user_metadata: {},
+    }))
   );
 
-  // Enough rows to populate the promotion zone, the demotion zone and the
-  // untouched middle — the three row styles the widget colours differently.
-  await page.route('**/rest/v1/league_members*', (r) =>
-    r.fulfill(
-      json(
-        Array.from({ length: 12 }, (_, i) => ({
-          user_id: i === 3 ? '00000000-0000-4000-8000-000000000001' : `peer-${i}`,
-          handle: i === 3 ? 'Auditor' : `Lernende ${i + 1}`,
-          weekly_xp: 900 - i * 70,
-          rank: i + 1,
-        }))
-      )
-    )
+  await page.route('**/auth/v1/token', (route) => route.fulfill(json({})));
+
+  await page.route('**/api/v1/league/join', (route) =>
+    route.fulfill(json({ league_id: 'audit-league', tier: 2, period_start: new Date().toISOString() }))
   );
 
-  // Any other Supabase traffic (token refresh, telemetry) fails closed rather
-  // than reaching the network from CI.
-  await page.route('**/auth/v1/**', (r) => r.fulfill(json({})));
+  await page.route('**/api/v1/league/refresh', (route) => route.fulfill(json({ ok: true })));
+
+  await page.route('**/api/v1/league/profile*', (route) => {
+    const url = new URL(route.request().url());
+    return route.fulfill(
+      url.searchParams.has('leagueId') ? json([]) : json({ handle: 'Auditor', tier: 2, total_xp: 4200, longest_streak: 31 })
+    );
+  });
+
+  await page.route('**/rest/v1/league_members*', (route) =>
+    route.fulfill(json(Array.from({ length: 12 }, (_, i) => ({
+      user_id: i === 3 ? AUDIT_USER_ID : `peer-${i}`,
+      handle: i === 3 ? 'Auditor' : `Lernende ${i + 1}`,
+      weekly_xp: 900 - i * 70,
+      rank: i + 1,
+    }))))
+  );
 }
 
 /**
@@ -1430,10 +1422,7 @@ async function main() {
   
     // Ensure Supabase user endpoint is mocked so the session survives
     await page.unroute('**/auth/v1/user').catch(() => {});
-    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
-      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
-      contentType: 'application/json' 
-    })).catch(() => {});
+    /* removed duplicate route */.catch(() => {});
     
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 
