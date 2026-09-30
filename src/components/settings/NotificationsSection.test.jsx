@@ -6,7 +6,14 @@ import NotificationsSection from './NotificationsSection';
 // The device half (plugin, OS permission, RPC) is pushNotifications.test.js.
 // Here it is a set of answers, so this file tests only what the learner sees.
 const { push } = vi.hoisted(() => ({
-  push: { available: true, permission: 'prompt', device: null, enable: null, disable: null },
+  push: {
+    available: true,
+    permission: 'prompt',
+    device: null,
+    enable: null,
+    disable: null,
+    platform: 'ios',
+  },
 }));
 
 vi.mock('../../lib/pushNotifications', () => ({
@@ -15,6 +22,7 @@ vi.mock('../../lib/pushNotifications', () => ({
   readPushDevice: () => push.device,
   enablePush: (...args) => push.enable(...args),
   disablePush: (...args) => push.disable(...args),
+  nativePlatform: () => push.platform,
 }));
 
 const toggle = () => screen.findByRole('button', { name: /push notifications/i });
@@ -25,6 +33,44 @@ beforeEach(() => {
   push.device = null;
   push.enable = vi.fn(async () => ({ ok: true }));
   push.disable = vi.fn(async () => ({ ok: true }));
+  push.platform = 'ios';
+});
+
+describe('push disclosure', () => {
+  it('shows the disclosure before any tap, and asks nothing on render', () => {
+    render(<NotificationsSection userId="u1" />);
+    expect(
+      screen.getByText(/save a notification token for this device to your account/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/optional — the app works the same without them/i)).toBeInTheDocument();
+    expect(push.enable).not.toHaveBeenCalled();
+  });
+
+  it('names APNs on iOS and FCM on Android', () => {
+    push.platform = 'ios';
+    const { unmount } = render(<NotificationsSection userId="u1" />);
+    expect(screen.getByText(/Apple Push Notification service/)).toBeInTheDocument();
+    unmount();
+    push.platform = 'android';
+    render(<NotificationsSection userId="u1" />);
+    expect(screen.getByText(/Firebase Cloud Messaging by Google/)).toBeInTheDocument();
+  });
+
+  it('the disclosure precedes the switch in reading order', async () => {
+    render(<NotificationsSection userId="u1" />);
+    const text = screen.getByText(/save a notification token/i);
+    const button = await toggle();
+    expect(text.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('only the tap enables', async () => {
+    render(<NotificationsSection userId="u1" />);
+    const button = await toggle();
+    await vi.waitFor(() => expect(button).not.toHaveAttribute('aria-busy'));
+    expect(push.enable).not.toHaveBeenCalled();
+    await userEvent.click(button);
+    expect(push.enable).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('NotificationsSection', () => {

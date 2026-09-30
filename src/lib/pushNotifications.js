@@ -53,7 +53,7 @@ function loadPlugin() {
 
 // Read from the global the native runtime injects, like isNativeApp, rather
 // than importing @capacitor/core.
-function nativePlatform() {
+export function nativePlatform() {
   const platform = typeof window !== 'undefined' ? window.Capacitor?.getPlatform?.() : null;
   return platform === 'ios' || platform === 'android' ? platform : null;
 }
