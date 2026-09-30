@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HUSKY: 0
-      AUDIT_BASE: http://localhost:5290
+      AUDIT_BASE: http://127.0.0.1:5290
 
     steps:
       - name: Checkout
@@ -105,20 +105,40 @@ jobs:
       # what users get, so it is what gets audited — not the dev server.
       - name: Audit contrast against the production build
         run: |
-          set -o pipefail
-          npx --no -- vite preview --port 5290 --strictPort > preview.log 2>&1 &
+          set -euo pipefail
+
+          npx --no -- vite preview \
+            --host 127.0.0.1 \
+            --port 5290 \
+            --strictPort > preview.log 2>&1 &
           PREVIEW_PID=$!
-          trap 'kill "$PREVIEW_PID" 2>/dev/null || true; cat preview.log' EXIT
+
+          cleanup() {
+            kill "$PREVIEW_PID" 2>/dev/null || true
+            cat preview.log
+          }
+          trap cleanup EXIT
 
           for i in $(seq 1 60); do
-            if curl -sf "$AUDIT_BASE" > /dev/null; then
+            if curl --fail --silent --show-error \
+                --connect-timeout 1 \
+                "$AUDIT_BASE/" > /dev/null; then
               echo "preview server up after ${i}s"
               break
             fi
-            if [ "$i" -eq 60 ]; then
-              echo "preview server never answered on $AUDIT_BASE"
+
+            if ! kill -0 "$PREVIEW_PID" 2>/dev/null; then
+              echo "preview server exited unexpectedly"
+              cat preview.log
               exit 1
             fi
+
+            if [ "$i" -eq 60 ]; then
+              echo "preview server never answered on $AUDIT_BASE"
+              cat preview.log
+              exit 1
+            fi
+
             sleep 1
           done
 
@@ -143,7 +163,7 @@ jobs:
 
       - name: Smoke recommendation → practice → finish → refresh
         run: |
-          npx --no -- vite preview --port 5290 --strictPort &
+          npx --no -- vite preview --host 127.0.0.1 --port 5290 --strictPort &
           for i in $(seq 1 60); do
             if curl -sf "$AUDIT_BASE" > /dev/null; then
               echo "preview server up after ${i}s"
