@@ -2323,6 +2323,7 @@ git commit -m "docs(legal): owner-approved Privacy Policy and Terms, dated from 
 - Read/verify: `src/lib/pushNotifications.test.js` (the launch-resume no-prompt behavior is already pinned; do not duplicate it)
 - Modify: `src/components/settings/NotificationsSection.jsx`
 - Modify: `src/components/settings/NotificationsSection.test.jsx`
+- Modify: `src/components/settings/SettingsRoute.test.jsx` (compatibility: its full-module push mock must expose `nativePlatform`)
 
 **Interfaces:**
 
@@ -2380,6 +2381,10 @@ still passes; no edit is required. “Asks nothing on render” means no
 permission request / enable before a user tap. The existing render-time
 `checkPermissions` read is allowed and must not be removed.
 
+`SettingsRoute.test.jsx` has a full-module `pushNotifications` mock used only
+to verify the section's placement. Add `nativePlatform: () => 'ios'` to that
+existing factory so the new named import remains available in the route test.
+
 - [ ] **Step 2: Run — expect FAIL**
 
 Run: `npx vitest run src/components/settings/NotificationsSection.test.jsx src/lib/pushNotifications.test.js`
@@ -2416,7 +2421,7 @@ Run: `npx vitest run src/components/settings/NotificationsSection.test.jsx src/l
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/pushNotifications.js src/components/settings/NotificationsSection.jsx src/components/settings/NotificationsSection.test.jsx
+git add src/lib/pushNotifications.js src/components/settings/NotificationsSection.jsx src/components/settings/NotificationsSection.test.jsx src/components/settings/SettingsRoute.test.jsx
 git commit -m "feat(push): just-in-time disclosure before the notification opt-in"
 ```
 
