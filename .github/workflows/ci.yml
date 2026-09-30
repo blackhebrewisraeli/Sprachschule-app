@@ -105,8 +105,11 @@ jobs:
       # what users get, so it is what gets audited — not the dev server.
       - name: Audit contrast against the production build
         run: |
-          npx --no -- vite preview --port 5290 --strictPort &
-          # Poll rather than sleep — a fixed sleep is how this job becomes flaky.
+          set -o pipefail
+          npx --no -- vite preview --port 5290 --strictPort > preview.log 2>&1 &
+          PREVIEW_PID=$!
+          trap 'kill "$PREVIEW_PID" 2>/dev/null || true; cat preview.log' EXIT
+
           for i in $(seq 1 60); do
             if curl -sf "$AUDIT_BASE" > /dev/null; then
               echo "preview server up after ${i}s"
@@ -118,24 +121,8 @@ jobs:
             fi
             sleep 1
           done
+
           npm run audit:contrast
-        env:
-          # Must match the build above: the script derives the supabase-js
-          # session storage key (`sb-<ref>-auth-token`) from this host.
-          VITE_SUPABASE_URL: https://stub.supabase.co
-
-  # Its own job for the same reason contrast is: lint/test/build must not wait
-  # on a browser download, and a learning-path regression should read as its
-  # own red X. Guest-only — no Supabase env, no AI — matching the path a new
-  # learner takes from Home without an account.
-  learning-path-smoke:
-    name: Learning path · Browser
-    runs-on: ubuntu-latest
-    env:
-      HUSKY: 0
-      AUDIT_BASE: http://localhost:5290
-
-    steps:
       - name: Checkout
         uses: actions/checkout@v4
 
