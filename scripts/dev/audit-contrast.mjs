@@ -1,5 +1,5 @@
-const AUDIT_USER_ID = '00000000-0000-4000-8000-000000000001';
 #!/usr/bin/env node
+const AUDIT_USER_ID = '00000000-0000-4000-8000-000000000001';
 process.on('unhandledRejection', (error) => {
   console.error('Contrast audit failed:');
   console.error(error?.stack || error);
@@ -1422,7 +1422,7 @@ async function main() {
   
     // Ensure Supabase user endpoint is mocked so the session survives
     await page.unroute('**/auth/v1/user').catch(() => {});
-    /* removed duplicate route */.catch(() => {});
+    /* removed duplicate route */
     
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
 
