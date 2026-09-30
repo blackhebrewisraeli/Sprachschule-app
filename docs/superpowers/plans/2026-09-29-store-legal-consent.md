@@ -2320,7 +2320,7 @@ git commit -m "docs(legal): owner-approved Privacy Policy and Terms, dated from 
 **Files:**
 
 - Modify: `src/lib/pushNotifications.js` (export `nativePlatform`)
-- Modify: `src/lib/pushNotifications.test.js`
+- Read/verify: `src/lib/pushNotifications.test.js` (the launch-resume no-prompt behavior is already pinned; do not duplicate it)
 - Modify: `src/components/settings/NotificationsSection.jsx`
 - Modify: `src/components/settings/NotificationsSection.test.jsx`
 
@@ -2330,7 +2330,11 @@ git commit -m "docs(legal): owner-approved Privacy Policy and Terms, dated from 
 
 - [ ] **Step 1: Write the failing tests**
 
-`NotificationsSection.test.jsx` (it mocks `usePushNotifications`; add `vi.mock('../../lib/pushNotifications', async (o) => ({ ...(await o()), nativePlatform: () => platform.value }))` with a hoisted `platform = { value: 'ios' }`):
+`NotificationsSection.test.jsx` already has a hoisted `push` object and one
+`vi.mock('../../lib/pushNotifications', ...)`. Extend that object with
+`platform: 'ios'`, add `nativePlatform: () => push.platform` to the existing
+mock factory, and reset `push.platform = 'ios'` in `beforeEach`. Do not add a
+second mock. Add:
 
 ```jsx
 describe('push disclosure', () => {
@@ -2338,44 +2342,43 @@ describe('push disclosure', () => {
     render(<NotificationsSection userId="u1" />);
     expect(screen.getByText(/save a notification token for this device to your account/i)).toBeInTheDocument();
     expect(screen.getByText(/optional — the app works the same without them/i)).toBeInTheDocument();
-    expect(hook.enable).not.toHaveBeenCalled();
+    expect(push.enable).not.toHaveBeenCalled();
   });
 
   it('names APNs on iOS and FCM on Android', () => {
-    platform.value = 'ios';
+    push.platform = 'ios';
     const { unmount } = render(<NotificationsSection userId="u1" />);
     expect(screen.getByText(/Apple Push Notification service/)).toBeInTheDocument();
     unmount();
-    platform.value = 'android';
+    push.platform = 'android';
     render(<NotificationsSection userId="u1" />);
     expect(screen.getByText(/Firebase Cloud Messaging by Google/)).toBeInTheDocument();
   });
 
-  it('the disclosure precedes the switch in reading order', () => {
+  it('the disclosure precedes the switch in reading order', async () => {
     render(<NotificationsSection userId="u1" />);
     const text = screen.getByText(/save a notification token/i);
-    const toggle = screen.getByRole('button', { name: /push notifications/i });
-    expect(text.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const button = await toggle();
+    expect(text.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('only the tap enables', async () => {
     render(<NotificationsSection userId="u1" />);
-    await userEvent.click(screen.getByRole('button', { name: /push notifications: off/i }));
-    expect(hook.enable).toHaveBeenCalledTimes(1);
+    const button = await toggle();
+    await vi.waitFor(() => expect(button).not.toHaveAttribute('aria-busy'));
+    expect(push.enable).not.toHaveBeenCalled();
+    await userEvent.click(button);
+    expect(push.enable).toHaveBeenCalledTimes(1);
   });
 });
 ```
 
-`pushNotifications.test.js` (if not already pinned):
-
-```js
-it('resumePushRegistration never requests permission', async () => {
-  // …arrange a stored device for 'u1' and a plugin mock whose checkPermissions
-  // returns 'prompt', as the file's existing resume tests do…
-  await resumePushRegistration('u1');
-  expect(plugin.requestPermissions).not.toHaveBeenCalled();
-});
-```
+`pushNotifications.test.js` already has `resumePushRegistration (launch) ›
+never prompts`, with a stored device, `checkPermissions → 'prompt'`, and
+assertions that neither `requestPermissions` nor `register` runs. Confirm it
+still passes; no edit is required. “Asks nothing on render” means no
+permission request / enable before a user tap. The existing render-time
+`checkPermissions` read is allowed and must not be removed.
 
 - [ ] **Step 2: Run — expect FAIL**
 
@@ -2413,7 +2416,7 @@ Run: `npx vitest run src/components/settings/NotificationsSection.test.jsx src/l
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/lib/pushNotifications.js src/lib/pushNotifications.test.js src/components/settings/NotificationsSection.jsx src/components/settings/NotificationsSection.test.jsx
+git add src/lib/pushNotifications.js src/components/settings/NotificationsSection.jsx src/components/settings/NotificationsSection.test.jsx
 git commit -m "feat(push): just-in-time disclosure before the notification opt-in"
 ```
 
