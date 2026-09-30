@@ -45,7 +45,9 @@ task.
 - **Secrets.** `PUSH_CRON_SECRET` (never the league's `CRON_SECRET`) and
   `FIREBASE_SERVICE_ACCOUNT`, both Vercel Production-only. Never log tokens,
   user ids or secrets.
-- **Constants.** `maxUsersPerRun: 1000`, `concurrency: 10`,
+- **Constants.** `maxUsersPerRun: 1000`, claimed in RPC batches of
+  `batchSize: 100` (PostgREST returns at most 1000 rows; ≤ 10 devices per
+  learner), `concurrency: 10`,
   `deadlineMs: 240000`, `maxDuration: 300`. Request timeout 10 s. One retry for
   transient failures, waiting at most 5 s.
 - **Unchanged.**
@@ -578,6 +580,14 @@ git commit -m "feat(push): devices report their time zone; user_devices holds FC
 
 ### Task 3: Claims table and the eligibility/claim RPC (migration part 2)
 
+> **Execution rulings (2026-10-01, SDD ledger).** The RPC validates
+> `p_limit between 1 and 100`, not 10000: PostgREST returns at most
+> `max_rows` = 1000 rows (`supabase/config.toml`), and with one row per device
+> (≤ 10 per learner) a larger batch could claim learners whose rows are then
+> truncated and never sent. The test `PARAMS` use `p_limit: 100`. The test
+> file also gained an EXECUTE-privilege catalog check and a two-concurrent-
+> claims overlap test (at the end of the file).
+
 **Files:**
 
 - Modify: `supabase/migrations/20261001120000_push_streak_reminders.sql`
@@ -628,7 +638,7 @@ const PARAMS = {
   p_window_hours: 3,
   p_default_goal: 50,
   p_pack_id: 'de',
-  p_limit: 10000,
+  p_limit: 100,
 };
 
 const DUE_AT_NOW = [
@@ -960,7 +970,7 @@ begin
      or p_window_hours is null or p_window_hours < 1
      or p_start_hour + p_window_hours > 24
      or p_default_goal is null or p_default_goal < 1
-     or p_limit is null or p_limit not between 1 and 10000
+     or p_limit is null or p_limit not between 1 and 100
      or p_pack_id is null then
     raise exception 'invalid reminder parameters' using errcode = '22023';
   end if;
@@ -1490,7 +1500,8 @@ git commit -m "feat(push): FCM HTTP v1 client with stdlib OAuth and error classi
     are `'sent' | 'dead' | 'retry' | 'quota' | 'config' | 'fatal'`;
   - `DEFAULT_GOAL` from `src/lib/gameConfig.js`.
 - Produces:
-  - `REMINDER` constants;
+  - `REMINDER` constants (including `batchSize: 100`, the most learners one
+    RPC call may claim);
   - `COPY { title, body }`;
   - `buildReminderMessage({ token, localDay, expiresAt: number(ms), now: number(ms) })`;
   - `runStreakReminders({ db, fcm, dryRun?, onlyUserId?, now?, config? }): Promise<Summary>`,
@@ -1608,7 +1619,7 @@ describe('runStreakReminders', () => {
       p_window_hours: 3,
       p_default_goal: 50,
       p_pack_id: 'de',
-      p_limit: 1000,
+      p_limit: 100,
       p_only_user: null,
       p_dry_run: true,
     });
@@ -1691,6 +1702,57 @@ describe('runStreakReminders', () => {
       message: 'function does not exist',
     });
   });
+
+  // PostgREST returns at most 1000 rows from an RPC and a learner has up to 10
+  // devices, so one call may claim at most batchSize learners (the SQL refuses
+  // more). A run pages until a batch comes back short.
+  it('pages through batches until a batch comes back short', async () => {
+    const pages = [[row('u1', 'a'), row('u2', 'b')], [row('u3', 'c'), row('u4', 'd')], [row('u5', 'e')]];
+    const { db } = fakeDb();
+    db.rpc.mockImplementation(async () => ({ data: pages.shift() ?? [], error: null }));
+    const summary = await runStreakReminders({ db, fcm: fakeFcm(), now: () => NOW, config: { ...REMINDER, batchSize: 2 } });
+    expect(db.rpc.mock.calls.map(([, args]) => args.p_limit)).toEqual([2, 2, 2]);
+    expect(summary).toMatchObject({ due: 5, devices: 5, sent: 5, aborted: null });
+  });
+
+  it('stops paging at maxUsersPerRun', async () => {
+    const { db } = fakeDb();
+    db.rpc.mockImplementation(async (_fn, args) => {
+      const call = db.rpc.mock.calls.length;
+      return { data: Array.from({ length: args.p_limit }, (_, i) => row(`u${call}-${i}`, `t${call}-${i}`)), error: null };
+    });
+    const summary = await runStreakReminders({
+      db,
+      fcm: fakeFcm(),
+      now: () => NOW,
+      config: { ...REMINDER, batchSize: 2, maxUsersPerRun: 5 },
+    });
+    expect(db.rpc.mock.calls.map(([, args]) => args.p_limit)).toEqual([2, 2, 1]);
+    expect(summary).toMatchObject({ due: 5, sent: 5 });
+  });
+
+  it('a dry run asks once: it claims nothing, so asking again would repeat the batch', async () => {
+    const { db } = fakeDb([row('u1', 'a'), row('u2', 'b')]);
+    await runStreakReminders({ db, fcm: null, dryRun: true, now: () => NOW, config: { ...REMINDER, batchSize: 2 } });
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it('stops paging once the deadline has passed, without claiming another batch', async () => {
+    let clock = NOW;
+    const { db } = fakeDb();
+    db.rpc.mockImplementation(async () => ({ data: [row('u1', 'a'), row('u2', 'b')], error: null }));
+    const fcm = fakeFcm({}, () => {
+      clock += REMINDER.deadlineMs / 2 + 1000;
+    });
+    const summary = await runStreakReminders({
+      db,
+      fcm,
+      now: () => clock,
+      config: { ...REMINDER, batchSize: 2, concurrency: 1 },
+    });
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+    expect(summary).toMatchObject({ sent: 2, aborted: 'deadline' });
+  });
 });
 ```
 
@@ -1715,6 +1777,10 @@ export const REMINDER = {
   startHour: 19, // local time the window opens
   windowHours: 3, // 19:00–21:59; later ticks retry learners a failed tick released
   maxUsersPerRun: 1000,
+  // Most learners one claim_streak_reminders call may claim: PostgREST returns
+  // at most max_rows (1000) rows and a learner has up to 10 devices. The SQL
+  // refuses a larger p_limit; the run pages instead.
+  batchSize: 100,
   concurrency: 10,
   deadlineMs: 240000, // maxDuration is 300s; the rest is cleanup
   // The progress lane's pack id (progressHandlers.js defaults packId to it). A
@@ -1801,18 +1867,6 @@ export async function runStreakReminders({
   // learner unclaimed for the next tick.
   if (!dryRun) await fcm.accessToken();
 
-  const { data: rows, error } = await db.rpc('claim_streak_reminders', {
-    p_now: new Date(started).toISOString(),
-    p_start_hour: config.startHour,
-    p_window_hours: config.windowHours,
-    p_default_goal: DEFAULT_GOAL,
-    p_pack_id: config.packId,
-    p_limit: config.maxUsersPerRun,
-    p_only_user: onlyUserId,
-    p_dry_run: dryRun,
-  });
-  if (error) throw error;
-
   // Devices the sender can never reach because they report no zone. A rise
   // here means a client stopped sending p_time_zone.
   const zoneless = await db
@@ -1821,43 +1875,77 @@ export async function runStreakReminders({
     .is('time_zone', null);
   summary.devicesWithoutZone = zoneless.count ?? 0;
 
-  const users = groupByUser(rows ?? []);
-  summary.due = users.size;
-  summary.devices = rows?.length ?? 0;
-  if (dryRun) return summary;
-
-  const queue = [...users];
   const deadTokens = [];
   const release = [];
 
-  async function worker() {
-    while (queue.length > 0) {
-      const [userId, user] = queue.shift();
-      if (!summary.aborted && now() - started > config.deadlineMs) summary.aborted = 'deadline';
-      if (summary.aborted) {
-        release.push({ userId, localDay: user.localDay });
-        continue;
-      }
-      const outcomes = [];
-      for (const token of user.tokens) {
-        const message = buildReminderMessage({ token, localDay: user.localDay, expiresAt: user.expiresAt, now: now() });
-        const { outcome } = await fcm.send(message).catch(() => ({ outcome: 'fatal' }));
-        outcomes.push(outcome);
-        if (outcome === 'sent') summary.sent += 1;
-        else if (outcome === 'dead') {
-          summary.dead += 1;
-          deadTokens.push(token);
-        } else if (outcome === 'config') summary.configErrors += 1;
-        else summary.failed += 1;
-        if (STOPS_RUN.has(outcome)) summary.aborted ??= outcome;
-        if (summary.aborted) break;
-      }
-      if (!outcomes.some((outcome) => SETTLED.has(outcome))) {
-        release.push({ userId, localDay: user.localDay });
+  async function claimBatch(limit) {
+    const { data, error } = await db.rpc('claim_streak_reminders', {
+      p_now: new Date(started).toISOString(),
+      p_start_hour: config.startHour,
+      p_window_hours: config.windowHours,
+      p_default_goal: DEFAULT_GOAL,
+      p_pack_id: config.packId,
+      p_limit: limit,
+      p_only_user: onlyUserId,
+      p_dry_run: dryRun,
+    });
+    if (error) throw error;
+    return data ?? [];
+  }
+
+  async function sendTo(users) {
+    const queue = [...users];
+    async function worker() {
+      while (queue.length > 0) {
+        const [userId, user] = queue.shift();
+        if (!summary.aborted && now() - started > config.deadlineMs) summary.aborted = 'deadline';
+        if (summary.aborted) {
+          release.push({ userId, localDay: user.localDay });
+          continue;
+        }
+        const outcomes = [];
+        for (const token of user.tokens) {
+          const message = buildReminderMessage({ token, localDay: user.localDay, expiresAt: user.expiresAt, now: now() });
+          const { outcome } = await fcm.send(message).catch(() => ({ outcome: 'fatal' }));
+          outcomes.push(outcome);
+          if (outcome === 'sent') summary.sent += 1;
+          else if (outcome === 'dead') {
+            summary.dead += 1;
+            deadTokens.push(token);
+          } else if (outcome === 'config') summary.configErrors += 1;
+          else summary.failed += 1;
+          if (STOPS_RUN.has(outcome)) summary.aborted ??= outcome;
+          if (summary.aborted) break;
+        }
+        if (!outcomes.some((outcome) => SETTLED.has(outcome))) {
+          release.push({ userId, localDay: user.localDay });
+        }
       }
     }
+    await Promise.all(Array.from({ length: config.concurrency }, worker));
   }
-  await Promise.all(Array.from({ length: config.concurrency }, worker));
+
+  // Page through due learners, batchSize at a time. Claims are released only
+  // after the whole run, so a later batch can never re-claim a learner this
+  // run already failed to reach.
+  let budget = config.maxUsersPerRun;
+  while (budget > 0 && !summary.aborted) {
+    if (now() - started > config.deadlineMs) {
+      summary.aborted = 'deadline';
+      break;
+    }
+    const limit = Math.min(config.batchSize, budget);
+    const rows = await claimBatch(limit);
+    const users = groupByUser(rows);
+    summary.due += users.size;
+    summary.devices += rows.length;
+    budget -= users.size;
+    // A dry run claims nothing, so asking again would return the same learners.
+    if (dryRun || users.size === 0) break;
+    await sendTo(users);
+    if (users.size < limit) break; // the last page
+  }
+  if (dryRun) return summary;
 
   // Small chunks: .in() filters travel in the URL. A failed delete is simply
   // retried the next time FCM reports the same token.

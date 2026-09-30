@@ -243,6 +243,11 @@ the recorded version in a follow-up PR (as #383 did).
    `p_only_user` restricts to one learner and ignores the hour window, for the
    owner's smoke test. `p_dry_run` claims nothing.
 
+   `p_limit` must be 1–100 (execution ruling, 2026-10-01). PostgREST truncates an
+   RPC's result at `max_rows` = 1,000 rows, and a larger batch could claim
+   learners whose device rows never reach the sender. The sender pages instead
+   (§11).
+
 **Indexes.** None new. Every per-learner lookup hits a primary key:
 `stats_daily (user_id, pack_id, day)`, `settings (user_id)`,
 `profiles (user_id)`, `push_reminder_claims (user_id, local_day)`. Zone
@@ -389,7 +394,7 @@ HTTP v1 has no batch send, so batching means bounded concurrency:
 | Limit                    | Value              | Why                                                                                                          |
 | ------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------------ |
 | Concurrent learners      | 10 workers         | ~100 requests/s at ~100 ms each. FCM's default project quota is 600,000 messages/min, far above.               |
-| Learners per run         | 1,000 (`p_limit`)  | The rest stay unclaimed and are picked up by the next tick inside the 3-hour window.                          |
+| Learners per run         | 1,000, in RPC batches of 100 (`p_limit`) | PostgREST returns at most `max_rows` = 1,000 rows and each learner has up to 10 devices, so one call claims ≤ 100 learners (the SQL refuses more) and the run pages. The rest stay unclaimed for the next tick inside the 3-hour window. |
 | Devices per learner      | ≤ 10               | Already capped by `register_push_device`.                                                                    |
 | Request timeout          | 10 s               | `AbortSignal.timeout`                                                                                        |
 | Run deadline             | 240 s              | Leaves 60 s of the 300 s `maxDuration` for cleanup.                                                          |
