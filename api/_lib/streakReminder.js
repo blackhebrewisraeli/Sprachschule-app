@@ -169,7 +169,8 @@ export async function runStreakReminders({
   // Page through due learners, batchSize at a time. Claims are released only
   // after the whole run, so a later batch can never re-claim a learner this
   // run already failed to reach.
-  let failure = null;
+  let failed = false;
+  let failure;
   try {
     let budget = config.maxUsersPerRun;
     while (budget > 0 && !summary.aborted) {
@@ -189,9 +190,15 @@ export async function runStreakReminders({
       if (users.size < limit) break; // the last page
     }
   } catch (error) {
-    if (!dryRun) failure = error;
+    failed = true;
+    failure = error;
   }
-  if (dryRun) return summary;
+  // A dry run claims nothing, so it has nothing to release or clean up, but an
+  // RPC error must still surface rather than read as "nothing due".
+  if (dryRun) {
+    if (failed) throw failure;
+    return summary;
+  }
 
   // Small chunks: .in() filters travel in the URL. A failed delete is simply
   // retried the next time FCM reports the same token.
@@ -214,6 +221,6 @@ export async function runStreakReminders({
     }
   }
 
-  if (failure) throw failure;
+  if (failed) throw failure;
   return summary;
 }

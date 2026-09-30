@@ -238,6 +238,13 @@ describe('runStreakReminders', () => {
     });
   });
 
+  it('a dry run still surfaces an RPC error', async () => {
+    const { db } = fakeDb([], { rpcError: { message: 'function does not exist' } });
+    await expect(
+      runStreakReminders({ db, fcm: null, dryRun: true, now: () => NOW })
+    ).rejects.toMatchObject({ message: 'function does not exist' });
+  });
+
   // PostgREST returns at most 1000 rows from an RPC and a learner has up to 10
   // devices, so one call may claim at most batchSize learners (the SQL refuses
   // more). A run pages until a batch comes back short.
