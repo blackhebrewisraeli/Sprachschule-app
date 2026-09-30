@@ -3399,3 +3399,98 @@ describe('welcome-screen sign-in drops a stale terms intent', () => {
     expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
   });
 });
+
+// The standings section is the only surface that WRITES league state from the
+// client (joinLeague puts the learner in a cohort where others can see their
+// handle). It must follow the gated user like everything else: an account
+// that has not accepted the current terms must not be joined.
+describe('league join waits for the terms', () => {
+  const league = {
+    joinLeague: vi.fn(),
+    refreshLeague: vi.fn(),
+  };
+  // Mutable so one test can play a guest who signs in without a reload.
+  const session = { user: null };
+
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    setViewportWidth(1280);
+    session.user = { id: 'u1', email: 'a@b.co' };
+    league.joinLeague
+      .mockReset()
+      .mockResolvedValue({ league_id: 'L1', tier: 0, period_start: '2026-09-28', handle: 'Me' });
+    league.refreshLeague.mockReset().mockResolvedValue({ weekly_xp: 0 });
+    vi.resetModules();
+    // Self-contained: earlier blocks leave their own doMock of auth.js behind.
+    vi.doMock('./lib/auth.js', async (orig) => ({
+      ...(await orig()),
+      isAuthConfigured: () => true,
+      isGoogleAuthConfigured: () => false,
+      isGitHubAuthConfigured: () => false,
+      mayHaveSession: () => Boolean(session.user),
+      getAccessToken: async () => null,
+      useAuth: () => ({
+        session: null,
+        user: session.user,
+        status: session.user ? 'authenticated' : 'anonymous',
+      }),
+    }));
+    vi.doMock('./lib/leagues.js', async (orig) => ({
+      ...(await orig()),
+      LEAGUES_ENABLED: true,
+      joinLeague: league.joinLeague,
+      refreshLeague: league.refreshLeague,
+      fetchStandings: vi.fn(async () => []),
+      fetchLeagueProfiles: vi.fn(async () => []),
+      fetchMyResults: vi.fn(async () => []),
+      fetchProfile: vi.fn(async () => null),
+    }));
+  });
+
+  afterEach(() => {
+    vi.doUnmock('./lib/leagues.js');
+  });
+
+  const profileTab = () =>
+    within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' });
+  // Let any join the section would start get as far as calling the client.
+  const settle = () => act(async () => {});
+
+  it.each(['required', 'unknown'])('does not join or refresh a league while %s', async (status) => {
+    legalMock.status = status;
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    render(<AppWithLeagues />);
+    fireEvent.click(profileTab());
+    await settle();
+    expect(league.joinLeague).not.toHaveBeenCalled();
+    expect(league.refreshLeague).not.toHaveBeenCalled();
+  });
+
+  it('does not join a guest who signs in on the Profile tab before accepting', async () => {
+    session.user = null;
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    const { rerender } = render(<AppWithLeagues />);
+    fireEvent.click(screen.getByRole('button', { name: /try it first/i }));
+    fireEvent.click(profileTab());
+    // The code is verified in-app: the session arrives with no reload.
+    session.user = { id: 'u1', email: 'a@b.co' };
+    legalMock.status = 'required';
+    rerender(<AppWithLeagues />);
+    await settle();
+    expect(
+      screen.getByRole('alertdialog', { name: /one more step|updated our terms/i })
+    ).toBeInTheDocument();
+    expect(league.joinLeague).not.toHaveBeenCalled();
+    expect(league.refreshLeague).not.toHaveBeenCalled();
+  });
+
+  it('joins once the account has accepted (positive control)', async () => {
+    legalMock.status = 'accepted';
+    const { default: AppWithLeagues } = await import('./App.jsx');
+    render(<AppWithLeagues />);
+    fireEvent.click(profileTab());
+    await waitFor(() => expect(league.joinLeague).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(league.refreshLeague).toHaveBeenCalledTimes(1));
+  });
+});

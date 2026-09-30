@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, Fragment } from 'react';
 import { Users, AlertTriangle, ArrowDown, ArrowUp } from 'lucide-react';
-import { useAuth, getSupabase } from '../../lib/auth.js';
+import { getSupabase } from '../../lib/auth.js';
 import {
   joinLeague,
   refreshLeague,
@@ -43,8 +43,17 @@ const SPARSE_BELOW = 5; // show the "still filling up" note under this many memb
 // @param selfProfile — the caller's own profile row, if the page has it. It
 //   wins over the league identity read for your own row, so a name or avatar
 //   you just changed shows here before that read catches up.
-export default function LeaderboardSection({ onSelectUser, onLeague, selfProfile = null }) {
-  const { user } = useAuth();
+// @param user — the signed-in learner, as App hands it down: the TERMS-GATED
+//   user, null until the account has accepted the current Terms and Privacy
+//   Policy. joinLeague() is a write that puts a visible handle into a cohort,
+//   so this section must never read the raw session through useAuth() itself
+//   (spec §6.4 — nothing is joined before acceptance).
+export default function LeaderboardSection({
+  user = null,
+  onSelectUser,
+  onLeague,
+  selfProfile = null,
+}) {
   const userId = user?.id;
   const [state, setState] = useState({ status: 'idle', league: null, rows: [] });
   const [nonce, setNonce] = useState(0);
