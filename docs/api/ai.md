@@ -67,5 +67,7 @@ through with their status.
 
 ## Legacy alias
 
-`POST /api/chat` → same handler as `/api/v1/ai/chat`. Kept for already-cached
-PWA bundles; scheduled for removal one release cycle after B0 ships.
+`POST /api/chat` → same handler as `/api/v1/ai/chat`, through a `vercel.json`
+rewrite to `/api/v1/ai?op=chat` (there has been no `api/chat.js` since
+2026-10; its function slot went to the push sender). Kept for already-cached
+PWA bundles.
