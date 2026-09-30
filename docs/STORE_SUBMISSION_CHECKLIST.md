@@ -39,14 +39,27 @@ a judgement only the owner has. Tick them in order: several gate the next.
 4. **App Store Connect → App Privacy → Privacy Policy URL:**
    `https://deutsch-app-dusky.vercel.app/privacy`.
 5. **Google Play Console → App content → Privacy policy:** same URL.
-6. **Google Play → Data safety → account deletion URL — BLOCKED:** do not enter
-   `/privacy` yet. Google requires a prominent external web path where a
-   logged-out user can request deletion. The current page only explains the
-   in-app control; its contact-email mention is about leftover profile
-   pictures, not an account-deletion request. Before submission, ship either a
-   dedicated public deletion-request page/form or explicit deletion-request
-   instructions on `/privacy`, then verify the URL while signed out and enter
-   that deployed URL in Play Console.
+6. **Google Play → Data safety → account deletion URL:**
+   `https://deutsch-app-dusky.vercel.app/delete-account`. Open it in a private
+   window (signed out) and confirm it loads before entering it. Google checks
+   that the page names the app as the store listing does: the page says
+   **Deutsch Sprachschule** (owner decision, 2026-10-01), so the Play listing's
+   app name must be Deutsch Sprachschule too. The App Store listing in
+   `docs/store-metadata/app-store-listing.md` still says `sprachschule-app`.
+
+   **Handling an emailed request.** The subject is "Account Deletion Request -
+   Deutsch Sprachschule", and the page promises deletion within 30 days.
+   1. Check that the sender's address is the account's email: Supabase →
+      Authentication → Users → search by email. If it isn't, reply asking them
+      to write from that address or to delete in the app.
+   2. Copy the user's **User UID**.
+   3. Storage → `avatars` → delete the folder named with that UID, if there is
+      one. Do this first: once the user is gone, nothing records which folder
+      was theirs.
+   4. Authentication → Users → that user → **Delete user**. Every table holding
+      their data references the user with `on delete cascade`, so this removes
+      the rest, exactly as the in-app Delete account button does.
+   5. Reply to confirm it is done.
 7. **Apple App Privacy answers** — use the draft below, taken from the audit in
    `docs/superpowers/specs/2026-09-29-store-legal-consent-design.md` §3. Check
    every line against the build you submit: the native app today has **no

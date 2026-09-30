@@ -3460,6 +3460,21 @@ describe('guest mode is unchanged by the terms work', () => {
     ).toBeGreaterThan(0);
     window.history.replaceState(null, '', '/');
   });
+
+  // Store checklist item 6: Google Play's deletion URL must work for someone
+  // who is signed out and has no app — so no welcome screen in front of it.
+  it('the account-deletion page renders on a cold load while signed out', () => {
+    window.history.replaceState(null, '', '/delete-account');
+    try {
+      render(<App />);
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Delete your Deutsch Sprachschule account' })
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /try it first/i })).toBeNull();
+    } finally {
+      window.history.replaceState(null, '', '/');
+    }
+  });
 });
 
 // Spec D3 / §6.7: the welcome screen's provider buttons are sign-in surfaces.
