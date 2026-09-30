@@ -63,6 +63,23 @@ describe('LegalPage', () => {
     expect(screen.queryByRole('list')).not.toBeInTheDocument();
   });
 
+  it('renders a term-less item and paragraphs after the list', () => {
+    render(
+      <LegalPage
+        title="T"
+        updated="U"
+        sections={[{ heading: 'H', items: [{ text: 'plain item' }], after: ['closing words'] }]}
+      />
+    );
+    const item = screen.getByText('plain item');
+    expect(item.tagName).toBe('LI');
+    expect(item.querySelector('strong')).toBeNull();
+    expect(
+      item.compareDocumentPosition(screen.getByText('closing words')) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it('calls onBack from a labelled control', async () => {
     const onBack = vi.fn();
     render(<LegalPage title="T" updated="U" sections={[]} onBack={onBack} />);

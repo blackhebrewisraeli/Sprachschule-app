@@ -13,8 +13,9 @@ import Button from '../ui/Button';
  * render for a SIGNED-OUT visitor: gating them behind the entry flow would
  * make them unreachable to exactly the person deciding whether to sign up.
  *
- * `sections` is a list of { heading, paragraphs, items } rather than markup so
- * the two documents stay plain text and cannot drift into layout decisions.
+ * `sections` is a list of { heading, paragraphs, items, after } rather than
+ * markup so the two documents stay plain text and cannot drift into layout
+ * decisions.
  */
 export default function LegalPage({ title, updated, intro, sections, onBack }) {
   return (
@@ -46,12 +47,15 @@ export default function LegalPage({ title, updated, intro, sections, onBack }) {
               // loose paragraphs.
               <Stack as="ul" gap={2} style={{ margin: 0, paddingLeft: SPACE[5] }}>
                 {section.items.map((item) => (
-                  <Body as="li" key={item.term} style={{ color: COLORS.ink }}>
-                    <strong>{item.term}</strong> {item.text}
+                  <Body as="li" key={item.term ?? item.text} style={{ color: COLORS.ink }}>
+                    {item.term && <strong>{item.term}</strong>} {item.text}
                   </Body>
                 ))}
               </Stack>
             )}
+            {(section.after ?? []).map((text) => (
+              <Body key={text}>{text}</Body>
+            ))}
           </Stack>
         ))}
       </Stack>

@@ -27,6 +27,7 @@ import {
   hasValidIntent,
   fetchAcceptances,
   acceptCurrentTerms,
+  lastUpdatedLine,
 } from './legalAcceptance.js';
 
 beforeEach(() => {
@@ -41,6 +42,16 @@ describe('versions', () => {
   it('are ISO dates', () => {
     expect(TERMS_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(PRIVACY_VERSION).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+});
+
+describe('lastUpdatedLine', () => {
+  it('spells the effective date out in full', () => {
+    expect(lastUpdatedLine('2026-09-29')).toBe('Last Updated: September 29, 2026');
+  });
+
+  it('does not zero-pad the day and never shifts it with the time zone', () => {
+    expect(lastUpdatedLine('2027-01-05')).toBe('Last Updated: January 5, 2027');
   });
 });
 

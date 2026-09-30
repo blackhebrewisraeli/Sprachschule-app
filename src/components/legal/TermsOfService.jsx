@@ -1,8 +1,9 @@
 import LegalPage from './LegalPage';
+import { TERMS_VERSION, lastUpdatedLine } from '../../lib/legalAcceptance';
 
 /**
- * Terms of Service. As with the privacy policy, the wording is supplied copy
- * and is reproduced verbatim.
+ * Terms of Service. As with the privacy policy, the wording is owner-supplied
+ * copy with the 2026-09-30 brand update and is reproduced verbatim.
  *
  * The source text numbers each clause with its heading on the same line
  * ("1. Eligibility: You must be…"). Splitting the label from the body keeps
@@ -24,7 +25,7 @@ const SECTIONS = [
   {
     heading: '3. App Usage and Leagues',
     paragraphs: [
-      'Deutsch App includes gamified elements like Leagues and Streaks. We reserve the right to reset, modify, or adjust league standings, points, or progression logic at any time, especially during this pre-beta phase, to ensure a fair experience for all users.',
+      'sprachschule-app includes gamified elements like Leagues and Streaks. We reserve the right to reset, modify, or adjust league standings, points, or progression logic at any time, especially during this pre-beta phase, to ensure a fair experience for all users.',
     ],
   },
   {
@@ -36,7 +37,23 @@ const SECTIONS = [
   {
     heading: '5. "As Is" Disclaimer',
     paragraphs: [
-      'Deutsch App is currently in a pre-beta stage. The service is provided "AS IS" and "AS AVAILABLE," without warranties of any kind.',
+      'sprachschule-app is currently in a pre-beta stage. The service is provided "AS IS" and "AS AVAILABLE," without warranties of any kind.',
+    ],
+  },
+  {
+    heading: '6. Changes to These Terms',
+    paragraphs: [
+      'We may update these Terms. When we do, we will update the "Last Updated" date and, for significant changes, ask you to accept the updated Terms before you continue using your account.',
+    ],
+  },
+  {
+    heading: '7. Privacy',
+    paragraphs: ['Our Privacy Policy explains how we collect and use your information.'],
+  },
+  {
+    heading: '8. AI-Generated Content',
+    paragraphs: [
+      'sprachschule-app uses artificial intelligence to generate tutor replies, answer feedback and practice content. AI-generated content can be inaccurate.',
     ],
   },
 ];
@@ -45,8 +62,8 @@ export default function TermsOfService({ onBack }) {
   return (
     <LegalPage
       title="Terms of Service"
-      updated="Last Updated: September 2026"
-      intro="By accessing or using Deutsch App, you agree to be bound by these Terms of Service."
+      updated={lastUpdatedLine(TERMS_VERSION)}
+      intro="By accessing or using sprachschule-app, you agree to be bound by these Terms of Service."
       sections={SECTIONS}
       onBack={onBack}
     />

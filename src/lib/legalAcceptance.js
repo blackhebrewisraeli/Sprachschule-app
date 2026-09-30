@@ -11,6 +11,23 @@ import { getSupabase } from './auth.js';
 export const TERMS_VERSION = '2026-09-29';
 export const PRIVACY_VERSION = '2026-09-29';
 
+/**
+ * The page's "Last Updated" line, from a document version: '2026-09-29' →
+ * 'Last Updated: September 29, 2026'. Derived, never typed, so the copy and the
+ * version that re-asks acceptance cannot drift. UTC, so the day is the same in
+ * every reader's time zone.
+ */
+export function lastUpdatedLine(version) {
+  const date = new Date(`${version}T00:00:00Z`);
+  const text = new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date);
+  return `Last Updated: ${text}`;
+}
+
 export const LEGAL_ACCEPTED_KEY = 'deutsch-app-legal-accepted-v1';
 export const LEGAL_INTENT_KEY = 'deutsch-app-legal-intent-v1';
 export const INTENT_TTL_MS = 30 * 60 * 1000;
