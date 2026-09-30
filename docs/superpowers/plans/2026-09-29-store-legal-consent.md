@@ -2534,10 +2534,16 @@ git commit -m "chore(brand): apply canonical store legal identity" -m "Co-Author
 **Files:**
 
 - Create: `docs/STORE_SUBMISSION_CHECKLIST.md`
-- Modify: `docs/BACKLOG.md` (one pointer line in the owner-actions list)
-- Modify: `docs/MOBILE_PUSH_SETUP.md` §4 (flip note) and §5 (point at the checklist; the policy copy now exists)
+- Modify: `docs/BACKLOG.md` (checklist pointer; outstanding migration/push owner actions)
+- Modify: `docs/MOBILE_PUSH_SETUP.md` §1 (history-safe migration procedure), §4 (flip note), and §5 (point at the checklist; the policy copy now exists)
 
 **Interfaces:** none.
+
+**Implementation safety boundary:** this task writes documentation only. The
+agent must not execute SQL or a migration, query or mutate hosted Supabase,
+edit `.env*`, change Firebase/APNs/Vercel/store settings, or enable push. Every
+production command below is an owner instruction to run later with an
+owner-created scoped credential.
 
 - [ ] **Step 1: Write the checklist**
 
@@ -2556,12 +2562,32 @@ a judgement only the owner has. Tick them in order: several gate the next.
 ## Before merging the terms-acceptance PR
 
 1. **Apply `supabase/migrations/20260929120000_legal_acceptances.sql` to
-   production FIRST.** Dashboard SQL editor on Sprachschule
-   (`xcnnlczvxmuwcqwychox`). Never `db push`, `migration repair` or MCP
-   `apply_migration`. If the client ships first, every signed-in learner's
-   sync pauses (the app cannot confirm acceptance) until the table exists.
-   Verify: `select count(*) from public.legal_acceptances;` returns 0 without
-   error, then `notify pgrst, 'reload schema';`.
+   production FIRST.** Use Supabase's official Management API **Apply a
+   migration** endpoint from a clean checkout of the reviewed commit. This
+   applies the reviewed file and records the migration name, which the repo's
+   Migration Drift check requires. Create a short-lived scoped PAT restricted
+   to project `xcnnlczvxmuwcqwychox` with **Migrations: Read-write**, then run:
+
+   ```bash
+   read -s SUPABASE_MIGRATIONS_TOKEN
+   export SUPABASE_MIGRATIONS_TOKEN
+   jq -Rs --arg name legal_acceptances \
+     '{name: $name, query: .}' supabase/migrations/20260929120000_legal_acceptances.sql | \
+     curl --fail-with-body --silent --show-error \
+       -X POST https://api.supabase.com/v1/projects/xcnnlczvxmuwcqwychox/database/migrations \
+       -H "Authorization: Bearer ${SUPABASE_MIGRATIONS_TOKEN}" \
+       -H 'Content-Type: application/json' \
+       --data-binary @-
+   unset SUPABASE_MIGRATIONS_TOKEN
+   ```
+
+   Never paste the migration into the production SQL Editor: direct SQL
+   bypasses migration history. Never use `db push`, `migration repair`, or MCP
+   `apply_migration` in this repo. If the client ships first, every signed-in
+   learner's sync pauses until the table exists. Verify the table and RPC in
+   the Dashboard, verify migration history contains the name
+   `legal_acceptances`, then trigger **Migration Drift** after the PR merges;
+   it must be green.
 2. **Keep the email-provider line true.** The policy names Supabase Auth as the
    sender of sign-in emails (owner answer, 2026-09-29, re-confirmed
    2026-09-30). If a custom SMTP provider is ever configured under Supabase →
@@ -2576,16 +2602,22 @@ a judgement only the owner has. Tick them in order: several gate the next.
 4. **App Store Connect → App Privacy → Privacy Policy URL:**
    `https://deutsch-app-dusky.vercel.app/privacy`.
 5. **Google Play Console → App content → Privacy policy:** same URL.
-6. **Google Play → Data safety → account deletion URL:** a public page that
-   explains how to delete an account (section 7 of `/privacy` does; Play may
-   also ask for a way to request deletion without the app — the contact email
-   covers it).
-7. **Apple App Privacy answers** and **8. Google Data Safety answers** — draft
-   below, taken from the audit in
+6. **Google Play → Data safety → account deletion URL — BLOCKED:** do not enter
+   `/privacy` yet. Google requires a prominent external web path where a
+   logged-out user can request deletion. The current page only explains the
+   in-app control; its contact-email mention is about leftover profile
+   pictures, not an account-deletion request. Before submission, ship either a
+   dedicated public deletion-request page/form or explicit deletion-request
+   instructions on `/privacy`, then verify the URL while signed out and enter
+   that deployed URL in Play Console.
+7. **Apple App Privacy answers** — use the draft below, taken from the audit in
    `docs/superpowers/specs/2026-09-29-store-legal-consent-design.md` §3. Check
    every line against the build you submit: the native app today has **no
    Sentry DSN** and **no Vercel Analytics**; if either changes, so do the
    answers.
+8. **Google Data Safety answers** — use the same audited draft below and check
+   every line against the submitted build. Item 6 must be resolved separately;
+   data-safety disclosure does not replace the external deletion pathway.
 
 | Data                                   | Collected by the native app? | Linked to identity | Purpose                      | Notes                                          |
 | -------------------------------------- | ---------------------------- | ------------------ | ---------------------------- | ---------------------------------------------- |
@@ -2606,10 +2638,11 @@ a judgement only the owner has. Tick them in order: several gate the next.
    `VITE_PUSH_ENABLED=true` from your local `.env.production.local`.
    Turn it on only when all of these are done: `user_devices` migration applied
    (`docs/MOBILE_PUSH_SETUP.md` §1); Firebase and APNs set up (§2–§3); the
-   approved policy and disclosure are live; the on-device check in
-   `docs/MOBILE_PUSH_SETUP.md` passes on a real iPhone and Android device. Then
-   change the pin to `true`, rebuild, and update the App Privacy / Data Safety
-   answers for the push token.
+   approved policy and disclosure are live; **the notification sender is built,
+   configured, and end-to-end delivery is verified on a real iPhone and Android
+   device**; and the registration/opt-out check in `docs/MOBILE_PUSH_SETUP.md`
+   passes on both devices. Then change the pin to `true`, rebuild, and update
+   the App Privacy / Data Safety answers for the push token.
 
 ## Worth doing, not blocking
 
@@ -2659,7 +2692,22 @@ because renaming them needs a migration or infrastructure change:
 
 `docs/MOBILE_PUSH_SETUP.md` §5: replace the body with `The push wording is in the Privacy Policy (section 2, "Push Notifications") and in the Settings disclosure. Follow docs/STORE_SUBMISSION_CHECKLIST.md item 9 before turning push on.`
 
-`docs/MOBILE_PUSH_SETUP.md` §4 (deferred minor from Task 1): add one sentence after the flip instruction — `Flip it in a release commit, only for a build machine that has google-services.json, and update src/lib/buildMobileScript.test.js in the same commit (it pins =false on purpose).`
+`docs/MOBILE_PUSH_SETUP.md` §1: replace the production SQL Editor instruction
+with the same official Management API procedure used by checklist item 1, using
+file `20260927120000_user_devices.sql` and name `user_devices`. Direct SQL
+bypasses migration history. The agent documents this owner procedure only and
+must not run it.
+
+`docs/MOBILE_PUSH_SETUP.md` §4 (deferred minor from Task 1): add after the flip
+instruction: `Do not flip it until the sender is built and configured and
+end-to-end delivery has been verified on real iOS and Android devices. Flip it
+in a release commit, only for a build machine that has google-services.json,
+and update src/lib/buildMobileScript.test.js in the same commit (it pins =false
+on purpose).`
+
+`docs/BACKLOG.md` owner action #12: replace the production SQL Editor
+instruction with `follow docs/MOBILE_PUSH_SETUP.md §1`; the Management API
+procedure there applies the file and records migration history.
 
 `docs/BACKLOG.md` owner action #13 (deferred minor from Task 1): it still says to set `VITE_PUSH_ENABLED=true` in `.env.production.local`, which the `build:mobile` pin now overrides. Replace that instruction with `follow docs/MOBILE_PUSH_SETUP.md §4 and docs/STORE_SUBMISSION_CHECKLIST.md item 9`.
 
