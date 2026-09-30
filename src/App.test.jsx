@@ -978,9 +978,12 @@ describe('guest trial wall', () => {
 
   // The wall's Google button must reach the real signInWithGoogle through
   // App's single handler — not a second sign-in path bolted onto the wall.
+  // The wall is a create surface (spec D3), so every provider test below ticks
+  // the terms box first; the unticked case has its own test further down.
   it('starts the Google flow from the wall when the flag is on', async () => {
     const user = userEvent.setup();
     await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
     expect(signInWithGoogle).toHaveBeenCalledTimes(1);
   });
@@ -997,6 +1000,7 @@ describe('guest trial wall', () => {
   it('does not start a second flow on a double tap', async () => {
     const user = userEvent.setup();
     await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     const button = screen.getByRole('button', { name: 'Continue with Google' });
     await user.click(button);
     await user.click(button);
@@ -1011,6 +1015,7 @@ describe('guest trial wall', () => {
     try {
       const user = userEvent.setup();
       await renderApp({ googleOn: true });
+      await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
       const button = screen.getByRole('button', { name: 'Continue with Google' });
       await user.click(button);
       await waitFor(() => expect(button).not.toHaveAttribute('aria-busy', 'true'));
@@ -1026,9 +1031,62 @@ describe('guest trial wall', () => {
   it('starts the GitHub flow from the wall when only GitHub is on', async () => {
     const user = userEvent.setup();
     await renderApp({ gitHubOn: true });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
     await user.click(screen.getByRole('button', { name: 'Continue with GitHub' }));
     expect(signInWithGitHub).toHaveBeenCalledTimes(1);
     expect(signInWithGoogle).not.toHaveBeenCalled();
+  });
+
+  // App must hand the wall BOTH controlled consent props: with either missing
+  // the wall falls back to its pre-consent one-tap path (Task 8 ruling).
+  it('does not start a provider from the wall until the terms box is ticked', async () => {
+    const user = userEvent.setup();
+    await renderApp({ googleOn: true });
+    const box = screen.getByRole('checkbox', { name: /i agree/i });
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).not.toHaveBeenCalled();
+    expect(box).toHaveAttribute('aria-invalid', 'true');
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
+
+    await user.click(box);
+    await user.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    // The session-side check consumes this after the redirect.
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).not.toBeNull();
+  });
+
+  // The create sheet records the intent after the tick; its provider buttons
+  // must not then run through the sign-in handler that clears it.
+  it('the create sheet opened from the wall keeps the intent it records', async () => {
+    const user = userEvent.setup();
+    await renderApp({ googleOn: true });
+    await user.click(screen.getByRole('button', { name: 'Create a free account' }));
+    const sheet = screen.getByRole('dialog', { name: /create your account/i });
+    await user.click(within(sheet).getByRole('checkbox', { name: /i agree/i }));
+    await user.click(within(sheet).getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).not.toBeNull();
+  });
+
+  it('keeps the wall tick across a trip to /terms and focuses it on return', async () => {
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    try {
+      const user = userEvent.setup();
+      await renderApp({ googleOn: true });
+      await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
+      await user.click(screen.getByRole('link', { name: 'Terms of Service' }));
+      expect(
+        screen.getByRole('heading', { level: 1, name: 'Terms of Service' })
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: /back to the app/i }));
+      expect(wall()).toBeInTheDocument();
+      const box = screen.getByRole('checkbox', { name: /i agree/i });
+      expect(box).toBeChecked();
+      expect(box).toHaveFocus();
+    } finally {
+      scrollTo.mockRestore();
+      window.history.replaceState(null, '', '/');
+    }
   });
 
   // The in-flight guard is shared across providers: once Google is on its way
@@ -3262,5 +3320,44 @@ describe('guest mode is unchanged by the terms work', () => {
       screen.getAllByRole('heading', { level: 1, name: 'Privacy Policy' }).length
     ).toBeGreaterThan(0);
     window.history.replaceState(null, '', '/');
+  });
+});
+
+// Spec D3 / §6.7: the welcome screen's provider buttons are sign-in surfaces.
+// A ticked-box intent left behind by an abandoned create must not ride along
+// and be credited to whichever account signs in there.
+describe('welcome-screen sign-in drops a stale terms intent', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    asReturningLearner();
+    vi.resetModules();
+  });
+
+  it('clears the intent before starting Google', async () => {
+    const signInWithGoogle = vi.fn(() => Promise.resolve({ error: null }));
+    vi.doMock('./lib/auth.js', () => ({
+      isAuthConfigured: () => true,
+      isGoogleAuthConfigured: () => true,
+      isGitHubAuthConfigured: () => false,
+      signInWithGoogle,
+      signInWithGitHub: vi.fn(() => Promise.resolve({ error: null })),
+      humanAuthError: () => 'Something went wrong — try again.',
+      useAuth: () => ({ user: null, session: null, status: 'anonymous' }),
+      signOut: vi.fn(() => Promise.resolve({ error: null })),
+      getAccessToken: vi.fn(() => Promise.resolve(null)),
+      signInWithMagicLink: vi.fn(() => Promise.resolve({ error: null })),
+      verifyCode: vi.fn(() => Promise.resolve({ error: null })),
+      mayHaveSession: () => false,
+      authCallbackKind: () => null,
+      authCallbackReason: () => null,
+      onNativeAuthCallback: () => () => {},
+      getSupabase: () => Promise.resolve(null),
+    }));
+    const { default: AppWithAuth } = await import('./App.jsx');
+    localStorage.setItem('deutsch-app-legal-intent-v1', JSON.stringify({ at: Date.now() }));
+    render(<AppWithAuth />);
+    await userEvent.click(screen.getByRole('button', { name: 'Continue with Google' }));
+    expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem('deutsch-app-legal-intent-v1')).toBeNull();
   });
 });

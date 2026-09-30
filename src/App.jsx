@@ -1686,10 +1686,16 @@ export default function App() {
                   mobile={mobile}
                   onCreateAccount={() => setAuthModal('create')}
                   onSignIn={requestSignIn}
-                  onGoogle={handleGoogle}
+                  onGoogle={handleGoogleCreate}
                   googleBusy={googleBusy}
-                  onGitHub={handleGitHub}
+                  onGitHub={handleGitHubCreate}
                   gitHubBusy={gitHubBusy}
+                  // Both halves, always: with either missing the wall falls
+                  // back to its pre-consent one-tap provider path.
+                  accepted={authDraft.accepted}
+                  onAcceptedChange={setDraftAccepted}
+                  onNavigateLegal={openLegalFromConsent}
+                  focusConsent={focusConsent}
                 />
               )}
             </div>
