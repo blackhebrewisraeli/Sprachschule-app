@@ -195,6 +195,11 @@ export default function AuthSheet({
           maxWidth: 400,
           width: '100%',
           minWidth: 0,
+          // Bounded to the padded viewport and scrolling inside, so a tall sheet
+          // (create + consent error at 320×568) never pushes the close button
+          // and the submit off screen, where nothing could scroll them back.
+          maxHeight: '100%',
+          overflowY: 'auto',
           boxShadow: SHADOW.bar,
           boxSizing: 'border-box',
         }}
@@ -224,7 +229,9 @@ export default function AuthSheet({
           <X size={16} aria-hidden="true" />
         </button>
         {creating && (
-          <div style={{ maxWidth: 360, margin: `0 auto ${SPACE[4]}px` }}>
+          // The top margin drops the first consent line below the absolute close
+          // button; at 320px, with the app font, "Terms of Service" ran into it.
+          <div style={{ maxWidth: 360, margin: `${SPACE[3]}px auto ${SPACE[4]}px` }}>
             <LegalConsent
               checked={accepted}
               onChange={(next) => {
