@@ -255,9 +255,11 @@ const MODALS = [
   
   try {
     await page.goto(target, {
-      waitUntil: 'networkidle',
+      waitUntil: 'domcontentloaded',
       timeout: 30000,
     });
+    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
   } catch (error) {
     console.error('Contrast audit failed:', error);
     if (error?.stack) console.error(error.stack);
@@ -304,6 +306,8 @@ const MODALS = [
     })).catch(() => {});
     
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
 
     // Auto-click the AcceptanceGate if it blocks the UI
     try {
@@ -1425,6 +1429,8 @@ async function main() {
     /* removed duplicate route */
     
     await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+    await page.locator('#root').waitFor({ state: 'attached', timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(500);
 
     // Auto-click the AcceptanceGate if it blocks the UI
     try {
