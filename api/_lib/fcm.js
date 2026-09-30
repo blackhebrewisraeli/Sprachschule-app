@@ -109,7 +109,12 @@ export function createFcmClient({
 
   async function accessToken() {
     if (cached && cached.expiresAt - TOKEN_MARGIN_MS > now()) return cached.token;
-    const assertion = signAssertion(serviceAccount, Math.floor(now() / 1000));
+    let assertion;
+    try {
+      assertion = signAssertion(serviceAccount, Math.floor(now() / 1000));
+    } catch {
+      throw new FcmAuthError('service account configuration invalid');
+    }
     let response;
     try {
       response = await fetchImpl(TOKEN_URL, {
@@ -125,7 +130,7 @@ export function createFcmClient({
       throw new FcmAuthError(`token request failed: ${error?.name ?? 'error'}`);
     }
     const body = await response.json().catch(() => ({}));
-    if (!response.ok || typeof body.access_token !== 'string') {
+    if (!response.ok || typeof body?.access_token !== 'string') {
       throw new FcmAuthError(`token exchange refused (HTTP ${response.status})`);
     }
     cached = {

@@ -127,6 +127,32 @@ describe('access token', () => {
     const fcm = createFcmClient({ serviceAccount: SA, fetchImpl });
     await expect(fcm.accessToken()).rejects.toBeInstanceOf(FcmAuthError);
   });
+
+  it('reports an unusable private key as FcmAuthError, without sending anything', async () => {
+    const fetchImpl = vi.fn();
+    const fcm = createFcmClient({
+      serviceAccount: { ...SA, privateKey: 'k' },
+      fetchImpl,
+    });
+    const error = await fcm.accessToken().catch((e) => e);
+    expect(error).toBeInstanceOf(FcmAuthError);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(error.message).not.toContain('k');
+  });
+
+  it('reports a null token response as FcmAuthError', async () => {
+    const fetchImpl = vi.fn(async () => new Response('null', { status: 200 }));
+    const fcm = createFcmClient({ serviceAccount: SA, fetchImpl });
+    await expect(fcm.accessToken()).rejects.toBeInstanceOf(FcmAuthError);
+  });
+
+  it('send() rethrows FcmAuthError instead of reporting an outcome', async () => {
+    const fcm = createFcmClient({
+      serviceAccount: { ...SA, privateKey: 'k' },
+      fetchImpl: vi.fn(),
+    });
+    await expect(fcm.send({ token: 't' })).rejects.toBeInstanceOf(FcmAuthError);
+  });
 });
 
 describe('send', () => {
