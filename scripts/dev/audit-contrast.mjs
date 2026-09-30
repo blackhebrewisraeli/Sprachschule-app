@@ -226,9 +226,31 @@ const MODALS = [
     timeout: 8000,
     open: async (page) => {
       const origin = new URL(page.url()).origin;
-      await page.goto(`${origin}/?error=access_denied&error_code=otp_expired`, {
+      
+    // Ensure Supabase user endpoint is mocked so the session survives
+    await page.unroute('**/auth/v1/user').catch(() => {});
+    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
+      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
+      contentType: 'application/json' 
+    })).catch(() => {});
+    
+    await page.goto(`${origin}/?error=access_denied&error_code=otp_expired`, {
         waitUntil: 'domcontentloaded',
       });
+
+    // Auto-click the AcceptanceGate if it blocks the UI
+    try {
+      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
+      if (await gateBox.isVisible({ timeout: 2500 })) {
+        console.log('    (Gate found in audit. Clicking through...)');
+        await gateBox.check();
+        await page.getByRole('button', { name: /Continue/i }).click();
+        await page.waitForTimeout(800); // Allow DOM to render the actual app
+      }
+    } catch (e) {
+      // Gate didn't appear, proceed normally
+    }
+  
       await page.waitForTimeout(400);
       // Native click: Playwright's actionability would refuse, because the
       // landing's scrim covers the WelcomeGate guest button. handleGuest only
@@ -247,7 +269,29 @@ const MODALS = [
       // overlay. applyTheme reloads the current URL; a leftover `?error=`
       // would block header sheets and the Sign in chip.
       const origin = new URL(page.url()).origin;
-      await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+      
+    // Ensure Supabase user endpoint is mocked so the session survives
+    await page.unroute('**/auth/v1/user').catch(() => {});
+    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
+      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
+      contentType: 'application/json' 
+    })).catch(() => {});
+    
+    await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
+
+    // Auto-click the AcceptanceGate if it blocks the UI
+    try {
+      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
+      if (await gateBox.isVisible({ timeout: 2500 })) {
+        console.log('    (Gate found in audit. Clicking through...)');
+        await gateBox.check();
+        await page.getByRole('button', { name: /Continue/i }).click();
+        await page.waitForTimeout(800); // Allow DOM to render the actual app
+      }
+    } catch (e) {
+      // Gate didn't appear, proceed normally
+    }
+  
       await page.waitForTimeout(400);
       await dismissEntryScreens(page);
     },
@@ -1353,7 +1397,29 @@ async function main() {
   const page = await context.newPage();
 
   // Boot once so we can seed before the first themed reload.
-  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  
+    // Ensure Supabase user endpoint is mocked so the session survives
+    await page.unroute('**/auth/v1/user').catch(() => {});
+    await page.route('**/auth/v1/user', (r) => r.fulfill({ 
+      body: JSON.stringify({ id: '00000000-0000-4000-8000-000000000002', aud: 'authenticated', role: 'authenticated' }), 
+      contentType: 'application/json' 
+    })).catch(() => {});
+    
+    await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+
+    // Auto-click the AcceptanceGate if it blocks the UI
+    try {
+      const gateBox = page.getByRole('checkbox', { name: /I agree/i });
+      if (await gateBox.isVisible({ timeout: 2500 })) {
+        console.log('    (Gate found in audit. Clicking through...)');
+        await gateBox.check();
+        await page.getByRole('button', { name: /Continue/i }).click();
+        await page.waitForTimeout(800); // Allow DOM to render the actual app
+      }
+    } catch (e) {
+      // Gate didn't appear, proceed normally
+    }
+  
   await page.evaluate(seedPopulatedAccount);
 
   const findings = [];
