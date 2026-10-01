@@ -89,10 +89,13 @@ hourly clock that calls it.**
 | D. 24 daily Vercel crons on one path                                                     | Each one passes the per-expression check, but together they deliberately defeat the plan limit Vercel documents. A config change can break deploys. Rejected.                                                                                                                                                                                                          |
 | E. GitHub Actions `schedule`                                                              | Private repo on a personal account. CI jobs have died on billing before, and scheduled workflows are delayed and best-effort. Rejected.                                                                                                                                                                                                                                 |
 
-**Upgrade path.** The endpoint accepts GET (Vercel Cron's method) and POST
-(`pg_net`) under the same secret. If the owner later moves to Pro, the switch is
-a `vercel.json` `crons` entry plus `cron.unschedule('streak-reminder')`. The
-code does not change.
+**Upgrade path (corrected 2026-10-01).** The endpoint accepts POST (`pg_net`)
+and GET (manual runs) under `PUSH_CRON_SECRET`. Vercel Cron cannot drive it
+as-is: Vercel always sends `Authorization: Bearer $CRON_SECRET`, a fixed
+variable name, and this endpoint deliberately refuses the league's secret. If
+the owner later moves to Pro, the switch is a `vercel.json` `crons` entry, a
+one-line change so the endpoint also accepts `CRON_SECRET`, and
+`cron.unschedule('streak-reminder')`.
 
 **Function slot.** `api/chat.js` is a one-line legacy alias of the AI chat
 handler, marked "Remove one release cycle after B0 ships" long ago. It becomes a
@@ -788,7 +791,7 @@ Run with `S=<PUSH_CRON_SECRET>` and `U=https://deutsch-app-dusky.vercel.app/api/
 | --- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
 | D1  | Reminder window and copy                                                                     | 19:00–21:59 local; "Keep your streak alive" / "You haven’t reached today’s goal yet. A few minutes of practice keeps your streak going." | Nothing. These are constants that are cheap to change before or after the merge          |
 | D2  | Privacy and disclosure wording (§15) and the `PRIVACY_VERSION` bump, which re-asks every signed-in learner | **Decided 2026-10-01:** copy approved as written. The version bump and the copy merge only in the push-on release | Task 9 is scheduled for that release. Tasks 1–8 do not depend on it                     |
-| D3  | Clock: Supabase `pg_cron` (free) vs upgrading Vercel to Pro for native hourly cron           | `pg_cron`                                                                                          | Nothing. The code serves both                                                           |
+| D3  | Clock: Supabase `pg_cron` (free) vs upgrading Vercel to Pro for native hourly cron           | `pg_cron`                                                                                          | Nothing. Moving to Vercel Cron later needs one line (§4 upgrade path)                   |
 
 No owner decision blocks Tasks 1–8. Firebase and Apple setup (§20) is needed
 only for on-device verification and go-live, not to build or test the code.
