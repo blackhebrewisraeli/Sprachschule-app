@@ -47,7 +47,13 @@ export default async function handler(req, res) {
     return sendError(res, 'unauthorized', 'Invalid cron secret.');
   }
 
-  const dryRun = req.query?.dryRun === '1';
+  // Fail closed: only an exact '1' is a dry run, and a typo (`true`, a repeated
+  // parameter) must never fall through to sending for real.
+  const dryRunParam = req.query?.dryRun;
+  if (dryRunParam !== undefined && dryRunParam !== '1') {
+    return sendError(res, 'bad_request', 'dryRun must be 1.');
+  }
+  const dryRun = dryRunParam === '1';
   const only = req.query?.only ?? null;
   if (only !== null && !UUID.test(only)) {
     return sendError(res, 'bad_request', 'only must be a user id.');
@@ -62,10 +68,15 @@ export default async function handler(req, res) {
   const started = Date.now();
   try {
     const summary = await runStreakReminders({ db, fcm, dryRun, onlyUserId: only });
-    // Counts only: never tokens, user ids or secrets.
-    console.log(
-      JSON.stringify({ event: 'streak_reminder_run', ...summary, ms: Date.now() - started })
-    );
+    // Counts and FCM codes only: never tokens, user ids or secrets. A run a
+    // fatal FCM error stopped is an error in the logs.
+    const line = JSON.stringify({
+      event: 'streak_reminder_run',
+      ...summary,
+      ms: Date.now() - started,
+    });
+    // eslint-disable-next-line no-console -- one structured line per run (spec §8)
+    (summary.aborted === 'fatal' ? console.error : console.log)(line);
     return res.status(summary.aborted === 'fatal' ? 502 : 200).json(summary);
   } catch (error) {
     const auth = error instanceof FcmAuthError;

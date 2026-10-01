@@ -22,6 +22,11 @@ const req = ({ method = 'POST', token = 'push-secret', query = {} } = {}) => ({
   query,
 });
 
+// Kept in variables: the run summary goes to console.log, and member access on
+// `console` outside warn/error trips no-console.
+let logSpy;
+let errorSpy;
+
 async function call(options) {
   const res = createRes();
   await handler(req(options), res);
@@ -34,8 +39,8 @@ beforeEach(() => {
   vi.stubEnv('FIREBASE_SERVICE_ACCOUNT', SERVICE_ACCOUNT);
   serviceClient.mockReturnValue({});
   runStreakReminders.mockResolvedValue({ dryRun: false, due: 1, sent: 1, aborted: null });
-  vi.spyOn(console, 'log').mockImplementation(() => {});
-  vi.spyOn(console, 'error').mockImplementation(() => {});
+  logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+  errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -144,8 +149,53 @@ it('answers 500 when the run itself fails', async () => {
 
 it('logs one structured summary line per run, and no token or secret', async () => {
   await call();
-  expect(console.log).toHaveBeenCalledTimes(1);
-  const line = console.log.mock.calls[0][0];
+  expect(logSpy).toHaveBeenCalledTimes(1);
+  expect(errorSpy).not.toHaveBeenCalled();
+  const line = logSpy.mock.calls[0][0];
   expect(JSON.parse(line)).toMatchObject({ event: 'streak_reminder_run', sent: 1 });
   expect(line).not.toContain('push-secret');
+});
+
+it('logs a run stopped by a fatal FCM error as an error, with its codes', async () => {
+  runStreakReminders.mockResolvedValue({
+    dryRun: false,
+    sent: 0,
+    aborted: 'fatal',
+    codes: { PERMISSION_DENIED: 1 },
+  });
+  await call();
+  expect(logSpy).not.toHaveBeenCalled();
+  expect(errorSpy).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(errorSpy.mock.calls[0][0])).toMatchObject({
+    event: 'streak_reminder_run',
+    aborted: 'fatal',
+    codes: { PERMISSION_DENIED: 1 },
+  });
+});
+
+// A dry run is the safe mode, so only an exact '1' may select it, and a typo
+// must never fall through to a real send.
+it.each([
+  ['absent', undefined, false],
+  ['1', '1', true],
+])('dryRun %s selects dryRun=%s', async (_label, value, dryRun) => {
+  await call({ query: value === undefined ? {} : { dryRun: value } });
+  expect(runStreakReminders).toHaveBeenCalledWith(expect.objectContaining({ dryRun }));
+});
+
+it.each([
+  ['true', 'true'],
+  ['0', '0'],
+  ['empty', ''],
+  ['a repeated parameter', ['1', '1']],
+])('rejects dryRun=%s (400) before touching the database', async (_label, value) => {
+  const res = await call({ query: { dryRun: value } });
+  expect(res.statusCode).toBe(400);
+  expect(res.body.error.message).toBe('dryRun must be 1.');
+  expect(serviceClient).not.toHaveBeenCalled();
+  expect(runStreakReminders).not.toHaveBeenCalled();
+});
+
+it('checks the secret before the dryRun value', async () => {
+  expect((await call({ token: 'nope', query: { dryRun: 'true' } })).statusCode).toBe(401);
 });
