@@ -8,8 +8,10 @@ import { runStreakReminders } from '../../_lib/streakReminder.js';
 // docs/superpowers/specs/2026-10-01-push-sender-design.md
 //
 // Called by Supabase pg_cron + pg_net (POST), because Vercel Hobby crons run at
-// most once a day. GET is accepted too, so a Vercel Cron entry can drive it
-// unchanged if the plan is ever upgraded. Setup: docs/MOBILE_PUSH_SETUP.md §6.
+// most once a day. GET is accepted too, for manual runs. Vercel Cron cannot
+// drive this endpoint as-is: it always sends CRON_SECRET, which is deliberately
+// not accepted here, so moving the schedule to Vercel Cron (Pro plan) would mean
+// accepting that secret too. Setup: docs/MOBILE_PUSH_SETUP.md §6.
 //
 // PUSH_CRON_SECRET, not CRON_SECRET: a copy of this one lives in Supabase
 // Vault, and a leak there must not also open league settlement.

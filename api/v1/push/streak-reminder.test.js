@@ -54,6 +54,19 @@ it('rejects a wrong secret (401) before touching the database', async () => {
   expect(serviceClient).not.toHaveBeenCalled();
 });
 
+// Same length as 'push-secret': only the constant-time compare can reject it.
+it('rejects a wrong secret of the right length (401)', async () => {
+  expect((await call({ token: 'push-secreT' })).statusCode).toBe(401);
+  expect(serviceClient).not.toHaveBeenCalled();
+});
+
+it('rejects a request with no authorization header (401)', async () => {
+  const res = createRes();
+  await handler({ method: 'POST', headers: {}, query: {} }, res);
+  expect(res.statusCode).toBe(401);
+  expect(serviceClient).not.toHaveBeenCalled();
+});
+
 // The push secret also lives in Supabase Vault; the league settle secret must
 // not open this endpoint, and this one must not be the league's.
 it('does not accept the league CRON_SECRET', async () => {
@@ -65,7 +78,7 @@ it('fails closed when PUSH_CRON_SECRET is unset', async () => {
   expect((await call({ token: '' })).statusCode).toBe(401);
 });
 
-it.each(['POST', 'GET'])('runs on %s (pg_net posts; Vercel Cron would GET)', async (method) => {
+it.each(['POST', 'GET'])('runs on %s (pg_net posts; GET for manual runs)', async (method) => {
   const res = await call({ method });
   expect(res.statusCode).toBe(200);
   expect(res.body).toEqual({ dryRun: false, due: 1, sent: 1, aborted: null });
