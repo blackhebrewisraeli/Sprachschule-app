@@ -7,7 +7,7 @@ bottom after editing.
 
 ## App Name [30]
 
-**sprachschule-app**
+**Deutsch Sprachschule**
 
 Set by the owner on 2026-09-30; matches the home-screen display name.
 
@@ -23,7 +23,7 @@ Chat your way to real German. An AI tutor plays the barista, the check-in agent 
 
 ## Description [4000]
 
-Learn German by actually using it. sprachschule-app puts you in real conversations with an AI tutor from your very first day — and gives you just enough help to keep talking.
+Learn German by actually using it. Deutsch Sprachschule puts you in real conversations with an AI tutor from your very first day — and gives you just enough help to keep talking.
 
 AN AI TUTOR THAT PLAYS ALONG
 Order a coffee from a Berlin barista, check in at the airport, or meet someone new. Your tutor stays in character, answers in natural German at your level, and explains every correction in plain English. Stuck? Tap to build your reply from a word bank or fill in a single missing word, then graduate to writing freely as your confidence grows.
@@ -48,7 +48,7 @@ MADE FOR REAL LIFE
 • Sign in to sync your progress across your phone, tablet and the web.
 • Clean, focused design with light and dark modes.
 
-Whether you're preparing for a move, a trip or an exam, or just want to finally understand the conversation around you, sprachschule-app turns a few minutes a day into German you can really use.
+Whether you're preparing for a move, a trip or an exam, or just want to finally understand the conversation around you, Deutsch Sprachschule turns a few minutes a day into German you can really use.
 
 ## Keywords [100]
 
