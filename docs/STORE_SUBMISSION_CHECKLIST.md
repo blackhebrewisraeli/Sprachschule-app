@@ -46,7 +46,9 @@ a judgement only the owner has. Tick them in order: several gate the next.
    **Deutsch Sprachschule** (owner decision, 2026-10-01), so both store
    listings must use that exact app name. The tracked App Store copy is in
    `docs/store-metadata/app-store-listing.md`; the tracked Play Console copy is
-   in `docs/store-metadata/google-play-listing.md`.
+   in `docs/store-metadata/google-play-listing.md`; the shared capture sizes,
+   six-screen story and export checks are in
+   `docs/store-metadata/store-screenshot-plan.md`.
 
    **Handling an emailed request.** The subject is "Account Deletion Request -
    Deutsch Sprachschule", and the page promises deletion within 30 days.
