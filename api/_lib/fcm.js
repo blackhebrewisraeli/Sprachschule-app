@@ -131,7 +131,11 @@ export function createFcmClient({
     }
     const body = await response.json().catch(() => ({}));
     if (!response.ok || typeof body?.access_token !== 'string') {
-      throw new FcmAuthError(`token exchange refused (HTTP ${response.status})`);
+      // Only Google's short enumerated `error` (invalid_grant, ...) is named;
+      // any other part of the body could echo something that is not ours to log.
+      const code = body?.error;
+      const reason = typeof code === 'string' && /^[a-z_]{1,40}$/.test(code) ? `, ${code}` : '';
+      throw new FcmAuthError(`token exchange refused (HTTP ${response.status}${reason})`);
     }
     cached = {
       token: body.access_token,

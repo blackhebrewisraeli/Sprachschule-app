@@ -120,6 +120,31 @@ describe('access token', () => {
     await expect(fcm.accessToken()).rejects.toBeInstanceOf(FcmAuthError);
   });
 
+  // Google's token endpoint answers with a short enumerated `error` (RFC 6749
+  // §5.2). Naming it is what tells an owner the key is revoked or the clock is
+  // off, without a human having to guess from "HTTP 400".
+  it('names Google’s enumerated error when the exchange is refused', async () => {
+    const fetchImpl = vi.fn(async () => json({ error: 'invalid_grant' }, 400));
+    const fcm = createFcmClient({ serviceAccount: SA, fetchImpl });
+    const error = await fcm.accessToken().catch((e) => e);
+    expect(error).toBeInstanceOf(FcmAuthError);
+    expect(error.message).toBe('token exchange refused (HTTP 400, invalid_grant)');
+  });
+
+  it.each([
+    ['free text', { error: 'Bearer ya29.leaky-token was refused' }],
+    ['an upper-case value', { error: 'INVALID_GRANT' }],
+    ['an object', { error: { message: 'detail', status: 'X' } }],
+    ['a very long value', { error: 'a'.repeat(500) }],
+    ['no error field', { error_description: 'Invalid JWT Signature.' }],
+    ['a non-JSON body', null],
+  ])('never echoes %s from a refused exchange', async (_label, body) => {
+    const fetchImpl = vi.fn(async () => json(body, 400));
+    const fcm = createFcmClient({ serviceAccount: SA, fetchImpl });
+    const error = await fcm.accessToken().catch((e) => e);
+    expect(error.message).toBe('token exchange refused (HTTP 400)');
+  });
+
   it('reports an unreachable token endpoint as FcmAuthError', async () => {
     const fetchImpl = vi.fn(async () => {
       throw new TypeError('fetch failed');
