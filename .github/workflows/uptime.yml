@@ -29,7 +29,7 @@ permissions:
 jobs:
   reachability:
     name: Demo · Lexicon · Auth · REST
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check every hop
         env:

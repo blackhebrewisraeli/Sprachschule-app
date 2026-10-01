@@ -9,7 +9,7 @@ on:
 jobs:
   verify:
     name: Lint · Test · Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       HUSKY: 0 # don't install git hooks in CI
 
@@ -55,7 +55,7 @@ jobs:
   # secrets here would make the job fail on forks.
   contrast-audit:
     name: Contrast · Rendered DOM
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       HUSKY: 0
       AUDIT_BASE: http://localhost:5290
@@ -130,7 +130,7 @@ jobs:
   # learner takes from Home without an account.
   learning-path-smoke:
     name: Learning path · Browser
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       HUSKY: 0
       AUDIT_BASE: http://localhost:5290
@@ -188,7 +188,7 @@ jobs:
   # let them drift; the header of the script explains the failure mode.
   auth-learning-path-smoke:
     name: Learning path · Signed in
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       HUSKY: 0
 
@@ -225,7 +225,7 @@ jobs:
 
   rls-policy-tests:
     name: RLS Policy Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # A job-level block REPLACES the defaults: every scope not listed becomes
     # `none`. So contents:read has to be stated alongside packages:read, or
     # actions/checkout below loses its token's read access.
@@ -310,7 +310,7 @@ jobs:
   # required check that never appears blocks every PR indefinitely.
   sonar:
     name: SonarCloud Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       HUSKY: 0
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
