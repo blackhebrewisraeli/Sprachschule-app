@@ -4,12 +4,20 @@ import { assertSignupAllowed, readServerSignupAllowlist } from '../../src/lib/si
 
 // Optional identity for the AI lane. Unlike requireAuth, a missing header is a
 // GUEST, and an auth OUTAGE degrades to a guest instead of a 401: only a token
-// GoTrue actually rejected is the caller's problem (spec §6.3, §6.8). A 429 is
-// GoTrue throttling this server, not a verdict on the token, so it counts as an
-// outage too — otherwise every signed-in learner would be told their session
-// expired.
-const isOutage = (error) =>
-  error?.name === 'AuthRetryableFetchError' || error?.status === 429 || (error?.status ?? 0) >= 500;
+// GoTrue actually rejected is the caller's problem (spec §6.3, §6.8).
+//
+// So a 401 needs a definite 4xx verdict on the token. Everything else is an
+// outage: the network, a 5xx, GoTrue throttling this server (429), and a
+// non-JSON error body, which supabase-js reports as AuthUnknownError with no
+// status at all. Misreading an outage as a rejection would tell every
+// signed-in learner their session expired; misreading the other way only
+// serves them as a guest.
+const isRejection = (error) => error?.status >= 400 && error.status < 500 && error.status !== 429;
+
+// A hung GoTrue would otherwise hold every signed-in AI call until the
+// function's maxDuration. Signed-in calls did not wait on GoTrue before A3.
+const AUTH_TIMEOUT_MS = 3000;
+const TIMED_OUT = Symbol('timed out');
 
 const unauthorized = (message) => ({ code: 'unauthorized', message });
 
@@ -32,14 +40,21 @@ export async function resolveCaller(req, client = serviceClient()) {
   if (!client) return degraded(guest, 'no_data_lane');
 
   let result;
+  let timer;
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(resolve, AUTH_TIMEOUT_MS, TIMED_OUT);
+  });
   try {
-    result = await client.auth.getUser(token);
+    result = await Promise.race([client.auth.getUser(token), timeout]);
   } catch {
     return degraded(guest, 'auth_unreachable');
+  } finally {
+    clearTimeout(timer);
   }
+  if (result === TIMED_OUT) return degraded(guest, 'auth_timeout');
   const { data, error } = result ?? {};
   if (error) {
-    if (isOutage(error)) return degraded(guest, 'auth_unreachable');
+    if (!isRejection(error)) return degraded(guest, 'auth_unreachable');
     throw unauthorized('Invalid or expired token.');
   }
   if (!data?.user?.id) throw unauthorized('Invalid or expired token.');

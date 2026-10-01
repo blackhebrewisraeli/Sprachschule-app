@@ -198,14 +198,19 @@ describe('createAiHandler', () => {
   });
 
   // Holds under either D2 answer: the expectation is derived, not hardcoded.
+  // Opus is above Free's ceiling under either D2 answer, so the clamp line is
+  // always written and its tier shows the caller was mapped to Free, not Guest.
   it('applies the Free ceiling to a signed-in caller', async () => {
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const handler = createAiHandler(wideOpen);
     goTrueKnows({ t1: { id: 'u1' } });
     const res = createRes();
-    await handler(bearer('t1', { ...validBody(), model: MODELS.sonnet.id }), res);
+    await handler(bearer('t1', { ...validBody(), model: MODELS.opus.id }), res);
     expect(res.statusCode).toBe(200);
-    expect(sentModel()).toBe(clampModel(MODELS.sonnet.id, 'free'));
+    expect(sentModel()).toBe(clampModel(MODELS.opus.id, 'free'));
+    const line = warn.mock.calls.map(([l]) => l).find((l) => l.includes('model_clamped'));
+    expect(JSON.parse(line).tier).toBe('free');
+    expect(line).not.toContain('u1');
   });
 
   it('rejects a bad token with 401 before forwarding', async () => {

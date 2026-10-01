@@ -1,4 +1,6 @@
+// @vitest-environment node
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
 import { resolveCaller } from './aiCaller.js';
 
 const req = (authorization) => ({
@@ -115,6 +117,66 @@ describe('resolveCaller', () => {
     });
     await expect(resolveCaller(req('Bearer t'), c)).rejects.toMatchObject({
       code: 'signup_not_allowed',
+    });
+  });
+});
+
+// The classification above runs on hand-built errors. These run the REAL
+// supabase-js client against a stubbed GoTrue, so the error classes and
+// statuses are the ones production sees — including AuthUnknownError, which
+// carries no status at all for a non-JSON error body.
+describe('resolveCaller against real supabase-js errors', () => {
+  const goTrue = (status, body, contentType = 'application/json') =>
+    createClient('https://stub.supabase.co', 'service-role-key', {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: async () => new Response(body, { status, headers: { 'content-type': contentType } }),
+      },
+    });
+  const html = (status) => goTrue(status, '<html>Bad Gateway</html>', 'text/html');
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+  });
+
+  it('a user GoTrue returns → user', async () => {
+    const c = goTrue(200, JSON.stringify({ id: 'u1', aud: 'authenticated' }));
+    expect(await resolveCaller(req('Bearer t'), c)).toMatchObject({ kind: 'user', userId: 'u1' });
+  });
+
+  it.each([
+    [401, { code: 401, error_code: 'bad_jwt', msg: 'invalid JWT' }],
+    [403, { code: 403, error_code: 'session_not_found', msg: 'Session does not exist' }],
+  ])('a JSON %s verdict on the token → 401', async (status, body) => {
+    const c = goTrue(status, JSON.stringify(body));
+    await expect(resolveCaller(req('Bearer t'), c)).rejects.toMatchObject({ code: 'unauthorized' });
+  });
+
+  it.each([500, 429, 503])('an HTML %s from GoTrue or a proxy → degraded guest', async (status) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(await resolveCaller(req('Bearer t'), html(status))).toMatchObject({
+      kind: 'guest',
+      degraded: true,
+    });
+  });
+
+  it.each([500, 429])('a JSON %s from GoTrue → degraded guest', async (status) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const c = goTrue(status, JSON.stringify({ code: status, msg: 'busy' }));
+    expect((await resolveCaller(req('Bearer t'), c)).degraded).toBe(true);
+  });
+
+  it('a hung GoTrue → degraded guest after the timeout, not a 504', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.useFakeTimers();
+    const c = clientWith(() => new Promise(() => {}));
+    const pending = resolveCaller(req('Bearer t'), c);
+    await vi.advanceTimersByTimeAsync(3000);
+    expect(await pending).toEqual({ kind: 'guest', key: 'ip:9.9.9.9', degraded: true });
+    expect(JSON.parse(warn.mock.calls[0][0])).toEqual({
+      event: 'ai_caller_degraded',
+      reason: 'auth_timeout',
     });
   });
 });
