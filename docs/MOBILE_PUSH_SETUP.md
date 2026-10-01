@@ -136,8 +136,10 @@ token.
 ## 4. Turn the flag on for native builds
 
 `npm run build:mobile` pins `VITE_PUSH_ENABLED=false`, so no local env file can
-turn push on by accident. Turn it on only after every push item in
-`docs/STORE_SUBMISSION_CHECKLIST.md` is done: change that pin to `true` in
+turn push on by accident. The committed flip to `true` is the last step of §6,
+the release commit. The device smoke test before it uses a local, uncommitted
+build (§6, setup step 8). At the release commit every push item in
+`docs/STORE_SUBMISSION_CHECKLIST.md` must be done: change the pin in
 `package.json`, on a machine that has step 2's `google-services.json`, then
 `npm run build:mobile`.
 
@@ -264,10 +266,10 @@ your reminder first, and the `only=` test would then report `due: 0`.
 10. **First scheduled tick** (the smoke test below, step 7).
 11. **Release, the last step.** One release commit: change the `build:mobile`
     pin to `true`, update `src/lib/buildMobileScript.test.js` in the same
-    commit, ship the approved privacy copy and bump `PRIVACY_VERSION`. That
-    copy change is ready but deliberately held back for this release. Then
-    finish `docs/STORE_SUBMISSION_CHECKLIST.md` item 9, including the App
-    Privacy / Data Safety answers (§4, §5).
+    commit, ship the approved privacy copy and bump `PRIVACY_VERSION`. The
+    privacy and disclosure copy is approved (spec D2) and ships in that release
+    commit (plan Task 9). Then finish `docs/STORE_SUBMISSION_CHECKLIST.md`
+    item 9, including the App Privacy / Data Safety answers (§4, §5).
 
 ### Manual smoke test
 
@@ -275,11 +277,13 @@ Steps 1–3 are setup step 7, steps 4–6 are setup step 8, step 7 is setup step
 
 Run these on a trusted machine: the `Authorization` header is visible in `ps`
 while curl runs. Paste each secret at its prompt, the same pattern as §1, so
-nothing is echoed and nothing lands in shell history:
+nothing is echoed and nothing lands in shell history. At the first prompt paste
+`PUSH_CRON_SECRET`; at the second paste the league's `CRON_SECRET` (needed for
+step 1 only):
 
 ```bash
-read -s S   # paste PUSH_CRON_SECRET
-read -s L   # paste CRON_SECRET, the league's secret (step 1 only)
+read -s S
+read -s L
 U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder
 ```
 
@@ -294,7 +298,7 @@ U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder
    - Opt in on the test iPhone and Android with the local test builds from
      setup step 8.
    - In the SQL editor:
-     `select platform, time_zone, updated_at from public.user_devices where user_id = '<owner uuid>';`
+     `select platform, time_zone, push_token, updated_at from public.user_devices where user_id = '<owner uuid>';`
      There are two rows, each with a zone.
    - Firebase console → Messaging → _Send test message_ to each token (copy it
      from the same table).
