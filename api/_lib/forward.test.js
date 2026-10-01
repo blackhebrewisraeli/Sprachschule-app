@@ -54,6 +54,16 @@ describe('forwardToProvider', () => {
     expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe(MODELS.sonnet.id);
   });
 
+  it("adds the catalog row's request params server-side", async () => {
+    await forwardToProvider({ ...body, model: MODELS.sonnet.id }, { ANTHROPIC_API_KEY: 'k' });
+    await forwardToProvider({ ...body, model: MODELS.opus.id }, { ANTHROPIC_API_KEY: 'k' });
+    await forwardToProvider(body, { ANTHROPIC_API_KEY: 'k' });
+    const [sonnet, opus, haiku] = fetch.mock.calls.map(([, o]) => JSON.parse(o.body));
+    expect(sonnet.thinking).toEqual({ type: 'between_tools' });
+    expect(opus.output_config).toEqual({ effort: 'low' });
+    expect(haiku).toEqual(body);
+  });
+
   it('throws when the matching provider key is missing', async () => {
     await expect(forwardToProvider(body, {})).rejects.toThrow(/not configured/);
     expect(fetch).not.toHaveBeenCalled();

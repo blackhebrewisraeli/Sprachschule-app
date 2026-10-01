@@ -25,6 +25,27 @@ describe('AI routing catalog', () => {
     expect(MODELS.opus.profile).toBe('capable');
   });
 
+  // Anthropic retired claude-opus-4-1 on 2026-08-05 and retires claude-sonnet-4-5
+  // on 2026-11-30 (platform.claude.com/docs/en/about-claude/model-deprecations).
+  // A retired id fails every request, so the catalog pins the live successors.
+  it('pins live model ids — no retired or deprecated id', () => {
+    expect(MODELS.sonnet.id).toBe('claude-sonnet-5-5');
+    expect(MODELS.opus.id).toBe('claude-opus-5-5');
+    const ids = Object.values(MODELS).map((m) => m.id);
+    for (const retired of ['claude-opus-4-1', 'claude-sonnet-4-5']) {
+      expect(ids).not.toContain(retired);
+    }
+  });
+
+  // Both successors think by default, and thinking counts toward max_tokens —
+  // which chat caps at 1000 for a short JSON reply. Each row carries the request
+  // fields that keep the tutor fast and the reply inside that cap.
+  it('fixes per-model request params so thinking cannot eat the reply budget', () => {
+    expect(MODELS.haiku.params).toBeUndefined();
+    expect(MODELS.sonnet.params).toEqual({ thinking: { type: 'between_tools' } });
+    expect(MODELS.opus.params).toEqual({ output_config: { effort: 'low' } });
+  });
+
   it('names a provider on every catalog row so the server adapter can dispatch', () => {
     for (const model of Object.values(MODELS)) {
       expect(model.provider).toBe('anthropic');

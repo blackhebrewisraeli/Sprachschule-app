@@ -3,7 +3,11 @@
 // a second provider (see src/lib/ai-routing/providers.js).
 
 import { forwardToAnthropic } from './anthropic.js';
-import { ANTHROPIC_PROVIDER, providerForModelId } from '../../src/lib/ai-routing/providers.js';
+import {
+  ANTHROPIC_PROVIDER,
+  modelForId,
+  providerForModelId,
+} from '../../src/lib/ai-routing/providers.js';
 
 export const ADAPTERS = Object.freeze({
   [ANTHROPIC_PROVIDER]: Object.freeze({
@@ -35,5 +39,8 @@ export async function forwardToProvider(safeBody, env = process.env) {
   if (!apiKey) {
     throw new Error(`Provider ${provider} is not configured`);
   }
-  return adapter.forward(safeBody, apiKey);
+  // Per-model request fields (thinking, effort) come from the catalog, never
+  // from the client: validateAiBody already rebuilt safeBody from an allow-list.
+  const params = modelForId(safeBody.model)?.params;
+  return adapter.forward(params ? { ...safeBody, ...params } : safeBody, apiKey);
 }

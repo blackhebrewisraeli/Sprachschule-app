@@ -145,11 +145,11 @@ describe('createAiHandler', () => {
   it('forwards a routed Sonnet model id to Anthropic', async () => {
     const res = createRes();
     await createAiHandler(wideOpen)(
-      postReq({ body: { ...validBody(), model: 'claude-sonnet-4-5' } }),
+      postReq({ body: { ...validBody(), model: 'claude-sonnet-5-5' } }),
       res
     );
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('claude-sonnet-4-5');
+    expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('claude-sonnet-5-5');
   });
 
   it('passes upstream error statuses through unchanged', async () => {
