@@ -37,7 +37,7 @@ describe('ModelPicker', () => {
   });
 
   it('hides the fallback caption when the pick fits', () => {
-    render(<ModelPicker value="balanced" userTier="free" onChange={() => {}} />);
+    render(<ModelPicker value="balanced" userTier="pro" onChange={() => {}} />);
     expect(screen.queryByText(/above your current plan/i)).not.toBeInTheDocument();
   });
 });

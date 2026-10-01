@@ -79,6 +79,12 @@ describe('callClaude', () => {
     {
       name: 'free chat',
       routingContext: { taskType: 'chat', userTier: 'free' },
+      model: MODELS.haiku.id,
+      maxTokens: TASKS.chat.maxTokens,
+    },
+    {
+      name: 'pro chat',
+      routingContext: { taskType: 'chat', userTier: 'pro' },
       model: MODELS.sonnet.id,
       maxTokens: TASKS.chat.maxTokens,
     },
@@ -93,8 +99,8 @@ describe('callClaude', () => {
       maxTokens: TASKS.chat.maxTokens,
     },
     {
-      name: 'free deck generation',
-      routingContext: { taskType: 'deck_generation', userTier: 'free' },
+      name: 'pro deck generation',
+      routingContext: { taskType: 'deck_generation', userTier: 'pro' },
       model: MODELS.sonnet.id,
       maxTokens: TASKS.deck_generation.maxTokens,
     },
@@ -110,7 +116,7 @@ describe('callClaude', () => {
 
   it('honours an in-tier preferredModel instead of the automatic pick', async () => {
     await callClaude('sys', 'msg', [], {
-      routingContext: { taskType: 'chat', userTier: 'free', preferredModel: 'fast' },
+      routingContext: { taskType: 'chat', userTier: 'pro', preferredModel: 'fast' },
     });
     expect(postedBody().model).toBe(MODELS.haiku.id);
     expect(postedBody().max_tokens).toBe(TASKS.chat.maxTokens);
@@ -125,7 +131,7 @@ describe('callClaude', () => {
     await callClaude('sys', 'msg', [], {
       routingContext: { taskType: 'chat', userTier: 'free', preferredModel: 'capable' },
     });
-    expect(postedBody().model).toBe(MODELS.sonnet.id);
+    expect(postedBody().model).toBe(MODELS.haiku.id);
   });
 
   it('keeps endpoint routing independent of the selected model', async () => {

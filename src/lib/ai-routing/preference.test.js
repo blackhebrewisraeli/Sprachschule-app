@@ -76,7 +76,7 @@ describe('modelForProfile / preferenceFitsTier', () => {
     expect(preferenceFitsTier('fast', 'guest')).toBe(true);
     expect(preferenceFitsTier('balanced', 'guest')).toBe(false);
     expect(preferenceFitsTier('capable', 'guest')).toBe(false);
-    expect(preferenceFitsTier('balanced', 'free')).toBe(true);
+    expect(preferenceFitsTier('balanced', 'free')).toBe(false); // Premium perk (D2)
     expect(preferenceFitsTier('capable', 'free')).toBe(false);
     expect(preferenceFitsTier('capable', 'pro')).toBe(true);
   });
