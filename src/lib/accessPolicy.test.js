@@ -28,6 +28,14 @@ describe('accessPolicy', () => {
     expect(routerTierFor('nonsense')).toBe('guest');
   });
 
+  // A7 feeds the tier from an RPC: a prototype key must not crash the clamp.
+  it('treats inherited property names as guest', () => {
+    for (const key of ['constructor', 'toString', '__proto__']) {
+      expect(routerTierFor(key)).toBe('guest');
+      expect(clampModel(MODELS.opus.id, key)).toBe(MODELS.haiku.id);
+    }
+  });
+
   it('weights chat by model profile and charges 1 elsewhere', () => {
     expect(unitsFor('chat', MODELS.haiku.id)).toBe(1);
     expect(unitsFor('chat', MODELS.sonnet.id)).toBe(2);

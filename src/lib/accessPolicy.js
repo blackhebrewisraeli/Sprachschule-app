@@ -31,7 +31,7 @@ export const REWARDED_AD = Object.freeze({ meter: 'chat', units: 5, dailyCap: 2 
 const ROUTER_TIER = Object.freeze({ guest: 'guest', free: 'free', premium: 'pro' });
 
 export function routerTierFor(accessTier) {
-  return ROUTER_TIER[accessTier] ?? 'guest';
+  return Object.hasOwn(ROUTER_TIER, accessTier) ? ROUTER_TIER[accessTier] : 'guest';
 }
 
 const byId = (id) => Object.values(MODELS).find((m) => m.id === id) ?? null;
