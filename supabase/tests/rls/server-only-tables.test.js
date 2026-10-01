@@ -23,6 +23,8 @@ const TABLES = [
   'token_ledger',
   'user_devices',
   'push_reminder_claims',
+  'ai_usage',
+  'ai_cost_daily',
 ];
 const CLIENT_ROLES = ['anon', 'authenticated'];
 const DML = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'];
@@ -43,6 +45,9 @@ const SERVICE_ROLE_DML = {
   user_devices: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
   // 20261001120000: the sender claims, releases and prunes; never edits a claim.
   push_reminder_claims: ['SELECT', 'INSERT', 'DELETE'],
+  // 20261006120000: the quota RPCs run as the definer; service_role keeps all DML.
+  ai_usage: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
+  ai_cost_daily: ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
 };
 
 function sql(q) {
@@ -103,6 +108,8 @@ describe('server-only tables: catalog (advisor 0008 hygiene)', () => {
 
   it('has exactly one deny-all Data API policy per table, and no granting policy', () => {
     expect(policies.map((p) => `${p.tablename}.${p.policyname}`).sort()).toEqual([
+      'ai_cost_daily.no client access',
+      'ai_usage.no client access',
       'profile_follows.no client access',
       'progress_events_seen.no client access',
       'push_reminder_claims.no client access',
