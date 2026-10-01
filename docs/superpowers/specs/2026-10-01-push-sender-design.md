@@ -635,9 +635,11 @@ Both new variables are documented, commented out, in `.env.example` (Task 6).
 ## 20. Setup (owner, in order)
 
 1. **Merge and apply.** Merge the PR. Apply `20261001120000_push_streak_reminders`
-   with the Management API procedure (`MOBILE_PUSH_SETUP.md` §1). Then:
+   with the Management API procedure (`MOBILE_PUSH_SETUP.md` §1), changing
+   **both** the file path and `--arg name push_streak_reminders` (changing only
+   the name would record the new migration while sending the old SQL). Then:
    - `notify pgrst, 'reload schema';`
-   - verify Migration Drift is green;
+   - verify Migration Drift is green (it reports the file missing until applied);
    - rename the repo file to its recorded version in a follow-up PR.
 2. **Firebase project.**
    - **Android app:** package `com.sprachschule.deutsch` → `android/app/google-services.json`.
@@ -658,11 +660,21 @@ Both new variables are documented, commented out, in `.env.example` (Task 6).
      an org, and Workload Identity Federation becomes necessary (a design
      change, tell Claude Code).
 5. **Cron secret.** Generate `PUSH_CRON_SECRET` (`openssl rand -base64 48`) and
-   set it in Vercel Production (Sensitive). Add the same value in Supabase
-   Dashboard → Vault as `push_cron_secret`.
+   set it in Vercel Production (Sensitive). Never Preview (it must not ring real
+   devices), never Development, never a `VITE_` name (those are inlined into
+   the public bundle). Add the same value in Supabase Dashboard → Vault as
+   `push_cron_secret`.
 6. **Redeploy production.** Environment changes apply only to new deployments.
 7. **Dry-run smoke test** (§21, steps 1–3).
-8. **Schedule the tick.** In the Supabase Dashboard, enable **Cron** under
+8. **Device smoke test** (§21, steps 4–6), *before* scheduling the tick: a
+   scheduled tick inside the owner's 19:00–21:59 could claim the owner's
+   reminder first and make step 5 show `due: 0`. Use a **local, uncommitted
+   test build**: on the owner's machine (with `google-services.json` and
+   `GoogleService-Info.plist` present), temporarily change `build:mobile`'s pin
+   to `VITE_PUSH_ENABLED=true`, build and install, then revert the local change.
+   `isPushAvailable()` needs the flag at build time, so the switch does not
+   render otherwise.
+9. **Schedule the tick.** In the Supabase Dashboard, enable **Cron** under
    Integrations (it installs `pg_cron`) and **`pg_net`** under Database →
    Extensions. Then run once in the SQL editor:
 
@@ -686,39 +698,52 @@ Both new variables are documented, commented out, in `.env.example` (Task 6).
 
    `pg_net`'s default timeout is 2 s. The long timeout lets the function's JSON
    summary land in `net._http_response`. The function finishes either way.
-9. **Device smoke test** (§21, steps 4–7), then flip `VITE_PUSH_ENABLED` per
-   `STORE_SUBMISSION_CHECKLIST.md` item 9. That needs D2 (copy) live first.
+   Vercel Cron cannot replace this schedule as-is: it always sends
+   `CRON_SECRET`, which the endpoint refuses (§4 upgrade path).
+10. **First scheduled tick** (§21, step 7).
+11. **The push-on release.** One release commit flips the `build:mobile` pin to
+    `VITE_PUSH_ENABLED=true`, ships the approved §15 copy and bumps
+    `PRIVACY_VERSION` (D2), per `STORE_SUBMISSION_CHECKLIST.md` item 9.
 
 ---
 
 ## 21. Manual smoke test
 
-Run with `S=<PUSH_CRON_SECRET>` and `U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder`.
+Keep secrets out of shell history: `read -s S` (paste `PUSH_CRON_SECRET`),
+`read -s L` (paste the league's `CRON_SECRET`, for step 1 only), and set
+`U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder`. The
+Authorization header is visible in `ps` while `curl` runs, so use a trusted
+machine, and `unset S L` at the end.
 
 1. `curl -s -o /dev/null -w '%{http_code}\n' -X POST "$U"` → `401`. Also try
-   `-H "Authorization: Bearer $CRON_SECRET"` (the league secret) → `401`.
+   `-H "Authorization: Bearer $L"` (the league secret) → `401`.
 2. `curl -s -X POST -H "Authorization: Bearer $S" "$U?dryRun=1"` → `200` with
    `dryRun: true`. `devicesWithoutZone` counts old rows that have not
    re-registered with a zone yet.
-3. `curl -s -X POST -H "Authorization: Bearer $S" "$U?only=not-a-uuid"` → `400`.
+3. `curl -s -X POST -H "Authorization: Bearer $S" "$U?only=not-a-uuid&dryRun=1"` → `400`.
 4. **Delivery only (no sender code).**
-   - Opt in on the test iPhone and Android with the Firebase-enabled builds.
+   - Opt in on the test iPhone and Android with the local test builds (§20 step 8).
    - In the SQL editor:
-     `select platform, time_zone, updated_at from public.user_devices where user_id = '<owner uuid>';`
+     `select platform, time_zone, push_token, updated_at from public.user_devices where user_id = '<owner uuid>';`
      There are two rows, each with a zone.
    - Firebase console → Messaging → *Send test message* to each token (copy it
      from the same table).
    - Both phones ring. If the iPhone does not, fix the APNs key or capability
      before continuing.
-5. **Sender end to end.** On a day when the owner's streak counted yesterday and
-   today's goal is not met yet:
+5. **Opt-out, dry runs only.** On a day when the owner's streak counted
+   yesterday and today's goal is not met yet (`only=` ignores the 19:00 window,
+   so any hour works):
    1. `$U?only=<owner uuid>&dryRun=1` → `due: 1, devices: 2`.
-   2. `$U?only=<owner uuid>` → `sent: 2`, and both phones show "Keep your streak
+   2. Turn notifications off on one phone. The row is gone, and the same dry run
+      shows `devices: 1`.
+   3. Turn them back on there. The same dry run shows `devices: 2` again.
+6. **Sender end to end** — the only call that sends. Same day, same conditions
+   (it must come after step 5, because a claimed learner drops out of every
+   later dry run that day):
+   1. `$U?only=<owner uuid>` → `sent: 2`, and both phones show "Keep your streak
       alive".
-   3. Repeat → `due: 0` (claimed: idempotent).
-6. **Opt-out.** Turn notifications off on one phone. The row is gone, and a new
-   `dryRun` for the owner shows `devices: 1`.
-7. **First scheduled tick.** After step 8 of §20, wait for the next `:05`. Then
+   2. Repeat → `due: 0` (claimed: idempotent).
+7. **First scheduled tick.** After step 9 of §20, wait for the next `:05`. Then
    `select status_code, content from net._http_response order by created desc limit 1;`
    → `200` and a summary with `aborted: null`.
 
