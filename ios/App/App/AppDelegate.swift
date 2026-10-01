@@ -1,5 +1,24 @@
 import UIKit
 import Capacitor
+#if canImport(FirebaseMessaging)
+import FirebaseCore
+import FirebaseMessaging
+#endif
+
+/// Why an iOS device could not produce a token the sender can use.
+enum PushSetupError: LocalizedError {
+    case firebaseNotConfigured
+    case noFcmToken
+
+    var errorDescription: String? {
+        switch self {
+        case .firebaseNotConfigured:
+            return "Firebase is not configured in this build."
+        case .noFcmToken:
+            return "Firebase returned no registration token."
+        }
+    }
+}
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -7,7 +26,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        #if canImport(FirebaseMessaging)
+        // Only with the owner's GoogleService-Info.plist in the bundle:
+        // FirebaseApp.configure() without it is a fatal error at launch.
+        if Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil {
+            FirebaseApp.configure()
+        }
+        #endif
         return true
     }
 
@@ -34,12 +59,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     // Push notifications: APNs answers registerForRemoteNotifications() here, on
-    // the app delegate, and nowhere else. Without these two forwards the
-    // Capacitor plugin never hears back, so its 'registration' and
-    // 'registrationError' events never fire and the web app's register() waits
-    // out its timeout. See docs/MOBILE_PUSH_SETUP.md.
+    // the app delegate, and nowhere else. Without these forwards the Capacitor
+    // plugin never hears back, so its 'registration' and 'registrationError'
+    // events never fire and the web app's register() waits out its timeout.
+    //
+    // The sender speaks Firebase Cloud Messaging only, which cannot address a
+    // raw APNs token. So the APNs token goes to Firebase, and the FCM
+    // registration token it returns is what the plugin (and user_devices)
+    // receive. Without Firebase configured there is no token the sender can
+    // use: report a failure instead of passing the raw one on.
+    // See docs/MOBILE_PUSH_SETUP.md.
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
-        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+        #if canImport(FirebaseMessaging)
+        if FirebaseApp.app() != nil {
+            Messaging.messaging().apnsToken = deviceToken
+            Messaging.messaging().token { token, error in
+                if let token = token {
+                    NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: token)
+                } else {
+                    NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications,
+                                                    object: error ?? PushSetupError.noFcmToken)
+                }
+            }
+            return
+        }
+        #endif
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications,
+                                        object: PushSetupError.firebaseNotConfigured)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

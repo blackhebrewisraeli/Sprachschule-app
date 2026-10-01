@@ -79,9 +79,9 @@ describe('withCors', () => {
 // A native call to an unwrapped endpoint fails its preflight in the app and
 // nowhere else, so enumerate the entries rather than trust a list.
 describe('every browser-facing api/v1 entry answers a native preflight', () => {
-  // Vercel Cron's endpoint: server-to-server, guarded by CRON_SECRET, and no
-  // browser has any business calling it.
-  const NOT_BROWSER_FACING = ['league/settle.js'];
+  // Cron endpoints: server-to-server, each guarded by its own bearer secret
+  // (CRON_SECRET, PUSH_CRON_SECRET), and no browser has any business calling them.
+  const NOT_BROWSER_FACING = ['league/settle.js', 'push/streak-reminder.js'];
   const entries = readdirSync('api/v1', { recursive: true }).filter(
     (f) => f.endsWith('.js') && !f.endsWith('.test.js')
   );

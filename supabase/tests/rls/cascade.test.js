@@ -32,6 +32,7 @@ const USER_OWNED = [
   'feedback',
   'token_ledger',
   'user_devices',
+  'push_reminder_claims',
   'legal_acceptances',
 ];
 
@@ -88,6 +89,7 @@ beforeAll(async () => {
     admin
       .from('user_devices')
       .insert({ push_token: `cascade-probe-${userId}`, user_id: userId, platform: 'ios' }),
+    admin.from('push_reminder_claims').insert({ user_id: userId, local_day: '2026-10-01' }),
     admin
       .from('legal_acceptances')
       .insert({ user_id: userId, terms_version: '2026-10-01', privacy_version: '2026-10-01' }),

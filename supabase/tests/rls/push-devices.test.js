@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { randomBytes } from 'node:crypto';
 import { adminClient, anonClient, createSignedInUser } from './helpers.js';
 
 // user_devices is server-only (the Data API denials live in policies.test.js
@@ -20,7 +21,7 @@ let B;
 async function ownerOf(pushToken) {
   const { data, error } = await admin
     .from('user_devices')
-    .select('user_id, platform, updated_at')
+    .select('user_id, platform, updated_at, time_zone')
     .eq('push_token', pushToken);
   if (error) throw error;
   return data[0] ?? null;
@@ -143,5 +144,78 @@ describe('register_push_device: per-account cap', () => {
     expect(kept).not.toContain(token('cap-00'));
     expect(kept).not.toContain(token('cap-01'));
     expect(kept).toContain(token('cap-11'));
+  });
+});
+
+describe('register_push_device: time zone (20261001120000)', () => {
+  it('stores a zone the database knows', async () => {
+    const { error } = await A.client.rpc('register_push_device', {
+      p_token: token('tz-known'),
+      p_platform: 'android',
+      p_time_zone: 'Asia/Kolkata',
+    });
+    expect(error).toBeNull();
+    expect((await ownerOf(token('tz-known'))).time_zone).toBe('Asia/Kolkata');
+  });
+
+  // An unknown name would make `at time zone` throw inside the sender's query
+  // and fail every learner's reminder. The opt-in itself must still work.
+  it('stores NULL for a name it does not know, without failing the opt-in', async () => {
+    const { error } = await A.client.rpc('register_push_device', {
+      p_token: token('tz-unknown'),
+      p_platform: 'android',
+      p_time_zone: 'Mars/Olympus_Mons',
+    });
+    expect(error).toBeNull();
+    const row = await ownerOf(token('tz-unknown'));
+    expect(row.user_id).toBe(A.id);
+    expect(row.time_zone).toBeNull();
+  });
+
+  // Self-contained: it seeds its own zone, so it proves the clearing whether it
+  // runs alone, reordered, or after the others.
+  it('an older client that sends no zone clears the stale one (latest report wins)', async () => {
+    const seeded = await A.client.rpc('register_push_device', {
+      p_token: token('tz-cleared'),
+      p_platform: 'android',
+      p_time_zone: 'Europe/Berlin',
+    });
+    expect(seeded.error).toBeNull();
+    expect((await ownerOf(token('tz-cleared'))).time_zone).toBe('Europe/Berlin');
+
+    const { error } = await A.client.rpc('register_push_device', {
+      p_token: token('tz-cleared'),
+      p_platform: 'android',
+    });
+    expect(error).toBeNull();
+    expect((await ownerOf(token('tz-cleared'))).time_zone).toBeNull();
+  });
+});
+
+describe('register_push_device: FCM tokens only (20261001120000)', () => {
+  // A raw APNs device token is 32 bytes, sent as 64 hex characters. FCM's
+  // HTTP v1 API cannot address one, so a build without the Firebase hand-off
+  // must fail to opt in rather than store a token nothing can reach.
+  it('refuses a raw APNs device token on ios', async () => {
+    const raw = randomBytes(32).toString('hex');
+    const { error } = await A.client.rpc('register_push_device', {
+      p_token: raw,
+      p_platform: 'ios',
+      p_time_zone: 'Europe/Berlin',
+    });
+    expect(error).not.toBeNull();
+    expect(error.code).toBe('22023');
+    expect(await ownerOf(raw)).toBeNull();
+  });
+
+  it('accepts an FCM token on ios', async () => {
+    const fcm = `${token('fcm-ios')}:APA91b${randomBytes(8).toString('hex')}`;
+    const { error } = await A.client.rpc('register_push_device', {
+      p_token: fcm,
+      p_platform: 'ios',
+      p_time_zone: 'Europe/Berlin',
+    });
+    expect(error).toBeNull();
+    expect((await ownerOf(fcm)).time_zone).toBe('Europe/Berlin');
   });
 });
