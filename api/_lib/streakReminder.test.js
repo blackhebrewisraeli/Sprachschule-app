@@ -163,6 +163,20 @@ describe('runStreakReminders', () => {
     expect(summary).toMatchObject({ dead: 1, configErrors: 1, sent: 0 });
   });
 
+  it.each(['dead', 'config'])(
+    'releases a learner when one device is %s but another can be retried',
+    async (finalOutcome) => {
+      const { db, deletes } = fakeDb([row('u1', 'a'), row('u1', 'b')]);
+      await runStreakReminders({
+        db,
+        fcm: fakeFcm({ a: finalOutcome, b: 'retry' }),
+        now: () => NOW,
+      });
+      expect(released(deletes)).toEqual(['u1']);
+      expect(deletedTokens(deletes)).toEqual(finalOutcome === 'dead' ? ['a'] : []);
+    }
+  );
+
   it('releases the claim of a learner none of whose devices could be reached', async () => {
     const { db, deletes } = fakeDb([row('u1', 'a'), row('u2', 'b'), row('u2', 'c')]);
     const summary = await runStreakReminders({

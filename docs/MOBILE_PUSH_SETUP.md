@@ -356,9 +356,10 @@ line only; the JSON response in `net._http_response` has no `ms`.
 `codes` (in `net._http_response` and the Vercel log line) names each non-sent
 FCM outcome, for example `{"UNREGISTERED":2,"THIRD_PARTY_AUTH_ERROR":1}`, so a
 first run that reports `failed` or `configErrors` also says why. `SEND_THREW`
-means the send call itself threw. A claim is kept for a `sent`, `dead` or
-`config` outcome, so "claimed per day" counts those learners, not only the ones
-reached.
+means the send call itself threw. A claim is kept after a `sent`, or when every
+device ended in a final `dead` / `config` outcome. A mixed final + transient
+result is released for another tick, so "claimed per day" counts terminal
+learners, not only the ones reached.
 
 **What "healthy" looks like.**
 

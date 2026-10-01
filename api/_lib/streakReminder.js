@@ -51,9 +51,10 @@ export function buildReminderMessage({ token, localDay, expiresAt, now }) {
   };
 }
 
-// A learner is done for today once any device ended in one of these: they got
-// it, or nothing a later tick does could change the answer.
-const SETTLED = new Set(['sent', 'dead', 'config']);
+// A dead/config result is final for that device. It is final for the learner
+// only when every device ended that way; a transient or untried second device
+// must keep the learner eligible for the next tick.
+const FINAL_WITHOUT_DELIVERY = new Set(['dead', 'config']);
 const STOPS_RUN = new Set(['quota', 'fatal']);
 
 function chunks(items, size) {
@@ -164,7 +165,11 @@ export async function runStreakReminders({
           }
           if (STOPS_RUN.has(outcome)) summary.aborted ??= outcome;
         }
-        if (!outcomes.some((outcome) => SETTLED.has(outcome))) {
+        const delivered = outcomes.includes('sent');
+        const everyDeviceFinal =
+          outcomes.length === user.tokens.length &&
+          outcomes.every((outcome) => FINAL_WITHOUT_DELIVERY.has(outcome));
+        if (!delivered && !everyDeviceFinal) {
           release.push({ userId, localDay: user.localDay });
         }
       }

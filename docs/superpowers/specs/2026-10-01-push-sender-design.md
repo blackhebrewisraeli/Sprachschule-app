@@ -1,12 +1,10 @@
 # Push sender: daily "streak at risk" reminder — design
 
-**Status:** Architecture accepted by the owner on 2026-10-01. The §15 copy is
-**APPROVED as written** (2026-10-01). The `PRIVACY_VERSION` bump is deferred to
-the release that turns push on.
-
-Nothing here is implemented yet. No production resource was changed while
-writing it. The only production contact was one read of the migration history
-(`list_migrations`), which AGENTS.md allows.
+**Status:** Architecture accepted by the owner on 2026-10-01 and implemented in
+the repository. Production remains inert until the owner completes §20. The §15
+copy is **APPROVED as written** (2026-10-01); its `PRIVACY_VERSION` bump is
+deferred to the release that turns push on. No production resource was changed
+while designing or implementing this work.
 
 Audit taken against `origin/main` at `04a68125` (2026-10-01).
 Plan: `docs/superpowers/plans/2026-10-01-push-sender.md`.
@@ -57,7 +55,10 @@ Where the brief or the docs disagree with the code or production:
 
 ---
 
-## 3. What exists today
+## 3. Audit baseline before implementation
+
+This table records the state at the audited `origin/main` commit named above,
+not the implementation state after this design was executed.
 
 | Piece                                                          | Where                                                                                  | State                                                                                                                                                             |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -111,7 +112,7 @@ pg_cron "5 * * * *" (UTC)
          └─ Vercel fn (maxDuration 300)
               1. check PUSH_CRON_SECRET (timing-safe)
               2. FCM OAuth token (service-account JWT, node:crypto)   ← before any claim
-              3. rpc claim_streak_reminders(now, 19, 3, 50, 'de', 1000)   one round trip
+              3. rpc claim_streak_reminders(now, 19, 3, 50, 'de', 100)   paged
                    = due learners (their zone, window, goal, streak) + claim rows + their devices
               4. POST fcm.googleapis.com/v1/projects/{id}/messages:send   10 in flight
               5. delete dead tokens · release claims of learners nobody reached
@@ -423,15 +424,17 @@ one running concurrently, sees the row (or loses the `on conflict`) and sends
 nothing.
 
 **Release rule.** After a learner's devices are tried, the claim is **kept**
-if any device ended `sent`, `dead` or `config`:
+when at least one device ended `sent`, or when every device ended `dead` or
+`config`:
 
 - `sent`: the learner got it;
-- `dead`: nothing left to retry;
-- `config`: retrying today cannot help.
+- all `dead`: no registered device remains to retry;
+- all `dead` / `config`: retrying the same final failures today cannot help.
 
-The claim is **released** when every attempt was transient or never happened
-(`retry`, `quota`, `fatal`, deadline). The next tick inside the window retries
-those learners.
+The claim is **released** when there was no delivery and any device was
+transient or never tried (`retry`, `quota`, `fatal`, deadline). This includes a
+mixed result such as one dead tablet plus one temporarily unavailable phone.
+The next tick inside the window retries those learners.
 
 A send that timed out but was in fact delivered, then retried, shows once
 because of the collapse keys (§10). The effective guarantee is at most one
