@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -62,10 +62,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -137,10 +137,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -194,10 +194,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -216,7 +216,7 @@ jobs:
       # and without this it dies with the runner.
       - name: Upload failure screenshots
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: auth-smoke-failure-screenshots
           path: smoke-auth-failure-*.png
@@ -236,10 +236,10 @@ jobs:
       HUSKY: 0
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -248,15 +248,13 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      # Pinned, not `latest`. Resolving `latest` makes setup-cli call the
-      # unauthenticated GitHub releases API on every run, which fails the whole
-      # job with "Failed to resolve latest Supabase CLI release: rate limit
-      # exceeded" — it did exactly that on PR #117, 21s in, with the RLS suite
-      # never executing. A pinned version skips the lookup entirely, and a red
-      # RLS job then means a real policy regression rather than GitHub's quota.
-      # Bump deliberately when a migration needs a newer CLI.
+      # Pinned, not `latest`. setup-cli@v1 resolved `latest` through the
+      # unauthenticated GitHub releases API and failed the whole job on its rate
+      # limit (PR #117, 21s in, RLS suite never ran). v3 installs from npm, but a
+      # pin still means a red RLS job is a real policy regression, not a CLI
+      # release. Bump deliberately when a migration needs a newer CLI.
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v3
         with:
           version: 2.114.0
 
@@ -334,13 +332,13 @@ jobs:
       # decide what is "new code". A shallow clone makes every line look new.
       - name: Checkout
         if: steps.guard.outputs.configured == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Node
         if: steps.guard.outputs.configured == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
