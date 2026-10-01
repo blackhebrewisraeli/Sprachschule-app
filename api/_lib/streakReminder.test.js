@@ -48,9 +48,10 @@ function fakeFcm(outcomes = {}, onSend = () => {}) {
     accessToken: vi.fn(async () => 'access-token'),
     send: vi.fn(async (message) => {
       onSend(message);
-      const outcome = outcomes[message.token] ?? 'sent';
-      if (outcome instanceof Error) throw outcome;
-      return { outcome };
+      // A bare string is an outcome; { outcome, code } carries an FCM code too.
+      const result = outcomes[message.token] ?? 'sent';
+      if (result instanceof Error) throw result;
+      return typeof result === 'string' ? { outcome: result } : result;
     }),
   };
 }
@@ -205,6 +206,33 @@ describe('runStreakReminders', () => {
     expect(released(deletes).sort()).toEqual(['u2', 'u3']);
   });
 
+  // Each device can take ~25 s (FCM timeout + wait + retry), so a check only
+  // between learners lets a multi-device learner started just before the
+  // deadline overrun maxDuration and lose the whole run's cleanup (spec §12).
+  it('checks the deadline before every send, not only between learners', async () => {
+    let clock = NOW;
+    const { db, deletes } = fakeDb([
+      row('u1', 'a'),
+      row('u2', 'b'),
+      row('u2', 'c'),
+      row('u2', 'd'),
+      row('u2', 'e'),
+    ]);
+    const fcm = fakeFcm({ b: 'retry', c: 'retry', d: 'retry', e: 'retry' }, (message) => {
+      // u1 eats all but the last second; each of u2's attempts then takes 25 s.
+      clock += message.token === 'a' ? REMINDER.deadlineMs - 1000 : 25_000;
+    });
+    const summary = await runStreakReminders({
+      db,
+      fcm,
+      now: () => clock,
+      config: { ...REMINDER, concurrency: 1 },
+    });
+    expect(fcm.send.mock.calls.map(([m]) => m.token)).toEqual(['a', 'b']);
+    expect(summary).toMatchObject({ sent: 1, failed: 1, aborted: 'deadline', released: 1 });
+    expect(released(deletes)).toEqual(['u2']); // one 'retry' is no settled outcome
+  });
+
   // Review focus 5: an exception mid-run must not strand today's claims.
   it('a send that throws stops the run as fatal and releases the claims', async () => {
     const { db, deletes } = fakeDb([row('u1', 'a'), row('u2', 'b')]);
@@ -336,6 +364,51 @@ describe('runStreakReminders', () => {
     ).rejects.toThrow('page 2 failed');
     expect(released(deletes)).toEqual(['u1']);
     expect(deletedTokens(deletes)).toEqual(['b']);
+  });
+
+  // Spec §16 promises counts and FCM error codes: without them a misconfigured
+  // first run only says "failed: 3" and nothing about why.
+  it('counts every non-sent outcome by its FCM code', async () => {
+    const { db } = fakeDb([row('u1', 'a'), row('u2', 'b'), row('u3', 'c'), row('u4', 'd')]);
+    const summary = await runStreakReminders({
+      db,
+      fcm: fakeFcm({
+        a: { outcome: 'dead', code: 'UNREGISTERED' },
+        b: { outcome: 'config', code: 'THIRD_PARTY_AUTH_ERROR' },
+        c: { outcome: 'retry', code: 'NETWORK' },
+        d: 'retry', // no code: the outcome names it
+      }),
+      now: () => NOW,
+      config: { ...REMINDER, concurrency: 1 },
+    });
+    expect(summary.codes).toEqual({
+      UNREGISTERED: 1,
+      THIRD_PARTY_AUTH_ERROR: 1,
+      NETWORK: 1,
+      retry: 1,
+    });
+  });
+
+  it('codes stays empty when everything is sent', async () => {
+    const { db } = fakeDb([row('u1', 'a')]);
+    const summary = await runStreakReminders({ db, fcm: fakeFcm(), now: () => NOW });
+    expect(summary.codes).toEqual({});
+  });
+
+  it('reports a throwing send as SEND_THREW, never its message', async () => {
+    const { db } = fakeDb([row('u1', 'a')]);
+    const fcm = fakeFcm({ a: new Error('token abc123 refused') });
+    const summary = await runStreakReminders({ db, fcm, now: () => NOW });
+    expect(summary.codes).toEqual({ SEND_THREW: 1 });
+    expect(JSON.stringify(summary)).not.toContain('abc123');
+  });
+
+  it('reports a malformed send result as SEND_THREW too', async () => {
+    const { db } = fakeDb([row('u1', 'a')]);
+    const fcm = fakeFcm();
+    fcm.send.mockImplementation(async () => undefined);
+    const summary = await runStreakReminders({ db, fcm, now: () => NOW });
+    expect(summary.codes).toEqual({ SEND_THREW: 1 });
   });
 
   it('treats a malformed send result as fatal', async () => {

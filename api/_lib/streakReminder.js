@@ -96,6 +96,9 @@ export async function runStreakReminders({
     released: 0,
     devicesWithoutZone: 0,
     aborted: null,
+    // Every non-sent outcome by its FCM code (fixed enum strings, never tokens
+    // or ids), so a misconfigured first run says why (spec §16).
+    codes: {},
   };
 
   // Credentials before claims: a run that cannot authenticate must leave every
@@ -133,13 +136,13 @@ export async function runStreakReminders({
     async function worker() {
       while (queue.length > 0) {
         const [userId, user] = queue.shift();
-        if (!summary.aborted && now() - started > config.deadlineMs) summary.aborted = 'deadline';
-        if (summary.aborted) {
-          release.push({ userId, localDay: user.localDay });
-          continue;
-        }
         const outcomes = [];
         for (const token of user.tokens) {
+          // Before every send, not only every learner: one device can take ~25 s
+          // (FCM timeout, wait, retry), and a run that outlives maxDuration is
+          // killed with its release list and dead-token deletes unwritten.
+          if (!summary.aborted && now() - started > config.deadlineMs) summary.aborted = 'deadline';
+          if (summary.aborted) break;
           const message = buildReminderMessage({
             token,
             localDay: user.localDay,
@@ -150,13 +153,16 @@ export async function runStreakReminders({
           const outcome = result?.outcome ?? 'fatal';
           outcomes.push(outcome);
           if (outcome === 'sent') summary.sent += 1;
-          else if (outcome === 'dead') {
-            summary.dead += 1;
-            deadTokens.push(token);
-          } else if (outcome === 'config') summary.configErrors += 1;
-          else summary.failed += 1;
+          else {
+            const code = (result?.outcome ? result.code : 'SEND_THREW') ?? outcome;
+            summary.codes[code] = (summary.codes[code] ?? 0) + 1;
+            if (outcome === 'dead') {
+              summary.dead += 1;
+              deadTokens.push(token);
+            } else if (outcome === 'config') summary.configErrors += 1;
+            else summary.failed += 1;
+          }
           if (STOPS_RUN.has(outcome)) summary.aborted ??= outcome;
-          if (summary.aborted) break;
         }
         if (!outcomes.some((outcome) => SETTLED.has(outcome))) {
           release.push({ userId, localDay: user.localDay });
