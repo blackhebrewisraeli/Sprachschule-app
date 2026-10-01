@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// resolveCaller asks GoTrue through serviceClient; tests control getUser here,
+// the way auth-middleware.test.js does.
+vi.mock('./supabase.js', () => ({ serviceClient: vi.fn() }));
+
 import { createAiHandler } from './handler.js';
+import { serviceClient } from './supabase.js';
+import { MODELS } from '../../src/lib/ai-routing/catalog.js';
+import { clampModel } from '../../src/lib/accessPolicy.js';
 
 function createRes() {
   return {
@@ -36,8 +44,27 @@ const postReq = (overrides = {}) => ({
 
 const wideOpen = { name: 'ai.test', rate: { windowMs: 60000, max: 100 } };
 
+const bearer = (token, body = validBody()) =>
+  postReq({ headers: { 'x-forwarded-for': '9.9.9.9', authorization: `Bearer ${token}` }, body });
+
+// GoTrue knows exactly these tokens; anything else is rejected like a revoked one.
+// Set AFTER createAiHandler: the limiter picks its store from serviceClient().
+const goTrueKnows = (users) =>
+  serviceClient.mockReturnValue({
+    auth: {
+      getUser: vi.fn(async (token) =>
+        users[token]
+          ? { data: { user: users[token] }, error: null }
+          : { data: { user: null }, error: { status: 401, name: 'AuthApiError' } }
+      ),
+    },
+  });
+
+const sentModel = () => JSON.parse(fetch.mock.calls[0][1].body).model;
+
 describe('createAiHandler', () => {
   beforeEach(() => {
+    serviceClient.mockReturnValue(null);
     vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
     vi.stubEnv('ALLOWED_ORIGINS', '');
     vi.stubGlobal(
@@ -54,6 +81,7 @@ describe('createAiHandler', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it('rejects non-POST methods with the envelope', async () => {
@@ -142,14 +170,68 @@ describe('createAiHandler', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it('forwards a routed Sonnet model id to Anthropic', async () => {
+  // Spec F1: the ceiling used to exist only in the client router, so a curl
+  // could ask for the most expensive model at the IP rate limit.
+  it.each([MODELS.sonnet.id, MODELS.opus.id])(
+    'clamps a guest asking for %s to Haiku',
+    async (model) => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const res = createRes();
+      await createAiHandler(wideOpen)(postReq({ body: { ...validBody(), model } }), res);
+      expect(res.statusCode).toBe(200);
+      expect(sentModel()).toBe(MODELS.haiku.id);
+      const line = warn.mock.calls.map(([l]) => l).find((l) => l.includes('model_clamped'));
+      expect(JSON.parse(line)).toEqual({
+        event: 'model_clamped',
+        from: model,
+        to: MODELS.haiku.id,
+        tier: 'guest',
+      });
+    }
+  );
+
+  it('keeps a guest on Haiku without logging a clamp', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    await createAiHandler(wideOpen)(postReq(), createRes());
+    expect(sentModel()).toBe(MODELS.haiku.id);
+    expect(warn.mock.calls.flat().join('')).not.toContain('model_clamped');
+  });
+
+  // Holds under either D2 answer: the expectation is derived, not hardcoded.
+  it('applies the Free ceiling to a signed-in caller', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const handler = createAiHandler(wideOpen);
+    goTrueKnows({ t1: { id: 'u1' } });
     const res = createRes();
-    await createAiHandler(wideOpen)(
-      postReq({ body: { ...validBody(), model: 'claude-sonnet-5-5' } }),
-      res
-    );
+    await handler(bearer('t1', { ...validBody(), model: MODELS.sonnet.id }), res);
     expect(res.statusCode).toBe(200);
-    expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('claude-sonnet-5-5');
+    expect(sentModel()).toBe(clampModel(MODELS.sonnet.id, 'free'));
+  });
+
+  it('rejects a bad token with 401 before forwarding', async () => {
+    const handler = createAiHandler(wideOpen);
+    goTrueKnows({});
+    const res = createRes();
+    await handler(bearer('revoked'), res);
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error.code).toBe('unauthorized');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  // A classroom behind one NAT shares an IP; signed-in learners get their own.
+  it('keys the burst limiter on the user, not the IP', async () => {
+    const handler = createAiHandler({ name: 'ai.test', rate: { windowMs: 60000, max: 1 } });
+    goTrueKnows({ a: { id: 'ua' }, b: { id: 'ub' } });
+    const first = createRes();
+    const other = createRes();
+    const again = createRes();
+    await handler(bearer('a'), first);
+    await handler(bearer('b'), other);
+    await handler(bearer('a'), again);
+    expect(first.statusCode).toBe(200);
+    expect(other.statusCode).toBe(200);
+    expect(again.statusCode).toBe(429);
+    expect(again.body.error.code).toBe('rate_limited');
   });
 
   it('passes upstream error statuses through unchanged', async () => {
