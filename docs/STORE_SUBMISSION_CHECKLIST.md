@@ -43,9 +43,9 @@ a judgement only the owner has. Tick them in order: several gate the next.
    `https://deutsch-app-dusky.vercel.app/delete-account`. Open it in a private
    window (signed out) and confirm it loads before entering it. Google checks
    that the page names the app as the store listing does: the page says
-   **Deutsch Sprachschule** (owner decision, 2026-10-01), so the Play listing's
-   app name must be Deutsch Sprachschule too. The App Store listing in
-   `docs/store-metadata/app-store-listing.md` still says `sprachschule-app`.
+   **Deutsch Sprachschule** (owner decision, 2026-10-01), so both store
+   listings must use that exact app name. The tracked App Store copy is in
+   `docs/store-metadata/app-store-listing.md`.
 
    **Handling an emailed request.** The subject is "Account Deletion Request -
    Deutsch Sprachschule", and the page promises deletion within 30 days.
@@ -60,6 +60,7 @@ a judgement only the owner has. Tick them in order: several gate the next.
       their data references the user with `on delete cascade`, so this removes
       the rest, exactly as the in-app Delete account button does.
    5. Reply to confirm it is done.
+
 7. **Apple App Privacy answers** — use the draft below, taken from the audit in
    `docs/superpowers/specs/2026-09-29-store-legal-consent-design.md` §3. Check
    every line against the build you submit: the native app today has **no
