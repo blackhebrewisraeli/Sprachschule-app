@@ -283,7 +283,8 @@ This ceiling is recorded as a `ponytail:` comment in the SQL.
 5. **Stop rules.** The run stops starting new sends, checked before every
    device send (one device can take ~25 s: FCM timeout, wait, retry), after
    `deadlineMs` (240 s of the 300 s budget), or after a `quota` or `fatal`
-   outcome (§13). Learners with no settled outcome are released.
+   outcome (§13). Learners released under the §12 release rule are retried
+   next tick.
 6. **Cleanup.** Delete dead tokens in chunks of 20 (`.in('push_token', …)`,
    small enough for URL length). Release claims in chunks of 100 per
    `local_day`.
@@ -600,9 +601,9 @@ line only; the JSON response in `net._http_response` has no `ms`.
 `codes` (in `net._http_response` and the Vercel log line) names each non-sent
 FCM outcome, for example `{"UNREGISTERED":2,"THIRD_PARTY_AUTH_ERROR":1}`, so a
 first run that reports `failed` or `configErrors` also says why (§16).
-`SEND_THREW` means the send call itself threw. A claim is kept for a `sent`,
-`dead` or `config` outcome (§12), so "claimed per day" counts those learners,
-not only the ones reached.
+`SEND_THREW` means the send call itself threw. A claim is kept after a `sent`,
+or when every device ended `dead` / `config` (§12), so "claimed per day" counts
+terminal learners, not only the ones reached.
 
 **What "healthy" looks like.**
 
