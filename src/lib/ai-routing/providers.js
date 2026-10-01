@@ -22,7 +22,16 @@ export const ANTHROPIC_PROVIDER = 'anthropic';
  * @returns {string}
  */
 export function providerForModelId(modelId) {
-  if (typeof modelId !== 'string' || !modelId) return ANTHROPIC_PROVIDER;
-  const model = Object.values(MODELS).find((m) => m.id === modelId);
-  return model?.provider ?? ANTHROPIC_PROVIDER;
+  return modelForId(modelId)?.provider ?? ANTHROPIC_PROVIDER;
+}
+
+/**
+ * Catalog row for a model id, or null.
+ *
+ * @param {unknown} modelId
+ * @returns {(typeof MODELS)[keyof typeof MODELS] | null}
+ */
+export function modelForId(modelId) {
+  if (typeof modelId !== 'string' || !modelId) return null;
+  return Object.values(MODELS).find((m) => m.id === modelId) ?? null;
 }

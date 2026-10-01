@@ -42,13 +42,18 @@ describe('validateAiBody', () => {
   });
 
   it('accepts every catalog model id the router can pick', () => {
-    expect(validateAiBody({ ...valid(), model: 'claude-sonnet-4-5' }).ok).toBe(true);
-    expect(validateAiBody({ ...valid(), model: 'claude-opus-4-1' }).ok).toBe(true);
+    expect(validateAiBody({ ...valid(), model: 'claude-sonnet-5-5' }).ok).toBe(true);
+    expect(validateAiBody({ ...valid(), model: 'claude-opus-5-5' }).ok).toBe(true);
     expect(ALLOWED_MODELS).toEqual([
       'claude-haiku-4-5-20251001',
-      'claude-sonnet-4-5',
-      'claude-opus-4-1',
+      'claude-sonnet-5-5',
+      'claude-opus-5-5',
     ]);
+  });
+
+  it('rejects the retired ids the catalog used to carry', () => {
+    expect(validateAiBody({ ...valid(), model: 'claude-sonnet-4-5' }).ok).toBe(false);
+    expect(validateAiBody({ ...valid(), model: 'claude-opus-4-1' }).ok).toBe(false);
   });
 
   it('clamps max_tokens to the cap and defaults bad values', () => {

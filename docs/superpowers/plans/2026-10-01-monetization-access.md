@@ -67,7 +67,8 @@ task. Owner decisions **D1–D5** (spec §16) gate the tasks marked
   | deck  | 1     | 3    | 15      |
   - Pools per day: chat `{ guest: 2000, free: 20000 }`, grade
     `{ guest: 5000, free: 40000 }`, deck `{ guest: 200, free: 1000 }`.
-  - Chat weights: fast 1, balanced 3, capable 5. Grade and deck cost 1.
+  - Chat weights: fast 1, balanced 2, capable 4 (price ratios of Haiku 4.5,
+    Sonnet 5.5 and Opus 5.5). Grade and deck cost 1.
   - Rewarded: `+5` chat units, at most `2` grants per user per UTC day.
 
 - **Modes.** `AI_QUOTA_MODE` takes `off` (the default when unset), `shadow` or
@@ -189,7 +190,7 @@ export const ACCESS_TIERS; // ['guest', 'free', 'premium']
 export const METERS; // ['chat', 'grade', 'deck']
 export const DAILY_LIMITS; // { chat: { guest, free, premium }, grade: {...}, deck: {...} }
 export const DAILY_POOLS; // { chat: { guest, free }, grade: {...}, deck: {...} }
-export const MODEL_WEIGHT_BY_PROFILE; // { fast: 1, balanced: 3, capable: 5 }
+export const MODEL_WEIGHT_BY_PROFILE; // { fast: 1, balanced: 2, capable: 4 }
 export const REWARDED_AD; // { meter: 'chat', units: 5, dailyCap: 2 }
 export function routerTierFor(accessTier); // 'guest' | 'free' | 'pro'
 export function unitsFor(meter, modelId); // integer ≥ 1
@@ -230,14 +231,14 @@ describe('accessPolicy', () => {
 
   it('weights chat by model profile and charges 1 elsewhere', () => {
     expect(unitsFor('chat', MODELS.haiku.id)).toBe(1);
-    expect(unitsFor('chat', MODELS.sonnet.id)).toBe(3);
-    expect(unitsFor('chat', MODELS.opus.id)).toBe(5);
+    expect(unitsFor('chat', MODELS.sonnet.id)).toBe(2);
+    expect(unitsFor('chat', MODELS.opus.id)).toBe(4);
     expect(unitsFor('grade', MODELS.sonnet.id)).toBe(1);
     expect(unitsFor('deck', MODELS.opus.id)).toBe(1);
   });
 
   it('charges an unknown chat model the maximum weight (fail expensive)', () => {
-    expect(unitsFor('chat', 'claude-made-up')).toBe(5);
+    expect(unitsFor('chat', 'claude-made-up')).toBe(4);
   });
 
   it('clamps a guest to the cheapest model and keeps an in-tier pick', () => {
@@ -295,7 +296,7 @@ export const DAILY_POOLS = Object.freeze({
 });
 
 // Chat units per turn by the catalog profile — tracks price ratios (spec §4.9).
-export const MODEL_WEIGHT_BY_PROFILE = Object.freeze({ fast: 1, balanced: 3, capable: 5 });
+export const MODEL_WEIGHT_BY_PROFILE = Object.freeze({ fast: 1, balanced: 2, capable: 4 });
 const MAX_WEIGHT = Math.max(...Object.values(MODEL_WEIGHT_BY_PROFILE));
 
 export const REWARDED_AD = Object.freeze({ meter: 'chat', units: 5, dailyCap: 2 });
@@ -675,7 +676,7 @@ git commit -m "feat(ai): identify AI callers and clamp the model to the tier on 
 
 **Manual verification:** `npm run dev:full`.
 
-- `curl -s -X POST localhost:3000/api/v1/ai/chat -H 'content-type: application/json' -d '{"model":"claude-sonnet-4-5","max_tokens":20,"messages":[{"role":"user","content":"hi"}]}'`.
+- `curl -s -X POST localhost:3000/api/v1/ai/chat -H 'content-type: application/json' -d '{"model":"claude-sonnet-5-5","max_tokens":20,"messages":[{"role":"user","content":"hi"}]}'`.
   The response's `model` is the Haiku id.
 - Signed-in chat in the browser still returns Balanced-quality replies (Network
   tab: request `model` equals response `model`).
@@ -1689,10 +1690,10 @@ it('refunds on a non-2xx upstream status', async () => {
 
 it('clamps to the RPC tier and refunds the weight difference', async () => {
   const quota = fakeQuota({ allowed: true, tier: 'guest', limit: 10, used: 3 });
-  const req = postReq({ body: { ...validBody(), model: 'claude-sonnet-4-5' } });
+  const req = postReq({ body: { ...validBody(), model: 'claude-sonnet-5-5' } });
   await createAiHandler({ ...wideOpen, meter: 'chat', quota })(req, createRes());
-  expect(quota.consume).toHaveBeenCalledWith(expect.objectContaining({ units: 3 }));
-  expect(quota.refund).toHaveBeenCalledWith(expect.objectContaining({ units: 2 }));
+  expect(quota.consume).toHaveBeenCalledWith(expect.objectContaining({ units: 2 }));
+  expect(quota.refund).toHaveBeenCalledWith(expect.objectContaining({ units: 1 }));
   expect(JSON.parse(fetch.mock.calls[0][1].body).model).toBe('claude-haiku-4-5-20251001');
 });
 
@@ -3629,7 +3630,6 @@ start to finish without asking a question. Record any question as a doc fix.
 | Checkpoint C-1         | Apply `20261020120000_ad_rewards.sql`, the AdMob account and units, the SSV URL, the GDPR message, `ADMOB_*` env vars  |
 | R1                     | Supply and approve legal copy L1–L5, plus counsel review                                                               |
 | R3                     | Store submissions, questionnaires, phased and staged rollouts, real-card refund test                                   |
-| Anytime (urgent)       | Greenlight the AI catalog refresh before 2026-11-30 (spec F2)                                                          |
 
 **Agents never** run `supabase db push`, `migration repair`, `db reset` or
 `db pull` against the linked project, call MCP `apply_migration` or write

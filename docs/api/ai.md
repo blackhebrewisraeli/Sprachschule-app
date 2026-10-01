@@ -4,11 +4,11 @@ Three endpoints, one shared contract. The split exists for per-feature rate
 quotas and future server-side prompt assembly without a breaking change.
 Prompts are client-assembled and pack-owned (platform Phase 1.3).
 
-| Endpoint                 | Used by                                                           | Quota (B0 initial) |
-| ------------------------ | ----------------------------------------------------------------- | ------------------ |
-| `POST /api/v1/ai/chat`   | Anna conversation turns                                           | 20 req / 5 min     |
-| `POST /api/v1/ai/grade`  | Exercise lane: answer grading **and** exercise-sentence generation | 60 req / 5 min     |
-| `POST /api/v1/ai/deck`   | Custom deck generation                                            | 5 req / hour       |
+| Endpoint                | Used by                                                            | Quota (B0 initial) |
+| ----------------------- | ------------------------------------------------------------------ | ------------------ |
+| `POST /api/v1/ai/chat`  | Anna conversation turns                                            | 20 req / 5 min     |
+| `POST /api/v1/ai/grade` | Exercise lane: answer grading **and** exercise-sentence generation | 60 req / 5 min     |
+| `POST /api/v1/ai/deck`  | Custom deck generation                                             | 5 req / hour       |
 
 ## Request (all endpoints)
 
@@ -26,8 +26,15 @@ Prompts are client-assembled and pack-owned (platform Phase 1.3).
 state blob; `callClaude` / `routeAiRequest` resolve it to one of:
 
 - `claude-haiku-4-5-20251001` (Fast)
-- `claude-sonnet-4-5` (Balanced)
-- `claude-opus-4-1` (Capable)
+- `claude-sonnet-5-5` (Balanced)
+- `claude-opus-5-5` (Capable)
+
+Some rows carry `params`, Anthropic request fields that the **server** adds for
+that model in `api/_lib/forward.js`. Today these are Sonnet 5.5's
+`thinking: { type: "between_tools" }` and Opus 5.5's
+`output_config: { effort: "low" }`, which keep both models from spending the
+1,000-token chat budget on thinking. A client cannot send these fields: the
+validator rebuilds the body from its allow-list.
 
 Auto leaves the router in charge. The browser never sends API keys — only
 these catalog ids, which `api/_lib/validate.js` allow-lists from the same
