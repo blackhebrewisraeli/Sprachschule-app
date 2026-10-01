@@ -463,6 +463,32 @@ describe('native wiring', () => {
     );
   });
 
+  // The sender speaks FCM only, and FCM cannot address a raw APNs token, so
+  // the delegate trades it for an FCM token (register_push_device refuses the
+  // raw one). Spec §9.
+  it('hands the plugin an FCM token on iOS, never the raw APNs token', () => {
+    const delegate = readFileSync('ios/App/App/AppDelegate.swift', 'utf8');
+    expect(delegate).toMatch(/Messaging\.messaging\(\)\.apnsToken = deviceToken/);
+    expect(delegate).toMatch(
+      /Messaging\.messaging\(\)\.token[\s\S]*?\.capacitorDidRegisterForRemoteNotifications,\s*object: token/
+    );
+    expect(delegate).not.toMatch(
+      /capacitorDidRegisterForRemoteNotifications,\s*object: deviceToken/
+    );
+  });
+
+  // FirebaseApp.configure() without GoogleService-Info.plist is a fatal error
+  // at launch, and the SPM package is added by the owner in Xcode. Both guards
+  // keep a build without Firebase compiling and launching.
+  it('configures Firebase only when the package is linked and the plist is bundled', () => {
+    const delegate = readFileSync('ios/App/App/AppDelegate.swift', 'utf8');
+    expect(delegate).toMatch(/#if canImport\(FirebaseMessaging\)/);
+    expect(delegate).toMatch(
+      /Bundle\.main\.path\(forResource: "GoogleService-Info", ofType: "plist"\) != nil[\s\S]*?FirebaseApp\.configure\(\)/
+    );
+    expect(delegate).toMatch(/PushSetupError\.firebaseNotConfigured/);
+  });
+
   // Android 13+ will not prompt for a permission the manifest does not declare:
   // requestPermissions() just answers 'denied'.
   it('declares the Android 13 notification permission', () => {

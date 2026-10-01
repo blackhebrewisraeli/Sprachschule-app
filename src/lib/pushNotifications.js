@@ -1,6 +1,8 @@
-// Push notifications, the device half: ask the OS, get this device's token, and
-// hand it to the server under the signed-in account. Sending is the server's
-// job and is not built yet; this is the opt-in and the address book.
+// Push notifications, the device half: ask the OS, get this device's FCM
+// registration token (on iOS too: AppDelegate.swift trades the APNs token for
+// one), and hand it to the server under the signed-in account together with the
+// device's time zone. Sending is api/v1/push/streak-reminder.js; this is the
+// opt-in and the address book.
 //
 // Every export is inert in a browser. The plugin has no web implementation, so
 // it is imported on demand and only behind isPushAvailable(), which a web
