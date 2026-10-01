@@ -75,8 +75,11 @@ export const TASKS = Object.freeze({
   }),
 });
 
+// Ceilings by catalog cost. Free is Fast-only and Balanced is a Premium perk
+// (spec §16 D2 = a, approved 2026-10-02). The server enforces the same
+// ceiling through src/lib/accessPolicy.js clampModel.
 export const TIERS = Object.freeze({
   guest: Object.freeze({ maxCost: 1 }),
-  free: Object.freeze({ maxCost: 2 }),
+  free: Object.freeze({ maxCost: 1 }),
   pro: Object.freeze({ maxCost: 3 }),
 });

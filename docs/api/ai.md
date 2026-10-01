@@ -21,6 +21,19 @@ Prompts are client-assembled and pack-owned (platform Phase 1.3).
 }
 ```
 
+Headers: `Content-Type: application/json`, plus an **optional**
+`Authorization: Bearer <supabase access token>`.
+
+- With the header, the caller is a signed-in learner, identified and keyed by
+  account. `callClaude` sends it whenever a session exists.
+- Without it, the caller is a guest keyed by IP, as before.
+- A token GoTrue rejects gets `401 unauthorized`, so the client refreshes once
+  and retries (`authedFetch`'s rule). A malformed header is also `401`.
+- If GoTrue is unreachable, the request is served as a guest instead of
+  failing.
+- The per-endpoint quota above keys on the account for signed-in callers and on
+  the IP for guests.
+
 `model` is a **catalog id**, not a learner preference id. The Chat picker stores
 `preferredModel` (`auto` | `fast` | `balanced` | `capable`) on the existing
 state blob; `callClaude` / `routeAiRequest` resolve it to one of:
@@ -28,6 +41,12 @@ state blob; `callClaude` / `routeAiRequest` resolve it to one of:
 - `claude-haiku-4-5-20251001` (Fast)
 - `claude-sonnet-5-5` (Balanced)
 - `claude-opus-5-5` (Capable)
+
+The server clamps `model` to the caller's tier ceiling after validation
+(`clampModel` in `src/lib/accessPolicy.js`). Guests and signed-in Free callers
+are Fast-only, so a request for Sonnet or Opus is forwarded as Haiku, and the
+response's `model` says so. Honest clients never notice, because the client
+router applies the same ceiling.
 
 Some rows carry `params`, Anthropic request fields that the **server** adds for
 that model in `api/_lib/forward.js`. Today these are Sonnet 5.5's

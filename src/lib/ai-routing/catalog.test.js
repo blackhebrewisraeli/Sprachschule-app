@@ -60,8 +60,11 @@ describe('AI routing catalog', () => {
     expect(TASKS.grammar_generation.minCapability).toBe(TASKS.deck_generation.minCapability);
   });
 
-  it('caps guest below free below pro', () => {
-    expect(TIERS.guest.maxCost).toBeLessThan(TIERS.free.maxCost);
+  // D2 = (a), approved 2026-10-02: Free chat is Fast-only and Balanced is a
+  // Premium perk, so Free shares Guest's ceiling.
+  it('caps guest and free at Fast, below pro', () => {
+    expect(TIERS.guest.maxCost).toBe(MODELS.haiku.cost);
+    expect(TIERS.free.maxCost).toBe(MODELS.haiku.cost);
     expect(TIERS.free.maxCost).toBeLessThan(TIERS.pro.maxCost);
     expect(TIERS.pro.maxCost).toBe(MODELS.opus.cost);
     expect(DEFAULT_TIER).toBe('guest');

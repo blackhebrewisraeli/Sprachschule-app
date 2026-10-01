@@ -262,8 +262,13 @@ describe('ChatTab scene opener', () => {
     ['a guest on Auto', {}, 'fast'],
     ['a guest whose saved pick exceeds the plan', { preferredModel: 'capable' }, 'fast'],
     [
-      'a signed-in learner on Balanced',
+      'a signed-in Free learner whose Balanced pick is Premium-only (D2)',
       { user: { id: 'u1' }, preferredModel: 'balanced' },
+      'fast',
+    ],
+    [
+      'a pro learner on Balanced',
+      { user: { id: 'u1', plan: 'pro' }, preferredModel: 'balanced' },
       'balanced',
     ],
   ])('uses the register of the model that will answer: %s', async (_, props, profile) => {
