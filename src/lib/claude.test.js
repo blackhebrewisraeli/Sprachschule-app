@@ -1,4 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Guest by default: no stored session, no token.
+const authMock = vi.hoisted(() => ({ token: null, maySession: false }));
+vi.mock('./auth.js', () => ({
+  getAccessToken: () => Promise.resolve(authMock.token),
+  refreshAccessToken: () => Promise.resolve(null),
+  mayHaveSession: () => authMock.maySession,
+}));
+
 import { callClaude } from './claude';
 import { MODELS, TASKS, COMPLEXITY_BUMP_AT } from './ai-routing/catalog.js';
 
@@ -28,6 +37,20 @@ describe('callClaude', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+    authMock.token = null;
+    authMock.maySession = false;
+  });
+
+  it('sends the session token when signed in', async () => {
+    authMock.token = 'tok';
+    authMock.maySession = true;
+    await callClaude('sys', 'hi');
+    expect(fetch.mock.calls[0][1].headers.authorization).toBe('Bearer tok');
+  });
+
+  it('sends no Authorization header as a guest', async () => {
+    await callClaude('sys', 'hi');
+    expect(fetch.mock.calls[0][1].headers.authorization).toBeUndefined();
   });
 
   it('POSTs system prompt, user message, and history to the API URL', async () => {

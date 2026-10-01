@@ -1,4 +1,4 @@
-import { getAccessToken, refreshAccessToken } from './auth.js';
+import { getAccessToken, mayHaveSession, refreshAccessToken } from './auth.js';
 import { apiUrl } from './apiUrl.js';
 
 export const SESSION_EXPIRED_MESSAGE = 'Your session expired. Please sign in again and retry.';
@@ -21,16 +21,24 @@ export const SESSION_EXPIRED_MESSAGE = 'Your session expired. Please sign in aga
  * needed exactly this. Two copies of a refresh-once rule is how one of them
  * ends up looping, or not retrying at all.
  *
+ * `optional` is for endpoints a guest may also call (the AI lane): with no
+ * session the request goes out with no header instead of throwing. A guest
+ * with no stored session never reads the token at all, because that would load
+ * the Supabase chunk auth.js deliberately keeps off a guest's critical path.
+ *
  * @returns {Promise<Response>} the response — callers decide what a non-ok
  *   status means, because "that handle is taken" and "no such account" are
  *   their endpoints' words, not this helper's.
  */
-export async function authedFetch(url, init = {}) {
+export async function authedFetch(url, init = {}, { optional = false } = {}) {
   // Resolved first: apiUrl throws on anything that is not one of our /api
   // paths, so a bad target never gets as far as reading the token.
   const target = apiUrl(url);
-  const token = await getAccessToken();
-  if (!token) throw new Error('Please sign in again.');
+  const token = optional && !mayHaveSession() ? null : await getAccessToken();
+  if (!token) {
+    if (optional) return fetch(target, init);
+    throw new Error('Please sign in again.');
+  }
 
   const send = (bearer) =>
     fetch(target, {

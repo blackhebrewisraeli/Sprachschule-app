@@ -21,6 +21,15 @@ Prompts are client-assembled and pack-owned (platform Phase 1.3).
 }
 ```
 
+Headers: `Content-Type: application/json`, plus an **optional**
+`Authorization: Bearer <supabase access token>`.
+
+- With the header, the caller is a signed-in learner, identified and keyed by
+  account. `callClaude` sends it whenever a session exists.
+- Without it, the caller is a guest keyed by IP, as before.
+- A token GoTrue rejects gets `401 unauthorized`, so the client refreshes once
+  and retries (`authedFetch`'s rule). A malformed header is also `401`.
+
 `model` is a **catalog id**, not a learner preference id. The Chat picker stores
 `preferredModel` (`auto` | `fast` | `balanced` | `capable`) on the existing
 state blob; `callClaude` / `routeAiRequest` resolve it to one of:

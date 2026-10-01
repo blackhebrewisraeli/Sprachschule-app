@@ -9,9 +9,12 @@
 // preferredModel on that context is an optional learner override; auto/junk
 // leave the automatic pick. The POST still sends a catalog model id — never
 // a vendor key.
+//
+// A signed-in learner's calls carry their session token so the server can
+// identify them; a guest's carry none (spec §6.3, authedFetch optional mode).
 
 import { routeAiRequest } from './ai-routing/router.js';
-import { apiUrl } from './apiUrl.js';
+import { authedFetch } from './authedFetch.js';
 
 const ENDPOINTS = {
   chat: '/api/v1/ai/chat',
@@ -51,11 +54,15 @@ export const callClaude = async (
     if (Array.isArray(vocab)) body.vocab = vocab;
   }
 
-  const response = await fetch(apiUrl(ENDPOINTS[endpoint]), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const response = await authedFetch(
+    ENDPOINTS[endpoint],
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    { optional: true }
+  );
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
