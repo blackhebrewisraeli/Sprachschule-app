@@ -265,7 +265,9 @@ This ceiling is recorded as a `ponytail:` comment in the SQL.
 1. **Method and auth.** Anything except GET or POST gets 405. The secret is
    compared with `timingSafeEqual` against `Bearer ${PUSH_CRON_SECRET}`; a
    mismatch or unset secret gets 401. Then `serviceClient()`: none means 500.
-   Query parameters: `dryRun=1`; `only=<uuid>`, where anything else gets 400.
+   Query parameters: `dryRun=1` (absent means a real run; any other value gets
+   400, checked right after the secret); `only=<uuid>`, where anything else gets
+   400.
 2. **Dry run** needs no Firebase credentials. It calls the RPC with
    `p_dry_run = true` and returns counts. It never sends or claims.
 3. **Real run.** `FIREBASE_SERVICE_ACCOUNT` missing or unparseable → 500
@@ -277,14 +279,16 @@ This ceiling is recorded as a `ponytail:` comment in the SQL.
 4. **Send.** Rows are grouped by learner. Ten workers take learners from a
    shared queue. Each learner's devices are sent in turn, one message per
    device.
-5. **Stop rules.** The run stops starting new learners after `deadlineMs`
-   (240 s of the 300 s budget), or after a `quota` or `fatal` outcome (§13).
-   Learners not reached are released.
+5. **Stop rules.** The run stops starting new sends, checked before every
+   device send (one device can take ~25 s: FCM timeout, wait, retry), after
+   `deadlineMs` (240 s of the 300 s budget), or after a `quota` or `fatal`
+   outcome (§13). Learners with no settled outcome are released.
 6. **Cleanup.** Delete dead tokens in chunks of 20 (`.in('push_token', …)`,
    small enough for URL length). Release claims in chunks of 100 per
    `local_day`.
-7. **Result.** One `console.log` line `{"event":"streak_reminder_run", …summary, ms}`.
-   A run stopped by `fatal` answers 502; otherwise 200 with the summary.
+7. **Result.** One log line `{"event":"streak_reminder_run", …summary, ms}`
+   (`console.error` for a run stopped by `fatal`, else `console.log`). A run
+   stopped by `fatal` answers 502; otherwise 200 with the summary.
 
 ---
 
@@ -583,11 +587,19 @@ design uses what already exists:
 | Run summary (JSON response)          | `net._http_response` (`select status_code, content, error_msg, created from net._http_response order by created desc limit 5`) | 6 h                                |
 | Run summary (log line)               | Vercel runtime logs, `event:"streak_reminder_run"`                                                  | Short on Hobby, so read it soon    |
 | Tick fired                           | `cron.job_run_details`                                                                              | Until pruned                       |
-| Learners reached per day             | `select local_day, count(*) from push_reminder_claims group by 1 order by 1 desc`                   | 8 days                             |
+| Learners claimed per day             | `select local_day, count(*) from push_reminder_claims group by 1 order by 1 desc`                   | 8 days                             |
 
 The summary's fields are: `dryRun`, `due`, `devices`, `sent`, `dead`, `failed`,
 `configErrors`, `released`, `devicesWithoutZone`, `aborted`
-(`null | 'quota' | 'fatal' | 'deadline'`) and `ms`.
+(`null | 'quota' | 'fatal' | 'deadline'`) and `codes`. `ms` is added to the log
+line only; the JSON response in `net._http_response` has no `ms`.
+
+`codes` (in `net._http_response` and the Vercel log line) names each non-sent
+FCM outcome, for example `{"UNREGISTERED":2,"THIRD_PARTY_AUTH_ERROR":1}`, so a
+first run that reports `failed` or `configErrors` also says why (§16).
+`SEND_THREW` means the send call itself threw. A claim is kept for a `sent`,
+`dead` or `config` outcome (§12), so "claimed per day" counts those learners,
+not only the ones reached.
 
 **What "healthy" looks like.**
 
@@ -719,7 +731,8 @@ machine, and `unset S L` at the end.
    `-H "Authorization: Bearer $L"` (the league secret) → `401`.
 2. `curl -s -X POST -H "Authorization: Bearer $S" "$U?dryRun=1"` → `200` with
    `dryRun: true`. `devicesWithoutZone` counts old rows that have not
-   re-registered with a zone yet.
+   re-registered with a zone yet. A dry run's `due` covers at most one batch
+   (100 learners), so a larger number is a floor, not a count.
 3. `curl -s -X POST -H "Authorization: Bearer $S" "$U?only=not-a-uuid&dryRun=1"` → `400`.
 4. **Delivery only (no sender code).**
    - Opt in on the test iPhone and Android with the local test builds (§20 step 8).

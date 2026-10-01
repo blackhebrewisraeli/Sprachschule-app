@@ -291,7 +291,8 @@ U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder
    `-H "Authorization: Bearer $L"` (the league secret) → `401`.
 2. `curl -s -X POST -H "Authorization: Bearer $S" "$U?dryRun=1"` → `200` with
    `dryRun: true`. `devicesWithoutZone` counts old rows that have not
-   re-registered with a zone yet.
+   re-registered with a zone yet. A dry run's `due` covers at most one batch
+   (100 learners), so a larger number is a floor, not a count.
 3. `curl -s -X POST -H "Authorization: Bearer $S" "$U?only=not-a-uuid&dryRun=1"`
    → `400`.
 4. **Delivery only (no sender code).**
@@ -345,11 +346,19 @@ exists:
 | Run summary (JSON response) | `net._http_response` (`select status_code, content, error_msg, created from net._http_response order by created desc limit 5`) | 6 h                             |
 | Run summary (log line)      | Vercel runtime logs, `event:"streak_reminder_run"`                                                                             | Short on Hobby, so read it soon |
 | Tick fired                  | `cron.job_run_details`                                                                                                         | Until pruned                    |
-| Learners reached per day    | `select local_day, count(*) from push_reminder_claims group by 1 order by 1 desc`                                              | 8 days                          |
+| Learners claimed per day    | `select local_day, count(*) from push_reminder_claims group by 1 order by 1 desc`                                              | 8 days                          |
 
 The summary's fields are: `dryRun`, `due`, `devices`, `sent`, `dead`, `failed`,
 `configErrors`, `released`, `devicesWithoutZone`, `aborted`
-(`null | 'quota' | 'fatal' | 'deadline'`) and `ms`.
+(`null | 'quota' | 'fatal' | 'deadline'`) and `codes`. `ms` is added to the log
+line only; the JSON response in `net._http_response` has no `ms`.
+
+`codes` (in `net._http_response` and the Vercel log line) names each non-sent
+FCM outcome, for example `{"UNREGISTERED":2,"THIRD_PARTY_AUTH_ERROR":1}`, so a
+first run that reports `failed` or `configErrors` also says why. `SEND_THREW`
+means the send call itself threw. A claim is kept for a `sent`, `dead` or
+`config` outcome, so "claimed per day" counts those learners, not only the ones
+reached.
 
 **What "healthy" looks like.**
 

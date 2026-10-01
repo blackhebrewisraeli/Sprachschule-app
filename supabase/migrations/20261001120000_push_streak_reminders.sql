@@ -148,6 +148,11 @@ grant select, insert, delete on table public.push_reminder_claims to service_rol
 --
 -- ponytail: resolving zones scans user_devices once per tick. That is fine to
 -- ~1e5 devices; past that, precompute a UTC-offset bucket per device.
+--
+-- ponytail: claims are ordered by user_id, and the sender claims at most 1,000
+-- learners a tick over a 3-tick window. Past ~3,000 learners due in one
+-- zone-hour, the same high-UUID learners would miss out every day. Ordering by
+-- md5(user_id::text || day) would spread the shortfall across learners.
 create or replace function public.claim_streak_reminders(
   p_now          timestamptz,
   p_start_hour   integer,
