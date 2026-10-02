@@ -1,6 +1,8 @@
 # AI Tutor conversation history — design
 
-**Status:** DRAFT for owner approval. Docs only. No application code, migration,
+**Status:** APPROVED 2026-10-02 — owner approved Q1–Q6 as recommended (§15). Design only until H1 starts.
+
+Original status: DRAFT for owner approval. Docs only. No application code, migration,
 legal copy, environment variable or production resource was changed while
 writing this. Six decisions in §15 need an answer before PR H1 starts. The legal
 copy in §11 is **proposed text**; it ships only as owner-approved text (PR H4).
@@ -500,6 +502,8 @@ H6).
 ---
 
 ## 15. Owner decisions
+
+**Resolved 2026-10-02: the owner approved every recommendation below (Q1–Q6).**
 
 | #   | Decision                                                | Recommendation                                           | If you choose otherwise                                                                                   |
 | --- | ------------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |

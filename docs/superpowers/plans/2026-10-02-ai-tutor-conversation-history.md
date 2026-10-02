@@ -14,8 +14,9 @@ existing daily cron. No new Vercel function, no new cron.
 
 **Spec:** `docs/superpowers/specs/2026-10-02-ai-tutor-conversation-history-design.md`.
 Read §5 (schema), §6 (security), §7 (write path), §8 (limits) before any task.
-Owner decisions **Q1–Q6** (spec §15) gate the whole plan: nothing starts until
-Q1 is "yes".
+Owner decisions **Q1–Q6** (spec §15) were **approved as recommended on
+2026-10-02**. Remaining gates: H1 applied to production before H2/H3/H5; the
+quota shadow-week review before H2 (Q6); owner-approved copy before H4.
 
 ## Global Constraints
 
