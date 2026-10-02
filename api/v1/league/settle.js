@@ -21,6 +21,15 @@ export default async function handler(req, res) {
   const db = serviceClient();
   if (!db) return sendError(res, 'server_error', 'Server is not configured.');
 
+  // Same secret, same endpoint, second Vercel cron: the Hobby plan is at its
+  // function cap, so the daily AI-usage sweep rides this route (?job=purge)
+  // instead of getting its own file. It never touches league state.
+  if (req.query?.job === 'purge') {
+    const { data, error } = await db.rpc('purge_ai_usage');
+    if (error) return sendError(res, 'server_error', 'Failed to purge AI usage.');
+    return res.status(200).json({ purged: data });
+  }
+
   const period = currentPeriodStart();
 
   try {

@@ -191,6 +191,94 @@ describe('refund_ai_quota and record_ai_cost', () => {
   });
 });
 
+const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
+
+describe('purge_ai_usage (bounded retention)', () => {
+  const seed = (subject, day, used = 1) =>
+    admin.from('ai_usage').insert({ subject, meter: 'chat', day, used });
+  const exists = async (subject, day) =>
+    (await admin.from('ai_usage').select('subject').eq('subject', subject).eq('day', day)).data
+      .length === 1;
+
+  it('deletes a dormant subject that never returns, keeps today and yesterday', async () => {
+    const dormantUser = `u:${crypto.randomUUID()}`;
+    const dormantIp = ip();
+    const live = ip();
+    await seed(dormantUser, daysAgo(2));
+    await seed(dormantIp, daysAgo(400));
+    await seed(live, daysAgo(0));
+    await seed(live, daysAgo(1));
+    const { data, error } = await admin.rpc('purge_ai_usage');
+    expect(error).toBeNull();
+    expect(data.usage).toBeGreaterThanOrEqual(2);
+    expect(await exists(dormantUser, daysAgo(2))).toBe(false);
+    expect(await exists(dormantIp, daysAgo(400))).toBe(false);
+    expect(await exists(live, daysAgo(0))).toBe(true);
+    expect(await exists(live, daysAgo(1))).toBe(true);
+  });
+
+  it('is idempotent and leaves quota consumption atomic afterwards', async () => {
+    await admin.rpc('purge_ai_usage');
+    const { data } = await admin.rpc('purge_ai_usage');
+    expect(data).toEqual({ usage: 0, grants: 0 });
+    const s = ip();
+    const results = await Promise.all(Array.from({ length: 8 }, () => consume(s, null)));
+    expect(results.filter((r) => r.data?.allowed).length).toBe(3);
+  });
+
+  it('a sweep racing consumes never loses or overshoots today', async () => {
+    const s = ip();
+    await seed(s, daysAgo(5));
+    const runs = await Promise.all([
+      ...Array.from({ length: 6 }, () => consume(s, null)),
+      admin.rpc('purge_ai_usage'),
+      admin.rpc('purge_ai_usage'),
+    ]);
+    expect(runs.slice(0, 6).filter((r) => r.data?.allowed).length).toBe(3);
+    expect(runs.slice(6).every((r) => r.error === null)).toBe(true);
+    expect(await exists(s, daysAgo(5))).toBe(false);
+  });
+
+  it('keeps grants for 30 days, then drops them', async () => {
+    const u = await createSignedInUser('quota-grant-purge');
+    const row = (day, ref) => ({
+      user_id: u.id,
+      meter: 'chat',
+      day,
+      units: 1,
+      source: 'support',
+      source_ref: `purge-${u.id}-${ref}`,
+    });
+    await admin.from('ai_quota_grants').insert([row(daysAgo(31), 'old'), row(daysAgo(30), 'edge')]);
+    await admin.rpc('purge_ai_usage');
+    const { data } = await admin.from('ai_quota_grants').select('day').eq('user_id', u.id);
+    expect(data.map((g) => g.day)).toEqual([daysAgo(30)]);
+  });
+
+  it('is not callable by learners or anon', async () => {
+    for (const client of [free.client, anonClient()]) {
+      expect((await client.rpc('purge_ai_usage')).error).not.toBeNull();
+    }
+  });
+
+  it('shadow still records past the limit and enforce still refunds after a sweep', async () => {
+    await admin.rpc('purge_ai_usage');
+    const shadow = ip();
+    for (let i = 0; i < 4; i += 1) await consume(shadow, null, { enforce: false });
+    const { data } = await consume(shadow, null, { enforce: false });
+    expect(data).toMatchObject({ allowed: true, used: 5, wouldDeny: true });
+    const s = ip();
+    await consume(s, null);
+    await admin.rpc('refund_ai_quota', {
+      p_subject: s,
+      p_meter: 'chat',
+      p_units: 1,
+      p_tier: 'guest',
+    });
+    expect((await consume(s, null)).data.used).toBe(1);
+  });
+});
+
 describe('client access', () => {
   it('learners cannot execute any quota RPC', async () => {
     for (const client of [free.client, anonClient()]) {
