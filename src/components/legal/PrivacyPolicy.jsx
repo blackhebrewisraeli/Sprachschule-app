@@ -54,7 +54,7 @@ const SECTIONS = [
       },
       {
         term: 'Usage Limits:',
-        text: 'To protect the service from abuse, our server records your IP address (for AI features) or your account ID (for account features) together with a count of recent requests.',
+        text: 'To protect the service from abuse and to apply daily limits to AI features, our server records your IP address (if you use AI features without an account) or your account ID (if you are signed in), together with a count of your AI requests for the current day. Short-term request counters used to block bursts of traffic are kept alongside them.',
       },
       {
         term: 'Push Notifications (mobile app only):',
@@ -106,7 +106,7 @@ const SECTIONS = [
         text: 'Account data — including your email, profile, learning data, problem reports, notification tokens and acceptance records — is kept until you delete your account.',
       },
       {
-        text: 'Usage-limit records are overwritten as you make new requests; they are not currently deleted on a fixed schedule.',
+        text: 'Daily AI usage counts are deleted automatically once they are about two days old, and any daily AI limit grants after 30 days. Short-term burst-protection counters are overwritten as new requests arrive and are not deleted on a fixed schedule.',
       },
       {
         text: "Error reports, website analytics and data processed by our service providers are kept for limited periods under those providers' retention settings.",

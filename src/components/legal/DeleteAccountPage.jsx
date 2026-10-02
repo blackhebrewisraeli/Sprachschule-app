@@ -38,7 +38,7 @@ const SECTIONS = [
     items: [
       { text: "Copies may remain for a limited time in our service providers' backups and logs." },
       {
-        text: 'Usage-limit records are overwritten as new requests arrive; they are not currently deleted on a fixed schedule.',
+        text: 'Daily AI usage counts are deleted automatically once they are about two days old, and any daily AI limit grants after 30 days. Short-term burst-protection counters are overwritten as new requests arrive and are not deleted on a fixed schedule.',
       },
       {
         text: "Problem reports sent as a guest and error reports are not linked to your account, so we cannot find them to delete them; error reports expire under our error-monitoring provider's retention settings.",
