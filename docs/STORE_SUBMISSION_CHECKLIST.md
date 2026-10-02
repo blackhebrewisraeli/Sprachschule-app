@@ -37,10 +37,10 @@ a judgement only the owner has. Tick them in order: several gate the next.
 ## Store listings
 
 4. **App Store Connect → App Privacy → Privacy Policy URL:**
-   `https://deutsch-app-dusky.vercel.app/privacy`.
+   `https://www.sprachschule-app.com/privacy`.
 5. **Google Play Console → App content → Privacy policy:** same URL.
 6. **Google Play → Data safety → account deletion URL:**
-   `https://deutsch-app-dusky.vercel.app/delete-account`. Open it in a private
+   `https://www.sprachschule-app.com/delete-account`. Open it in a private
    window (signed out) and confirm it loads before entering it. Google checks
    that the page names the app as the store listing does: the page says
    **Deutsch Sprachschule** (owner decision, 2026-10-01), so both store
@@ -132,7 +132,8 @@ because renaming them needs a migration or infrastructure change:
 | Identifier                          | Value                                         | Why it stays                                                                  |
 | ----------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------- |
 | GitHub repository                   | `blackhebrewisraeli/deutsch-app`              | Remotes, CI, Sonar, Vercel link                                               |
-| Vercel project / URL                | `deutsch-app-dusky.vercel.app`                | Supabase redirect allow-list, `build:mobile`, policy URL in the stores        |
+| Public production origin            | `www.sprachschule-app.com`                    | Supabase redirect allow-list, `build:mobile`, policy URL in the stores        |
+| Vercel fallback URL                 | `deutsch-app-dusky.vercel.app`                | Provider-owned alias retained for rollback and diagnostics                    |
 | Supabase project                    | `Sprachschule` (`xcnnlczvxmuwcqwychox`)       | Project ref is baked into every client                                        |
 | Bundle / application ID, URL scheme | `com.sprachschule.deutsch`                    | Changing it makes a different app in both stores and breaks the auth callback |
 | localStorage keys                   | `deutsch-app-*` (incl. `deutsch-app-legal-*`) | AGENTS.md: never rename or migrate a storage key                              |

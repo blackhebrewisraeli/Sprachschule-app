@@ -143,7 +143,7 @@ describe('isNativeAuthCallback', () => {
     ['another host on our scheme', 'com.sprachschule.deutsch://settings?code=abc'],
     ['a host that only starts the same', 'com.sprachschule.deutsch://login-callback.example'],
     ['another app’s scheme', 'com.example.other://login-callback?code=abc'],
-    ['the website', 'https://deutsch-app-dusky.vercel.app/?code=abc'],
+    ['the website', 'https://www.sprachschule-app.com/?code=abc'],
     ['garbage', 'not a url'],
     ['a non-string', undefined],
   ])('rejects %s', (_label, url) => {

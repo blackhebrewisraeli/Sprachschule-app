@@ -3,11 +3,11 @@
 #
 # Usage:
 #   ./scripts/verify-b1-production.sh
-#   BASE_URL=https://deutsch-app-dusky.vercel.app ./scripts/verify-b1-production.sh
+#   BASE_URL=https://www.sprachschule-app.com ./scripts/verify-b1-production.sh
 
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://deutsch-app-dusky.vercel.app}"
+BASE_URL="${BASE_URL:-https://www.sprachschule-app.com}"
 CHAT_BODY='{"model":"claude-haiku-4-5-20251001","max_tokens":16,"messages":[{"role":"user","content":"Hallo"}]}'
 PASS=0
 FAIL=0

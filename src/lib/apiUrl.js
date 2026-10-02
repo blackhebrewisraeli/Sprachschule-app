@@ -1,4 +1,4 @@
-const NATIVE_API_ORIGIN = 'https://deutsch-app-dusky.vercel.app';
+const NATIVE_API_ORIGIN = 'https://www.sprachschule-app.com';
 
 // Every /api call goes through here. On the web VITE_API_BASE_URL is unset and
 // paths stay relative (same origin as the page). The native build sets it,

@@ -8,7 +8,7 @@ separate owner actions.
 ## Prepare
 
 1. Record the deployment ID, date, browser, and result of each section. Open
-   <https://deutsch-app-dusky.vercel.app> with DevTools Console and Network open.
+   <https://www.sprachschule-app.com> with DevTools Console and Network open.
 2. Use a **disposable browser profile** for the fresh-visitor pass. Clear that
    profile's site data and reload. Do not clear a learner's real progress.
 3. Use a separate existing beta test account for signed-in checks. Keep its

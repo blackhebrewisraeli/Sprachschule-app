@@ -36,7 +36,7 @@ const html = readFileSync('index.html', 'utf8');
 const viteConfig = readFileSync('vite.config.js', 'utf8');
 
 /** AGENTS.md → "Linked environments". index.html duplicates it; this is the pin. */
-const ORIGIN = 'https://deutsch-app-dusky.vercel.app';
+const ORIGIN = 'https://www.sprachschule-app.com';
 
 /** Every SVG the app ships as artwork. `google-g.svg` is a third-party logo. */
 const OWN_SVGS = ['public/favicon.svg', 'public/icon-base.svg'];
