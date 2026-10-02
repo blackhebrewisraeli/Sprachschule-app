@@ -212,6 +212,9 @@ export const EXPORTED_TABLES = {
   // Which Terms/Privacy versions the learner accepted, and when. Their own
   // record, and the proof a data request most often asks for.
   legal_acceptances: 'legalAcceptances',
+  // Saved tutor conversations (opt-in). Read in pages: see PAGED below.
+  ai_conversations: 'aiConversations',
+  ai_messages: 'aiMessages',
 };
 
 /**
@@ -241,6 +244,30 @@ export const EXCLUDED_TABLES = {
 // singular shape avoids changing what existing consumers already parse.
 const SINGLE_ROW = new Set(['settings']);
 
+// Tables that can hold more rows than PostgREST returns in one response
+// (`max_rows`, 1000 by default), which would silently truncate the export. They
+// are read in ranges, in a stable order, until a short page. A learner holds at
+// most 20 x 50 = 1,000 message rows, so MAX_PAGES is a runaway guard, not a
+// limit: hitting it fails the export rather than returning less than we hold.
+const PAGED = { ai_conversations: ['id'], ai_messages: ['conversation_id', 'seq'] };
+const PAGE_SIZE = 500;
+const MAX_PAGES = 10;
+
+async function readTable(db, table, userId) {
+  const order = PAGED[table];
+  if (!order) return db.from(table).select('*').eq('user_id', userId);
+  const rows = [];
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    let q = db.from(table).select('*').eq('user_id', userId);
+    for (const column of order) q = q.order(column);
+    const { data, error } = await q.range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if ((data?.length ?? 0) < PAGE_SIZE) return { data: rows, error: null };
+  }
+  return { data: null, error: new Error(`${table} export exceeded ${MAX_PAGES} pages`) };
+}
+
 export const exportHandler = createAccountHandler({
   method: 'GET',
   ipRate: { windowMs: 60 * 60 * 1000, max: 20 },
@@ -252,9 +279,7 @@ export const exportHandler = createAccountHandler({
   run: async ({ res, auth, db }) => {
     const tables = Object.keys(EXPORTED_TABLES);
 
-    const results = await Promise.all(
-      tables.map((table) => db.from(table).select('*').eq('user_id', auth.userId))
-    );
+    const results = await Promise.all(tables.map((table) => readTable(db, table, auth.userId)));
 
     const data = {};
     results.forEach((result, index) => {

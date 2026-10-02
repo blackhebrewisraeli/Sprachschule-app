@@ -30,6 +30,8 @@ const USER_OWNED = [
   'token_ledger',
   'user_devices',
   'legal_acceptances',
+  'ai_conversations',
+  'ai_messages',
 ];
 
 // Distinct rows per table. The previous fixture returned the SAME row for every
@@ -43,14 +45,29 @@ const ROWS = {
   settings: [{ data: { goal: 50 } }],
 };
 
+// A thenable query chain: `.eq()` alone resolves (the plain tables), and
+// `.order().range()` slices the table's rows like PostgREST would (the paged
+// ones). `rowsOf(table)` may be an array or a result object.
+const chain = (rowsOf, table) => {
+  const rows = rowsOf(table);
+  const whole = Array.isArray(rows) ? { data: rows, error: null } : rows;
+  const q = {
+    select: vi.fn(() => q),
+    eq: vi.fn(() => q),
+    order: vi.fn(() => q),
+    range: vi.fn((from, to) =>
+      Promise.resolve(whole.error ? whole : { data: whole.data.slice(from, to + 1), error: null })
+    ),
+    then: (resolve, reject) => Promise.resolve(whole).then(resolve, reject),
+  };
+  return q;
+};
+
 let queried;
-const mockDb = () => ({
+const mockDb = (rowsOf = (table) => ROWS[table] ?? []) => ({
   from: vi.fn((table) => {
     queried.push(table);
-    return {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockResolvedValue({ data: ROWS[table] ?? [], error: null }),
-    };
+    return chain(rowsOf, table);
   }),
 });
 
@@ -145,12 +162,7 @@ describe('GET /api/v1/account/export', () => {
   });
 
   it('answers with an empty collection, not null, when a table has no rows', async () => {
-    serviceClient.mockReturnValue({
-      from: vi.fn(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ data: [], error: null }),
-      })),
-    });
+    serviceClient.mockReturnValue(mockDb(() => []));
     const res = createRes();
     await handler(getReq('1.1.1.6', 'tok'), res);
     expect(res.body.data.decks).toEqual([]);
@@ -167,16 +179,89 @@ describe('GET /api/v1/account/export', () => {
 
   it('returns 500 when a db query fails', async () => {
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    serviceClient.mockReturnValue({
-      from: vi.fn(() => ({
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn().mockResolvedValue({ data: null, error: { message: 'db error' } }),
-      })),
-    });
+    serviceClient.mockReturnValue(mockDb(() => ({ data: null, error: { message: 'db error' } })));
     const res = createRes();
     await handler(getReq('1.1.1.8', 'tok'), res);
     expect(res.statusCode).toBe(500);
     expect(res.body.error.code).toBe('server_error');
+    spy.mockRestore();
+  });
+});
+
+describe('saved tutor conversations', () => {
+  let n = 0;
+  const many = (n) => Array.from({ length: n }, (_, i) => ({ conversation_id: 'c', seq: i + 1 }));
+
+  beforeEach(() => {
+    queried = [];
+    // The per-user export limit is 10/hour; each test is its own learner.
+    n += 1;
+    requireAuth.mockResolvedValue({ ...USER, userId: `uid-hist-${n}` });
+  });
+
+  it('exports conversations and messages under their own keys', async () => {
+    serviceClient.mockReturnValue(
+      mockDb((t) =>
+        t === 'ai_conversations'
+          ? [{ id: 'c', scenario_id: 'cafe' }]
+          : t === 'ai_messages'
+            ? [{ conversation_id: 'c', seq: 1, content: 'Hallo' }]
+            : (ROWS[t] ?? [])
+      )
+    );
+    const res = createRes();
+    await handler(getReq('1.2.0.1', 'tok'), res);
+    expect(res.body.data.aiConversations).toEqual([{ id: 'c', scenario_id: 'cafe' }]);
+    expect(res.body.data.aiMessages).toEqual([{ conversation_id: 'c', seq: 1, content: 'Hallo' }]);
+  });
+
+  it('reads past one page: 1,200 messages are all exported, none truncated', async () => {
+    const rows = many(1200);
+    serviceClient.mockReturnValue(mockDb((t) => (t === 'ai_messages' ? rows : (ROWS[t] ?? []))));
+    const res = createRes();
+    await handler(getReq('1.2.0.2', 'tok'), res);
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.aiMessages).toHaveLength(1200);
+    expect(res.body.data.aiMessages[1199].seq).toBe(1200);
+  });
+
+  it('stops on an exact multiple of the page size', async () => {
+    const rows = many(1000);
+    serviceClient.mockReturnValue(mockDb((t) => (t === 'ai_messages' ? rows : (ROWS[t] ?? []))));
+    const res = createRes();
+    await handler(getReq('1.2.0.3', 'tok'), res);
+    expect(res.body.data.aiMessages).toHaveLength(1000);
+  });
+
+  it('orders pages stably, by conversation then seq', async () => {
+    const db = mockDb();
+    serviceClient.mockReturnValue(db);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const orders = [];
+    const base = db.from;
+    db.from = vi.fn((table) => {
+      const q = base(table);
+      if (table === 'ai_messages') {
+        const order = q.order;
+        q.order = vi.fn((c) => {
+          orders.push(c);
+          return order(c);
+        });
+      }
+      return q;
+    });
+    await handler(getReq('1.2.0.4', 'tok'), createRes());
+    expect(orders).toEqual(['conversation_id', 'seq']);
+    spy.mockRestore();
+  });
+
+  it('fails the export rather than return fewer rows than a learner holds', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const rows = many(5100);
+    serviceClient.mockReturnValue(mockDb((t) => (t === 'ai_messages' ? rows : (ROWS[t] ?? []))));
+    const res = createRes();
+    await handler(getReq('1.2.0.5', 'tok'), res);
+    expect(res.statusCode).toBe(500);
     spy.mockRestore();
   });
 });

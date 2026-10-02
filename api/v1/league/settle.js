@@ -22,12 +22,25 @@ export default async function handler(req, res) {
   if (!db) return sendError(res, 'server_error', 'Server is not configured.');
 
   // Same secret, same endpoint, second Vercel cron: the Hobby plan is at its
-  // function cap, so the daily AI-usage sweep rides this route (?job=purge)
-  // instead of getting its own file. It never touches league state.
+  // function cap, so the daily sweeps ride this route (?job=purge) instead of
+  // getting their own file. It never touches league state. Each sweep runs
+  // even if the other failed, so one broken RPC cannot stop the other's
+  // retention clock; any failure still returns 500 so the cron shows red.
   if (req.query?.job === 'purge') {
-    const { data, error } = await db.rpc('purge_ai_usage');
-    if (error) return sendError(res, 'server_error', 'Failed to purge AI usage.');
-    return res.status(200).json({ purged: data });
+    const purged = {};
+    const failed = [];
+    for (const [label, rpc] of [
+      ['AI usage', 'purge_ai_usage'],
+      ['AI conversations', 'purge_ai_conversations'],
+    ]) {
+      const { data, error } = await db.rpc(rpc);
+      if (error) failed.push(label);
+      else Object.assign(purged, data);
+    }
+    if (failed.length) {
+      return sendError(res, 'server_error', `Failed to purge: ${failed.join(', ')}.`);
+    }
+    return res.status(200).json({ purged });
   }
 
   const period = currentPeriodStart();
