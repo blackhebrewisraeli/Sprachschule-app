@@ -33,8 +33,12 @@ export function withCors(handler) {
     res.setHeader('Vary', 'Origin');
     if (NATIVE_APP_ORIGINS.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
-      // progressQueue reads Retry-After to back off a 429.
-      res.setHeader('Access-Control-Expose-Headers', 'Retry-After');
+      // progressQueue reads Retry-After to back off a 429; the AI client reads
+      // X-Quota-* to render the daily allowance.
+      res.setHeader(
+        'Access-Control-Expose-Headers',
+        'Retry-After, X-Quota-Limit, X-Quota-Used, X-Quota-Reset, X-Quota-Tier'
+      );
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
         res.setHeader('Access-Control-Allow-Headers', 'authorization, content-type');

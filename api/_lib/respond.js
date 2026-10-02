@@ -15,13 +15,16 @@ export const ERROR_CODES = {
   signup_not_allowed: 403,
   method_not_allowed: 405,
   rate_limited: 429,
+  // Distinct from rate_limited: the burst limiter is about floods; this is the
+  // daily product allowance (spec §6.9).
+  quota_exhausted: 429,
   upstream_error: 502,
   server_error: 500,
 };
 
-export function sendError(res, code, message, extraHeaders = {}) {
+export function sendError(res, code, message, extraHeaders = {}, details = {}) {
   for (const [key, value] of Object.entries(extraHeaders)) {
     res.setHeader(key, value);
   }
-  return res.status(ERROR_CODES[code]).json({ error: { code, message } });
+  return res.status(ERROR_CODES[code]).json({ error: { ...details, code, message } });
 }
