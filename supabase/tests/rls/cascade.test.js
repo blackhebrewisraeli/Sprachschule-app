@@ -34,6 +34,8 @@ const USER_OWNED = [
   'user_devices',
   'push_reminder_claims',
   'legal_acceptances',
+  'ai_conversations',
+  'ai_messages',
 ];
 
 let admin;
@@ -93,11 +95,28 @@ beforeAll(async () => {
     admin
       .from('legal_acceptances')
       .insert({ user_id: userId, terms_version: '2026-10-01', privacy_version: '2026-10-01' }),
+    admin.from('ai_conversations').insert({
+      user_id: userId,
+      id: '22222222-2222-4222-8222-222222222222',
+      scenario_id: 'cafe',
+      level: 'a1',
+    }),
   ];
   for (const q of seed) {
     const { error } = await q;
     if (error) throw error;
   }
+
+  // A message needs its conversation to exist first (composite FK), so it
+  // cannot ride the concurrent batch above.
+  const { error: messageErr } = await admin.from('ai_messages').insert({
+    user_id: userId,
+    conversation_id: '22222222-2222-4222-8222-222222222222',
+    seq: 1,
+    role: 'user',
+    content: 'cascade probe',
+  });
+  if (messageErr) throw messageErr;
 });
 
 describe('account deletion cascade', () => {
