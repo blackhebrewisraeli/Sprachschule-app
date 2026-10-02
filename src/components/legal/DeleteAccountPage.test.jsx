@@ -47,7 +47,7 @@ describe('DeleteAccountPage', () => {
     const text = container.textContent;
     expect(text).toContain('your email address and sign-in details');
     expect(text).toContain('Copies may remain for a limited time');
-    expect(text).toContain('Usage-limit records are overwritten');
+    expect(text).toContain('Daily AI usage counts are deleted automatically');
   });
 
   it('never uses the internal name or an unfilled placeholder', () => {
