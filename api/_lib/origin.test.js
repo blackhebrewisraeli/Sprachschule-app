@@ -63,6 +63,7 @@ describe('withCors', () => {
     const exposed = res.headers['Access-Control-Expose-Headers'];
     expect(exposed).toContain('Retry-After');
     expect(exposed).toContain('X-Quota-Reset');
+    expect(exposed).toContain('X-Conversation-Saved');
   });
 
   it('grants nothing to any other origin, preflight included', async () => {
