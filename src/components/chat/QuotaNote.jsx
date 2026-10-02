@@ -2,20 +2,16 @@ import { COLORS, RADIUS, SPACE } from '../../lib/theme';
 import { Stack, Row } from '../ui/Layout';
 import { Body } from '../ui/Text';
 import Button from '../ui/Button';
+import { resetTimeText } from '../../lib/quotaReset';
 
 // Shown under the conversation when the daily AI allowance is spent: the
 // honest reason, the local reset time, and the next step — never an error
 // bubble. Each button renders only when its callback is passed AND the error
 // allows it, so Track B (onPremium) and Track C (onRewarded) opt in by wiring
 // a prop, not by editing this file.
-const TIME = { hour: '2-digit', minute: '2-digit' };
-
 export default function QuotaNote({ error, onSignIn, onPremium, onRewarded }) {
-  const reset = error.resetsAt ? new Date(error.resetsAt) : null;
-  const resetText =
-    reset && !Number.isNaN(reset.getTime())
-      ? `Your allowance resets at ${new Intl.DateTimeFormat(undefined, TIME).format(reset)}.`
-      : null;
+  const time = resetTimeText(error.resetsAt);
+  const resetText = time && `Your allowance resets at ${time}.`;
 
   const showSignIn = error.tier === 'guest' && onSignIn;
   const showPremium = error.tier === 'free' && onPremium;
