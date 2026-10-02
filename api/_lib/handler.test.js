@@ -258,4 +258,98 @@ describe('createAiHandler', () => {
     expect(res.statusCode).toBe(502);
     expect(res.body.error.code).toBe('upstream_error');
   });
+
+  describe('quotas', () => {
+    const fakeQuota = (consumeResult) => ({
+      mode: 'enforce',
+      consume: vi.fn(async () => consumeResult),
+      refund: vi.fn(async () => {}),
+      recordCost: vi.fn(async () => {}),
+    });
+
+    it('denies with quota_exhausted and never forwards', async () => {
+      const quota = fakeQuota({
+        allowed: false,
+        tier: 'free',
+        limit: 20,
+        used: 20,
+        reason: 'quota',
+      });
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(postReq(), res);
+      expect(res.statusCode).toBe(429);
+      expect(res.body.error).toMatchObject({
+        code: 'quota_exhausted',
+        meter: 'chat',
+        tier: 'free',
+        limit: 20,
+        rewardedEligible: true,
+      });
+      expect(res.body.error.resetsAt).toMatch(/T00:00:00\.000Z$/);
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it('refunds the units when the provider fails', async () => {
+      fetch.mockImplementationOnce(() => Promise.reject(new Error('socket')));
+      const quota = fakeQuota({ allowed: true, tier: 'guest', limit: 10, used: 1 });
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(postReq(), res);
+      expect(res.statusCode).toBe(502);
+      expect(quota.refund).toHaveBeenCalledWith(
+        expect.objectContaining({ meter: 'chat', units: 1 })
+      );
+      expect(quota.recordCost).not.toHaveBeenCalled();
+    });
+
+    it('refunds on a non-2xx upstream status', async () => {
+      fetch.mockImplementationOnce(() =>
+        Promise.resolve({ status: 529, json: () => Promise.resolve({}) })
+      );
+      const quota = fakeQuota({ allowed: true, tier: 'guest', limit: 10, used: 1 });
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(postReq(), createRes());
+      expect(quota.refund).toHaveBeenCalled();
+      expect(quota.recordCost).not.toHaveBeenCalled();
+    });
+
+    it('clamps to the RPC tier and refunds the weight difference', async () => {
+      const quota = fakeQuota({ allowed: true, tier: 'guest', limit: 10, used: 3 });
+      const req = postReq({ body: { ...validBody(), model: 'claude-sonnet-5-5' } });
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(req, createRes());
+      expect(quota.consume).toHaveBeenCalledWith(expect.objectContaining({ units: 2 }));
+      expect(quota.refund).toHaveBeenCalledWith(expect.objectContaining({ units: 1 }));
+      expect(sentModel()).toBe('claude-haiku-4-5-20251001');
+    });
+
+    it('records cost and sets quota headers on success', async () => {
+      fetch.mockImplementationOnce(() =>
+        Promise.resolve({
+          status: 200,
+          json: () =>
+            Promise.resolve({ content: [], usage: { input_tokens: 10, output_tokens: 2 } }),
+        })
+      );
+      const quota = fakeQuota({ allowed: true, tier: 'free', limit: 20, used: 4 });
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(postReq(), res);
+      expect(quota.recordCost).toHaveBeenCalledWith({
+        meter: 'chat',
+        model: 'claude-haiku-4-5-20251001',
+        tier: 'free',
+        usage: { input_tokens: 10, output_tokens: 2 },
+      });
+      expect(res.headers).toMatchObject({
+        'X-Quota-Limit': '20',
+        'X-Quota-Used': '4',
+        'X-Quota-Tier': 'free',
+      });
+      expect(res.headers['X-Quota-Reset']).toMatch(/T00:00:00\.000Z$/);
+    });
+
+    it('sets no quota headers in off mode', async () => {
+      const quota = fakeQuota({ allowed: true, tier: 'guest', limit: null, used: null });
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota })(postReq(), res);
+      expect(res.headers['X-Quota-Limit']).toBeUndefined();
+    });
+  });
 });
