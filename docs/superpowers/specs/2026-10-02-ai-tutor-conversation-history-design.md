@@ -190,7 +190,7 @@ Both tables: RLS on, in the same migration that creates them (the
 | Operation | Client (`authenticated`)                               | Server (`service_role`) |
 | --------- | ------------------------------------------------------ | ----------------------- |
 | SELECT    | own rows: `user_id = (select auth.uid())`              | yes                     |
-| DELETE    | own rows (same predicate)                              | yes                     |
+| DELETE    | own **conversations** only (messages cascade); never a single message | yes |
 | INSERT    | **none** — no policy, no grant                         | yes                     |
 | UPDATE    | **none** — no policy, no grant                         | yes                     |
 | `anon`    | nothing; explicit deny-all policy and `revoke all`     | —                       |
