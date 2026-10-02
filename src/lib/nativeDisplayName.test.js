@@ -7,21 +7,25 @@ import { readFileSync } from 'node:fs';
 // ID is an identity, not a name: a new one is a new app in both stores.
 const read = (path) => readFileSync(path, 'utf8');
 
+// The store listings are named "Deutsch Sprachschule" (owner decision,
+// 2026-09-30), and Google checks the deletion page against that name. The
+// installed app carries the same label. The web title, PWA manifest and npm
+// package keep `sprachschule-app` on purpose; see the last two cases.
 describe('declared app name', () => {
   it('capacitor.config.ts', () => {
-    expect(read('capacitor.config.ts')).toMatch(/appName:\s*'sprachschule-app'/);
+    expect(read('capacitor.config.ts')).toMatch(/appName:\s*'Deutsch Sprachschule'/);
   });
 
   it('iOS CFBundleDisplayName', () => {
     expect(read('ios/App/App/Info.plist')).toMatch(
-      /<key>CFBundleDisplayName<\/key>\s*<string>sprachschule-app<\/string>/
+      /<key>CFBundleDisplayName<\/key>\s*<string>Deutsch Sprachschule<\/string>/
     );
   });
 
   it('Android app_name and activity title', () => {
     const xml = read('android/app/src/main/res/values/strings.xml');
-    expect(xml).toMatch(/<string name="app_name">sprachschule-app<\/string>/);
-    expect(xml).toMatch(/<string name="title_activity_main">sprachschule-app<\/string>/);
+    expect(xml).toMatch(/<string name="app_name">Deutsch Sprachschule<\/string>/);
+    expect(xml).toMatch(/<string name="title_activity_main">Deutsch Sprachschule<\/string>/);
   });
 
   it('web title and PWA manifest', () => {
