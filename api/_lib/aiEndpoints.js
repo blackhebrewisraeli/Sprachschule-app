@@ -1,5 +1,6 @@
 import { createAiHandler } from './handler.js';
 import { applyChatConstraints } from './chatConstraint.js';
+import { createHistory } from './aiHistory.js';
 
 // chatHandler, deckHandler and gradeHandler live in one file — not three
 // api/v1/ai/*.js files — because Vercel's Hobby plan caps a deployment at 12
@@ -19,6 +20,7 @@ export const chatHandler = createAiHandler({
   meter: 'chat',
   rate: { windowMs: 5 * 60 * 1000, max: 20 },
   afterValidate: applyChatConstraints,
+  history: createHistory(),
 });
 
 // Custom deck generation.

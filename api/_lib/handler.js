@@ -21,7 +21,14 @@ const DENIAL_MESSAGES = {
   disabled: 'AI features are paused for guests right now. Create a free account to keep going.',
 };
 
-export function createAiHandler({ name, meter, rate, afterValidate, quota = createQuota() }) {
+export function createAiHandler({
+  name,
+  meter,
+  rate,
+  afterValidate,
+  quota = createQuota(),
+  history = null,
+}) {
   const checkRate = createRateLimiter({ ...rate, scope: name, store: defaultStore() });
 
   return async function handler(req, res) {
@@ -110,6 +117,13 @@ export function createAiHandler({ name, meter, rate, afterValidate, quota = crea
     const { status, data } = upstream;
     if (status >= 200 && status < 300) {
       await quota.recordCost({ meter, model, tier: q.tier, usage: data?.usage });
+      // Opt-in conversation history: after the reply exists and the cost is
+      // recorded, never before. Best-effort and never throws; the header only
+      // appears on requests that asked to save (spec 2026-10-02 §7).
+      if (history) {
+        const saved = await history.persist({ caller, rawBody: req.body, safeBody, data });
+        if (saved !== undefined) res.setHeader('X-Conversation-Saved', saved ? '1' : '0');
+      }
     } else {
       await quota.refund({ caller, meter, units: charged, tier: q.tier });
     }

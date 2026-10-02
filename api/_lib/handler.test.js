@@ -352,4 +352,84 @@ describe('createAiHandler', () => {
       expect(res.headers['X-Quota-Limit']).toBeUndefined();
     });
   });
+
+  describe('conversation history', () => {
+    const user = { id: 'u1', email: 'a@b.c' };
+    const block = { id: '11111111-1111-4111-8111-111111111111', scenario: 'cafe' };
+    const savingReq = (conversation = block) => bearer('tok', { ...validBody(), conversation });
+    const fakeHistory = (result = true) => ({ persist: vi.fn(async () => result) });
+
+    it('persists after the reply and sets X-Conversation-Saved: 1', async () => {
+      const history = fakeHistory(true);
+      const handler = createAiHandler({ ...wideOpen, meter: 'chat', history });
+      goTrueKnows({ tok: user });
+      const res = createRes();
+      await handler(savingReq(), res);
+      expect(res.statusCode).toBe(200);
+      expect(history.persist).toHaveBeenCalledOnce();
+      const arg = history.persist.mock.calls[0][0];
+      expect(arg.caller).toMatchObject({ kind: 'user', userId: 'u1' });
+      expect(arg.safeBody.messages.at(-1).content).toBe('Hallo');
+      expect(arg.data.content[0].text).toBe('ok');
+      expect(res.headers['X-Conversation-Saved']).toBe('1');
+    });
+
+    it('reports 0 when persist says not saved, and the reply is unchanged', async () => {
+      const handler = createAiHandler({ ...wideOpen, meter: 'chat', history: fakeHistory(false) });
+      goTrueKnows({ tok: user });
+      const res = createRes();
+      await handler(savingReq(), res);
+      expect(res.statusCode).toBe(200);
+      expect(res.body.content[0].text).toBe('ok');
+      expect(res.headers['X-Conversation-Saved']).toBe('0');
+    });
+
+    it('sets no header when the request did not ask to save', async () => {
+      const handler = createAiHandler({
+        ...wideOpen,
+        meter: 'chat',
+        history: { persist: vi.fn(async () => undefined) },
+      });
+      const res = createRes();
+      await handler(postReq(), res);
+      expect(res.headers['X-Conversation-Saved']).toBeUndefined();
+    });
+
+    it('runs after cost is recorded, never on a non-2xx, and never refunds', async () => {
+      const order = [];
+      const quota = {
+        consume: vi.fn(async () => ({ allowed: true, tier: 'free', limit: 20, used: 1 })),
+        refund: vi.fn(async () => order.push('refund')),
+        recordCost: vi.fn(async () => order.push('cost')),
+      };
+      const history = { persist: vi.fn(async () => order.push('persist') && true) };
+      goTrueKnows({ tok: user });
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota, history })(
+        savingReq(),
+        createRes()
+      );
+      expect(order).toEqual(['cost', 'persist']);
+
+      fetch.mockResolvedValueOnce({ status: 529, json: () => Promise.resolve({ error: {} }) });
+      history.persist.mockClear();
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota, history })(savingReq(), res);
+      expect(history.persist).not.toHaveBeenCalled();
+      expect(res.headers['X-Conversation-Saved']).toBeUndefined();
+    });
+
+    it('does not call history for a denied turn', async () => {
+      const quota = {
+        consume: vi.fn(async () => ({ allowed: false, tier: 'free', limit: 20, used: 20 })),
+        refund: vi.fn(),
+        recordCost: vi.fn(),
+      };
+      const history = fakeHistory(true);
+      goTrueKnows({ tok: user });
+      const res = createRes();
+      await createAiHandler({ ...wideOpen, meter: 'chat', quota, history })(savingReq(), res);
+      expect(res.statusCode).toBe(429);
+      expect(history.persist).not.toHaveBeenCalled();
+    });
+  });
 });

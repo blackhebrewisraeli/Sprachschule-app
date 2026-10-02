@@ -34,10 +34,11 @@ export function withCors(handler) {
     if (NATIVE_APP_ORIGINS.includes(origin)) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       // progressQueue reads Retry-After to back off a 429; the AI client reads
-      // X-Quota-* to render the daily allowance.
+      // X-Quota-* to render the daily allowance, and X-Conversation-Saved to say
+      // whether a tutor turn was kept.
       res.setHeader(
         'Access-Control-Expose-Headers',
-        'Retry-After, X-Quota-Limit, X-Quota-Used, X-Quota-Reset, X-Quota-Tier'
+        'Retry-After, X-Quota-Limit, X-Quota-Used, X-Quota-Reset, X-Quota-Tier, X-Conversation-Saved'
       );
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE');
