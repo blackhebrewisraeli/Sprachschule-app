@@ -37,6 +37,10 @@ const SECTIONS = [
         text: 'When you use an AI-powered feature — chatting with the tutor, having a written answer checked, generating practice sentences or creating a custom deck — the text you enter, together with the exercise or conversation context needed to respond, is sent through our server to Anthropic, which generates the response. We do not send your name, email address or account ID with these requests.',
       },
       {
+        term: 'Saved Tutor Conversations (optional):',
+        text: 'If you are signed in and turn on "Save my tutor conversations" in Settings, we store the conversations you have with the tutor — what you write and the tutor\'s replies — in our database, linked to your account, so that you can read them again, continue them on any device and delete them. This is off unless you turn it on, and we do not save a tutor conversation before you do. Conversations you have as a guest are never saved.',
+      },
+      {
         term: 'Voice Input:',
         text: "If you use voice input, speech recognition is performed by your browser or your device's operating system, which may send your audio to its provider (such as Google or Apple) under that provider's terms. The app receives only the resulting text.",
       },
@@ -65,7 +69,7 @@ const SECTIONS = [
   {
     heading: '3. How We Use Your Information',
     paragraphs: [
-      "Your data is used to provide the app's features: saving and syncing your progress, placing you in weekly leagues (Leagues), showing your profile to other learners, powering AI features, sending notifications you have turned on, fixing bugs, and protecting the service from abuse. We do not sell your data or use it for targeted advertising.",
+      "Your data is used to provide the app's features: saving and syncing your progress, placing you in weekly leagues (Leagues), showing your profile to other learners, powering AI features, sending notifications you have turned on, fixing bugs, and protecting the service from abuse. We do not sell your data or use it for targeted advertising. If you choose to save your tutor conversations, we use them only to show them back to you. We do not use them to train AI models, for advertising or to build profiles, and we do not read them except where needed to investigate abuse of the service or to respond to a legal request.",
     ],
   },
   {
@@ -106,6 +110,9 @@ const SECTIONS = [
         text: 'Account data — including your email, profile, learning data, problem reports, notification tokens and acceptance records — is kept until you delete your account.',
       },
       {
+        text: 'Saved tutor conversations are deleted automatically about 90 days after the last message in them. We keep at most 20 conversations of up to 50 messages each for your account; when you go past a limit, the oldest messages, or the conversation you used least recently, are removed.',
+      },
+      {
         text: 'Daily AI usage counts are deleted automatically once they are about two days old, and any daily AI limit grants after 30 days. Short-term burst-protection counters are overwritten as new requests arrive and are not deleted on a fixed schedule.',
       },
       {
@@ -116,7 +123,7 @@ const SECTIONS = [
   {
     heading: '7. Exporting and Deleting Your Data',
     paragraphs: [
-      "You can download a copy of your learning data, and permanently delete your account, in the app under Profile → Settings → Account controls. Deleting your account immediately and permanently removes your account and the data linked to it in our database, including your learning data, profile, problem reports, notification tokens and acceptance records. We also delete the profile pictures you uploaded; if any remain afterwards, contact us and we will remove them. Copies may remain for a limited time in our service providers' backups and logs. Problem reports you sent as a guest and error reports are not linked to your account.",
+      "You can download a copy of your learning data, including your saved tutor conversations, and permanently delete your account, in the app under Profile → Settings → Account controls. You can also delete one saved conversation, or all of them, without deleting your account: in Chat → History, or in Settings → Account → Tutor conversations. Deleting your account immediately and permanently removes your account and the data linked to it in our database, including your learning data, profile, problem reports, saved tutor conversations, notification tokens and acceptance records. We also delete the profile pictures you uploaded; if any remain afterwards, contact us and we will remove them. Copies may remain for a limited time in our service providers' backups and logs. Problem reports you sent as a guest and error reports are not linked to your account.",
     ],
   },
   {
@@ -128,6 +135,10 @@ const SECTIONS = [
       },
       {
         text: "When you turn notifications off in the app or sign out, the app deletes your device's notification token from our database and deactivates it on your device. If the app cannot reach our servers at that moment, the token is still deactivated on your device, but a copy can remain in our database until your account is deleted. If you turn notifications off in your device's settings instead, the app removes the token from our database the next time you open it while signed in. Deleting your account always deletes all of your notification tokens.",
+      },
+      {
+        term: 'Saving tutor conversations is optional',
+        text: 'and is off unless you turn it on. You can turn it off at any time in Settings → Account → Tutor conversations; new conversations stop being saved straight away. Conversations already saved stay until you delete them or they expire, as described above.',
       },
       {
         text: 'You can edit your name, handle and profile picture, and make your profile private, in Settings.',

@@ -61,7 +61,8 @@ export default function TutorHistorySection({ userId, onToast }) {
         Keep your conversations with the tutor so you can read them again and continue them on any
         device. If you turn this on, what you write and what the tutor replies is saved to your
         account. It is off unless you turn it on, and you can turn it off or delete your saved
-        conversations here at any time.
+        conversations here at any time. Saved conversations are deleted automatically after about 90
+        days without a new message.
       </Body>
       <Button
         variant="secondary"

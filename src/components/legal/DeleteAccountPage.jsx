@@ -11,7 +11,7 @@ import { lastUpdatedLine } from '../../lib/legalAcceptance';
  * Not a versioned legal document: nobody accepts it, so editing it re-asks no
  * one. Bump the date below when the copy changes.
  */
-const UPDATED = '2026-09-30';
+const UPDATED = '2026-10-03';
 
 const SECTIONS = [
   {
@@ -30,7 +30,7 @@ const SECTIONS = [
   {
     heading: 'What is deleted',
     paragraphs: [
-      'Your account and all data linked to it in our database: your email address and sign-in details, your profile and profile pictures, your learning data, problem reports you sent while signed in, notification tokens, and the record of which Terms and Privacy Policy versions you accepted.',
+      'Your account and all data linked to it in our database: your email address and sign-in details, your profile and profile pictures, your learning data, problem reports you sent while signed in, saved tutor conversations, notification tokens, and the record of which Terms and Privacy Policy versions you accepted.',
     ],
   },
   {

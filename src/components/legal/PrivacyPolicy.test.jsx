@@ -11,9 +11,9 @@ describe('PrivacyPolicy', () => {
   });
 
   it('shows the effective date, derived from PRIVACY_VERSION', () => {
-    expect(PRIVACY_VERSION).toBe('2026-09-29');
+    expect(PRIVACY_VERSION).toBe('2026-10-03');
     render(<PrivacyPolicy />);
-    expect(screen.getByText('Last Updated: September 29, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated: October 3, 2026')).toBeInTheDocument();
   });
 
   it('carries the nine numbered sections, in order', () => {
@@ -63,6 +63,16 @@ describe('PrivacyPolicy', () => {
       'Push notifications are optional',
       'a copy can remain in our database until your account is deleted.',
       'We do not sell your data or use it for targeted advertising.',
+      'we store the conversations you have with the tutor',
+      'This is off unless you turn it on, and we do not save a tutor conversation before you do.',
+      'Conversations you have as a guest are never saved.',
+      'We do not use them to train AI models, for advertising or to build profiles',
+      'Saved tutor conversations are deleted automatically about 90 days after the last message in them.',
+      'We keep at most 20 conversations of up to 50 messages each for your account',
+      'including your saved tutor conversations, and permanently delete your account',
+      'in Chat → History, or in Settings → Account → Tutor conversations',
+      'problem reports, saved tutor conversations, notification tokens and acceptance records',
+      'new conversations stop being saved straight away',
     ]) {
       expect(
         screen.getByText(new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
@@ -72,7 +82,7 @@ describe('PrivacyPolicy', () => {
 
   it('lists collection, providers, retention and choices as real lists', () => {
     render(<PrivacyPolicy />);
-    expect(screen.getAllByRole('listitem')).toHaveLength(24);
+    expect(screen.getAllByRole('listitem')).toHaveLength(27);
     for (const term of ['Account Information:', 'Learning Data:', 'Error Reports:']) {
       expect(screen.getByText(term)).toBeInTheDocument();
     }
