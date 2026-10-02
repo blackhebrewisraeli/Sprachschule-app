@@ -18,7 +18,7 @@ describe('DeleteAccountPage', () => {
 
   it('shows its own date', () => {
     render(<DeleteAccountPage />);
-    expect(screen.getByText('Last Updated: September 30, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated: October 3, 2026')).toBeInTheDocument();
   });
 
   it('carries the four sections, in order', () => {
@@ -46,6 +46,7 @@ describe('DeleteAccountPage', () => {
     const { container } = render(<DeleteAccountPage />);
     const text = container.textContent;
     expect(text).toContain('your email address and sign-in details');
+    expect(text).toContain('saved tutor conversations');
     expect(text).toContain('Copies may remain for a limited time');
     expect(text).toContain('Daily AI usage counts are deleted automatically');
   });
