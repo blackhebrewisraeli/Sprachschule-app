@@ -7,7 +7,7 @@ import VocabTab from './VocabTab';
 import { upsertDeck, deleteDeck, liveDecks } from '../lib/customDecks.js';
 import { markLearnedIn } from '../lib/learnedWords.js';
 import { activePack } from '../packs';
-import { callClaude } from '../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../lib/claude';
 import { speak } from '../lib/speech';
 import { srsKey } from '../lib/srs';
 import indexJson from '../packs/__fixtures__/lexicon/index.json';
@@ -16,7 +16,8 @@ import chunk1 from '../packs/__fixtures__/lexicon/chunk-01.json';
 import { __resetCache } from '../packs/lexiconStore';
 import { setUserLevel } from '../lib/levelPref';
 
-vi.mock('../lib/claude', () => ({
+vi.mock('../lib/claude', async (importActual) => ({
+  ...(await importActual()),
   callClaude: vi.fn(),
 }));
 
@@ -463,6 +464,27 @@ describe('VocabTab', () => {
       expect(screen.getByRole('button', { name: /GENERATE 10 CARDS/ })).toBeEnabled();
       await userEvent.click(screen.getByRole('tab', { name: 'Practice' }));
       expect(screen.getByText(firstCard().de)).toBeInTheDocument();
+    });
+
+    it('a quota denial shows an inline limit note and never alerts', async () => {
+      const alertSpy = vi.fn();
+      vi.stubGlobal('alert', alertSpy);
+      callClaude.mockRejectedValue(
+        new QuotaExhaustedError({
+          meter: 'deck',
+          tier: 'free',
+          resetsAt: '2026-10-02T00:00:00.000Z',
+          message: 'Daily AI limit reached.',
+        })
+      );
+      renderTab();
+
+      await generateOnCustom();
+
+      expect(await screen.findByText(/Daily deck limit reached/)).toBeInTheDocument();
+      expect(alertSpy).not.toHaveBeenCalled();
+      // The topic is kept so a retry tomorrow does not mean retyping it.
+      expect(screen.getByRole('textbox', { name: 'Custom deck topic' })).toHaveValue('weather');
     });
 
     it('an API failure also surfaces the alert and keeps the tab alive', async () => {

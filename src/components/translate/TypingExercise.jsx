@@ -11,7 +11,8 @@ import {
   SHADOW,
   BUTTON,
 } from '../../lib/theme';
-import { callClaude } from '../../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../../lib/claude';
+import { resetTimeText } from '../../lib/quotaReset';
 import { activePack } from '../../packs';
 import { graderSystemPrompt } from '../../lib/prompts';
 import { recordEvent, recordItem } from '../../lib/stats';
@@ -23,6 +24,9 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState(null);
+  // A spent daily checking allowance: neither a verdict nor a network failure,
+  // so it never reaches FeedbackPanel, XP or stats.
+  const [limit, setLimit] = useState(null);
   const [reward, setReward] = useState({ xp: 0, mult: 1 });
   const mounted = useRef(true);
   useEffect(
@@ -35,11 +39,13 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
   useEffect(() => {
     setInput('');
     setFeedback(null);
+    setLimit(null);
   }, [exercise]);
 
   const check = async () => {
     if (!input.trim() || loading) return;
     setLoading(true);
+    setLimit(null);
     try {
       const system = graderSystemPrompt({ prompts: activePack.prompts });
       const user = `English sentence: "${exercise.en}"\nIdeal German: "${exercise.de}"\nLearner's answer: "${input}"`;
@@ -67,8 +73,9 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
         // "almost" still advances the exercise — typos shouldn't gate progress.
         if (verdict === 'correct' || verdict === 'almost') onCorrect();
       }
-    } catch {
-      if (mounted.current)
+    } catch (err) {
+      if (mounted.current && err instanceof QuotaExhaustedError) setLimit(err);
+      else if (mounted.current)
         setFeedback({
           verdict: 'wrong',
           corrected: exercise.de,
@@ -127,6 +134,25 @@ export default function TypingExercise({ exercise, level, onCorrect, onSkip }) {
               marginBottom: SPACE[4],
             }}
           />
+          {limit && (
+            <p
+              role="note"
+              style={{
+                margin: `0 0 ${SPACE[4]}px`,
+                padding: SPACE[4],
+                background: COLORS.surface1,
+                border: BORDER.panel,
+                borderRadius: RADIUS.md,
+                fontFamily: FONTS.body,
+                fontSize: FONT_SIZE.base,
+                color: COLORS.ink,
+              }}
+            >
+              Daily checking limit reached
+              {resetTimeText(limit.resetsAt) ? ` — resets at ${resetTimeText(limit.resetsAt)}` : ''}
+              .
+            </p>
+          )}
           <div style={{ display: 'flex', gap: SPACE[3] }}>
             <button
               type="button"

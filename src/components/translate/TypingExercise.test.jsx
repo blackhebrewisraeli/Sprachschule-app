@@ -2,11 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TypingExercise from './TypingExercise';
-import { callClaude } from '../../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../../lib/claude';
+import { recordEvent } from '../../lib/stats';
 
-vi.mock('../../lib/claude', () => ({
+vi.mock('../../lib/claude', async (importActual) => ({
+  ...(await importActual()),
   callClaude: vi.fn(),
 }));
+
+vi.mock('../../lib/stats', async (importActual) => {
+  const actual = await importActual();
+  return { ...actual, recordEvent: vi.fn(actual.recordEvent) };
+});
 
 const exercise = {
   en: 'I am tired',
@@ -102,5 +109,29 @@ describe('TypingExercise', () => {
     render(<TypingExercise exercise={exercise} level="b1" onCorrect={() => {}} onSkip={onSkip} />);
     await userEvent.click(screen.getByRole('button', { name: 'Skip exercise' }));
     expect(onSkip).toHaveBeenCalledTimes(1);
+  });
+
+  it('a quota denial is not a wrong answer', async () => {
+    callClaude.mockRejectedValue(
+      new QuotaExhaustedError({
+        meter: 'grade',
+        tier: 'free',
+        resetsAt: '2026-10-02T00:00:00.000Z',
+        message: 'Daily AI limit reached.',
+      })
+    );
+    const onCorrect = vi.fn();
+    render(
+      <TypingExercise exercise={exercise} level="b1" onCorrect={onCorrect} onSkip={() => {}} />
+    );
+    await userEvent.type(screen.getByRole('textbox'), 'Ich bin müde');
+    await userEvent.click(screen.getByRole('button', { name: /CHECK/ }));
+    expect(await screen.findByText(/daily checking limit reached/i)).toBeInTheDocument();
+    expect(screen.queryByText(/check your connection/i)).toBeNull();
+    expect(screen.queryByText(/Not quite/)).toBeNull();
+    expect(recordEvent).not.toHaveBeenCalled();
+    expect(onCorrect).not.toHaveBeenCalled();
+    // The learner can still skip the exercise.
+    expect(screen.getByRole('button', { name: 'Skip exercise' })).toBeEnabled();
   });
 });

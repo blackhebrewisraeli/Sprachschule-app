@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, SPACE, BUTTON } from '../lib/theme';
-import { callClaude } from '../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../lib/claude';
+import { resetTimeText } from '../lib/quotaReset';
 import { loadState } from '../lib/storage';
 import { activePack } from '../packs';
 import { newDeckId, MAX_CUSTOM_DECKS } from '../lib/customDecks';
@@ -93,6 +94,7 @@ export default function VocabTab({
   // state blob now and App hands it down.
   const [customTopic, setCustomTopic] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [deckLimit, setDeckLimit] = useState(null);
   const [deckComplete, setDeckComplete] = useState(false);
 
   const {
@@ -324,6 +326,7 @@ export default function VocabTab({
   const generateDeck = async () => {
     if (!customTopic.trim()) return;
     setGenerating(true);
+    setDeckLimit(null);
     try {
       const { system: systemPrompt, user: userMsg } = deckPrompts({
         prompts: activePack.prompts,
@@ -355,7 +358,9 @@ export default function VocabTab({
         setCustomTopic('');
       }
     } catch (err) {
-      alert('Could not generate deck — ' + err.message);
+      // A spent allowance is not a failure to alert about; say when it resets.
+      if (err instanceof QuotaExhaustedError) setDeckLimit(err);
+      else alert('Could not generate deck — ' + err.message);
     } finally {
       setGenerating(false);
     }
@@ -464,6 +469,15 @@ export default function VocabTab({
             onGenerate={generateDeck}
             mobile={mobile}
           />
+          {deckLimit && (
+            <p role="note" style={{ color: COLORS.ink, fontFamily: FONTS.body }}>
+              Daily deck limit reached
+              {resetTimeText(deckLimit.resetsAt)
+                ? ` — resets at ${resetTimeText(deckLimit.resetsAt)}`
+                : ''}
+              .
+            </p>
+          )}
           {(customCards || Object.keys(customDecks ?? {}).length > 0) && (
             <VocabBrowse
               {...browseProps}
