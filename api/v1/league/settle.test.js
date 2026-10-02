@@ -228,28 +228,49 @@ it('settles a full 25-member cohort in at most two round trips', async () => {
   expect(memberTrips).toBeLessThanOrEqual(2);
 });
 
-it('?job=purge sweeps AI usage and never touches leagues', async () => {
+it('?job=purge sweeps AI usage and conversations and never touches leagues', async () => {
+  const results = {
+    purge_ai_usage: { usage: 7, grants: 1 },
+    purge_ai_conversations: { conversations: 2, messages: 9 },
+  };
   const db = {
     from: vi.fn(),
-    rpc: vi.fn().mockResolvedValue({ data: { usage: 7, grants: 1 }, error: null }),
+    rpc: vi.fn(async (name) => ({ data: results[name], error: null })),
   };
   serviceClient.mockReturnValue(db);
   const res = createRes();
   await handler({ ...req('secret', 'GET'), query: { job: 'purge' } }, res);
   expect(res.statusCode).toBe(200);
-  expect(res.body).toEqual({ purged: { usage: 7, grants: 1 } });
-  expect(db.rpc).toHaveBeenCalledExactlyOnceWith('purge_ai_usage');
+  expect(res.body).toEqual({ purged: { usage: 7, grants: 1, conversations: 2, messages: 9 } });
+  expect(db.rpc.mock.calls.map((c) => c[0])).toEqual(['purge_ai_usage', 'purge_ai_conversations']);
   expect(db.from).not.toHaveBeenCalled();
 });
 
-it('?job=purge needs the cron secret and reports a failed sweep as 500', async () => {
-  const db = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }) };
+it('?job=purge needs the cron secret', async () => {
+  const db = { rpc: vi.fn() };
   serviceClient.mockReturnValue(db);
   const denied = createRes();
   await handler({ ...req('wrong', 'GET'), query: { job: 'purge' } }, denied);
   expect(denied.statusCode).toBe(401);
   expect(db.rpc).not.toHaveBeenCalled();
-  const failed = createRes();
-  await handler({ ...req('secret', 'GET'), query: { job: 'purge' } }, failed);
-  expect(failed.statusCode).toBe(500);
 });
+
+it.each([
+  ['purge_ai_usage', 'AI usage', 'purge_ai_conversations'],
+  ['purge_ai_conversations', 'AI conversations', 'purge_ai_usage'],
+])(
+  '?job=purge still runs the other sweep when %s fails, and reports 500',
+  async (bad, label, other) => {
+    const db = {
+      rpc: vi.fn(async (name) =>
+        name === bad ? { data: null, error: { message: 'boom' } } : { data: {}, error: null }
+      ),
+    };
+    serviceClient.mockReturnValue(db);
+    const res = createRes();
+    await handler({ ...req('secret', 'GET'), query: { job: 'purge' } }, res);
+    expect(res.statusCode).toBe(500);
+    expect(res.body.error.message).toContain(label);
+    expect(db.rpc.mock.calls.map((c) => c[0])).toContain(other);
+  }
+);
