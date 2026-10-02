@@ -20,7 +20,8 @@ const {
   interestTopics: INTEREST_TOPICS,
 } = activePack.content;
 import { recordEvent } from '../lib/stats';
-import { newConversationId, windowHistory } from '../lib/aiHistory';
+import { newConversationId, windowHistory, loadConversation } from '../lib/aiHistory';
+import { parseReply, errorReply, assistantTurn, toHistory, rowsToThread } from '../lib/chatThread';
 import { useAiHistoryEnabled } from '../lib/useAiHistoryEnabled';
 import WelcomeBanner from './chat/WelcomeBanner';
 import ScenarioPicker from './chat/ScenarioPicker';
@@ -28,39 +29,13 @@ import TaskPanel from './chat/TaskPanel';
 import MessageList from './chat/MessageList';
 import QuotaNote from './chat/QuotaNote';
 import Composer from './chat/Composer';
+import HistoryPanel from './chat/HistoryPanel';
 
 const WELCOME_KEY = 'deutsch-welcome-dismissed';
 
 // Pack field `de` is the surface form (recorded AGENTS.md exception). The
 // engine never reads it; this callback is how Chat resolves card ids.
 const termOf = (card) => card.de;
-
-// The reply as the JSON object the prompt contracts for, fenced or not.
-const parseReply = (raw) => JSON.parse(raw.replace(/```json|```/g, '').trim());
-
-const errorReply = (err) => ({
-  role: 'assistant',
-  de: 'Entschuldigung, ein Fehler.',
-  ipa: '[ɛntˈʃʊldɪɡʊŋ aɪ̯n ˈfeːlɐ]',
-  en: 'Sorry — ' + err.message,
-});
-
-const assistantTurn = (parsed) => ({
-  role: 'assistant',
-  de: parsed.de,
-  ipa: parsed.ipa,
-  en: parsed.en,
-  next: parsed.next,
-});
-
-// What the model sees of a turn. Its own replies go back as the JSON it wrote,
-// `next` included, so every example in its context keeps the full contract
-// and it does not learn to drop the suggestion.
-const toHistory = (m) => ({
-  role: m.role,
-  content:
-    m.role === 'user' ? m.de : JSON.stringify({ de: m.de, ipa: m.ipa, en: m.en, next: m.next }),
-});
 
 export default function ChatTab({
   mobile = false,
@@ -131,6 +106,11 @@ export default function ChatTab({
   // One id per scene, minted when the scene opens and sent only while saving
   // is on. A new scene is a new conversation.
   const conversationIdRef = useRef(null);
+  // A conversation picked in History while another scene is open: the scene
+  // change re-opens a scene, and openScene restores this instead of calling AI.
+  const resumeRef = useRef(null);
+  // 'saved' | 'unsaved' | null: what the server said about the last turn.
+  const [saveNote, setSaveNote] = useState(null);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
   // Bumped whenever a scene (re)opens. A reply that comes back carrying an
@@ -168,10 +148,13 @@ export default function ChatTab({
   const callOptions = { routingContext, level: chatLevel, vocab };
   // Asks the server to keep this turn. Consent is checked again server-side;
   // this only decides whether to ask. Never for a guest or an opted-out learner.
-  const conversationFor = (kickoff) =>
+  const savingOptions = (kickoff) =>
     savedHistory.enabled && conversationIdRef.current
-      ? { id: conversationIdRef.current, scenario, kickoff }
-      : undefined;
+      ? {
+          conversation: { id: conversationIdRef.current, scenario, kickoff },
+          onSaved: (saved) => setSaveNote(saved ? 'saved' : 'unsaved'),
+        }
+      : {};
 
   const systemPromptFor = (task) =>
     chatSystemPrompt({
@@ -186,9 +169,55 @@ export default function ChatTab({
       interestHints,
     });
 
+  // Puts a saved conversation back on screen. It keeps its id, so the next
+  // turn is appended to it; bumping sceneRef drops any reply still in flight
+  // for the scene it replaces.
+  const applyResume = ({ id, thread }) => {
+    sceneRef.current += 1;
+    conversationIdRef.current = id;
+    setMessages(thread);
+    setScaffold(parseScaffold(thread.at(-1)?.next));
+    setProgression({ stage: startingStage(chatLevel), streak: 0, moved: null });
+    setOpenerFailed(false);
+    setQuotaError(null);
+    setSaveNote(null);
+    setThinking(false);
+  };
+
+  // History's Continue. Resolves { ok } so the panel can say when it could not.
+  const continueConversation = async (row) => {
+    let thread;
+    try {
+      thread = rowsToThread(await loadConversation(row.id));
+    } catch {
+      return { ok: false };
+    }
+    if (thread.length === 0) return { ok: false };
+    const pending = { id: row.id, thread };
+    if (row.scenario_id === scenario) {
+      applyResume(pending);
+    } else {
+      resumeRef.current = pending;
+      setScenario(row.scenario_id);
+    }
+    return { ok: true };
+  };
+
+  // A conversation the learner deleted stays deleted: if it is the one on
+  // screen, the next turn starts a new conversation instead of recreating it.
+  const handleDeleted = (id) => {
+    if (id === conversationIdRef.current) conversationIdRef.current = newConversationId();
+  };
+
   // The AI speaks first, in character. The hidden kickoff gives it a user turn
   // to answer and stays in history, so the model always sees its own opener.
   const openScene = async () => {
+    if (resumeRef.current) {
+      const pending = resumeRef.current;
+      resumeRef.current = null;
+      applyResume(pending);
+      return;
+    }
     const id = ++sceneRef.current;
     conversationIdRef.current = newConversationId();
     const kickoff = { role: 'user', de: chatKickoffMessage(), hidden: true };
@@ -197,13 +226,14 @@ export default function ChatTab({
     setProgression({ stage: startingStage(chatLevel), streak: 0, moved: null });
     setOpenerFailed(false);
     setQuotaError(null);
+    setSaveNote(null);
     setThinking(true);
     try {
       // tasks[0]: a scene opens on its first task. taskIdx can still hold the
       // previous scenario's index until the reset effect's update lands.
       const raw = await callClaude(systemPromptFor(tasks[0]), kickoff.de, [], {
         ...callOptions,
-        conversation: conversationFor(true),
+        ...savingOptions(true),
       });
       if (id !== sceneRef.current) return;
       const parsed = parseReply(raw);
@@ -272,7 +302,7 @@ export default function ChatTab({
     try {
       const raw = await callClaude(systemPromptFor(currentTask), text, history, {
         ...callOptions,
-        conversation: conversationFor(false),
+        ...savingOptions(false),
       });
       if (id !== sceneRef.current) return;
       const parsed = parseReply(raw);
@@ -325,6 +355,17 @@ export default function ChatTab({
     />
   );
 
+  const historyPanel = (
+    <HistoryPanel
+      user={user}
+      scenarios={SCENARIOS}
+      continuableIds={visibleScenarios.map((x) => x.id)}
+      onContinue={continueConversation}
+      onDeleted={handleDeleted}
+      onSignIn={onSignIn}
+    />
+  );
+
   return (
     <>
       {welcomeVisible && <WelcomeBanner mobile={mobile} onDismiss={dismissWelcome} />}
@@ -367,6 +408,7 @@ export default function ChatTab({
           )}
 
           {!stacked && <div style={{ marginTop: SPACE[5] }}>{modelControl}</div>}
+          {!stacked && <div style={{ marginTop: SPACE[5] }}>{historyPanel}</div>}
         </aside>
 
         <div
@@ -389,6 +431,21 @@ export default function ChatTab({
             speaker={scene?.role?.name}
           />
 
+          {savedHistory.enabled && (
+            <div
+              role="status"
+              style={{
+                padding: saveNote ? `0 ${SPACE[4]}px ${SPACE[2]}px` : 0,
+                background: COLORS.surface,
+                fontFamily: FONT_BODY,
+                fontSize: FONT_SIZE.sm,
+                color: COLORS.mute,
+              }}
+            >
+              {saveNote === 'saved' && 'Saved'}
+              {saveNote === 'unsaved' && 'Not saved — this turn is not in your history.'}
+            </div>
+          )}
           {quotaError && <QuotaNote error={quotaError} onSignIn={onSignIn} />}
           {openerFailed && !thinking && (
             <div style={{ padding: `0 ${SPACE[4]}px ${SPACE[3]}px`, background: COLORS.surface }}>
@@ -432,6 +489,7 @@ export default function ChatTab({
             screen, and a model chip above it would push the first message
             down for a setting nobody opens mid-sentence. */}
         {stacked && <div style={{ minWidth: 0 }}>{modelControl}</div>}
+        {stacked && <div style={{ minWidth: 0 }}>{historyPanel}</div>}
       </div>
     </>
   );
