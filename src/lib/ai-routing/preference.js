@@ -5,6 +5,7 @@
 // tier ceiling allows, otherwise it falls back to the automatic pick.
 
 import { MODELS, TIERS, DEFAULT_TIER } from './catalog.js';
+import { getAccessTier } from '../accessTier.js';
 
 export const AUTO_MODEL = 'auto';
 
@@ -29,8 +30,8 @@ export function sanitizePreferredModel(raw) {
 }
 
 /**
- * Cost-cap tier for the current session. Signed-in is 'free'; nobody is
- * billed as 'pro' yet. Unknown / missing user → guest (fail cheap).
+ * Cost-cap tier for the current session. Signed-in is 'free'; 'pro' only when
+ * the server says Premium (a hint — the AI lane re-decides on every call). Unknown / missing user → guest (fail cheap).
  *
  * @param {unknown} user
  * @returns {'guest' | 'free' | 'pro'}
@@ -38,7 +39,7 @@ export function sanitizePreferredModel(raw) {
 export function userTierOf(user) {
   if (!user || typeof user !== 'object' || Array.isArray(user)) return DEFAULT_TIER;
   if (typeof user.id !== 'string' || !user.id) return DEFAULT_TIER;
-  if (user.tier === 'pro' || user.plan === 'pro') return 'pro';
+  if (getAccessTier() === 'premium') return 'pro';
   return 'free';
 }
 

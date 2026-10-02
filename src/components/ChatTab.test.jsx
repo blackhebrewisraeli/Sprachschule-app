@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import ChatTab from './ChatTab';
 import { callClaude, QuotaExhaustedError } from '../lib/claude';
 import { speak } from '../lib/speech';
+import { setAccessTier } from '../lib/accessTier';
 import { setUserLevel } from '../lib/levelPref';
 import { chatKickoffMessage, CHAT_IMPROV } from '../lib/prompts';
 import { activePack } from '../packs';
@@ -269,12 +270,19 @@ describe('ChatTab scene opener', () => {
     ],
     [
       'a pro learner on Balanced',
-      { user: { id: 'u1', plan: 'pro' }, preferredModel: 'balanced' },
+      { user: { id: 'u1' }, preferredModel: 'balanced', accessTier: 'premium' },
       'balanced',
     ],
   ])('uses the register of the model that will answer: %s', async (_, props, profile) => {
-    await renderChat(<ChatTab {...props} />);
-    expect(callClaude.mock.calls[0][0]).toContain(CHAT_IMPROV[profile]);
+    // Pro comes from the server's entitlement, never from a flag on `user`.
+    const { accessTier = null, ...chatProps } = props;
+    setAccessTier(accessTier);
+    try {
+      await renderChat(<ChatTab {...chatProps} />);
+      expect(callClaude.mock.calls[0][0]).toContain(CHAT_IMPROV[profile]);
+    } finally {
+      setAccessTier(null);
+    }
   });
 });
 
