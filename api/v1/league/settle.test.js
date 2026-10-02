@@ -227,3 +227,29 @@ it('settles a full 25-member cohort in at most two round trips', async () => {
   // One read of the member set, one write of the whole ranking.
   expect(memberTrips).toBeLessThanOrEqual(2);
 });
+
+it('?job=purge sweeps AI usage and never touches leagues', async () => {
+  const db = {
+    from: vi.fn(),
+    rpc: vi.fn().mockResolvedValue({ data: { usage: 7, grants: 1 }, error: null }),
+  };
+  serviceClient.mockReturnValue(db);
+  const res = createRes();
+  await handler({ ...req('secret', 'GET'), query: { job: 'purge' } }, res);
+  expect(res.statusCode).toBe(200);
+  expect(res.body).toEqual({ purged: { usage: 7, grants: 1 } });
+  expect(db.rpc).toHaveBeenCalledExactlyOnceWith('purge_ai_usage');
+  expect(db.from).not.toHaveBeenCalled();
+});
+
+it('?job=purge needs the cron secret and reports a failed sweep as 500', async () => {
+  const db = { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'boom' } }) };
+  serviceClient.mockReturnValue(db);
+  const denied = createRes();
+  await handler({ ...req('wrong', 'GET'), query: { job: 'purge' } }, denied);
+  expect(denied.statusCode).toBe(401);
+  expect(db.rpc).not.toHaveBeenCalled();
+  const failed = createRes();
+  await handler({ ...req('secret', 'GET'), query: { job: 'purge' } }, failed);
+  expect(failed.statusCode).toBe(500);
+});
