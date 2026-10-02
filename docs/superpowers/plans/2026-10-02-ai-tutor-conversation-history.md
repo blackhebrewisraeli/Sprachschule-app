@@ -176,8 +176,14 @@ Files:
   `deleteConversation`, `deleteAllConversations`, over `getSupabase()`
 - Modify: `src/lib/claude.js` (+ test): send `conversation: {id, scenario, kickoff}`
   only when enabled; read `X-Conversation-Saved`
-- Modify: `src/lib/sync/adapters.js`, `src/lib/sync.js` (+ tests): carry
-  `ai_history_enabled` as its **own column**, never inside `data`
+- Create: `src/lib/useAiHistoryEnabled.js`, `src/components/settings/TutorHistorySection.jsx`.
+  **Deviation from the first draft:** the consent flag is read and written
+  **directly to the server** (`settings.ai_history_enabled`, upsert naming only
+  `user_id` and the flag), not carried through the local-first settings sync.
+  It is account-level consent the server re-checks on every write, so a
+  last-write-wins merge should not decide it; this also needs no change to
+  `sync.js` or `adapters.js`. The toggle is shown only when the build flag
+  `VITE_AI_HISTORY_ENABLED=true` (build-time, like `VITE_PUSH_ENABLED`)
 - Modify: `src/components/chat/Composer.jsx`: `maxLength={2000}`
 - Modify: the Settings → Account controls component: the toggle and the
   "also delete saved conversations?" dialog
@@ -193,8 +199,9 @@ Files:
 - [ ] **Step 3 —** The **context window** is measured against shadow-week token
       numbers before merge; if the owner prefers no window, drop that sub-step and
       keep the 50-message cap as the only bound.
-- [ ] **Step 4 — PR.** The toggle is hidden unless history is available, so an
-      `off` environment never shows a dead control.
+- [ ] **Step 4 — PR.** The toggle is hidden unless `VITE_AI_HISTORY_ENABLED` is
+      `true`, so an off build never shows a dead control. **H7 must set it, and
+      redeploy, alongside `AI_HISTORY_MODE=on`.**
 
 ---
 
@@ -222,7 +229,7 @@ Files: `src/components/chat/HistoryDrawer.jsx` (+ test), `ChatTab.jsx`,
 - [ ] H1 applied and verified (spec §16 steps 1–2); Supabase plan ceiling checked.
 - [ ] H2–H6 merged; the daily purge response shows `conversations` and `messages`.
 - [ ] H4 merged; store privacy forms updated.
-- [ ] Set `AI_HISTORY_MODE=on` in Vercel Production; redeploy.
+- [ ] Set `AI_HISTORY_MODE=on` **and** `VITE_AI_HISTORY_ENABLED=true` in Vercel Production; redeploy (the second is build-time).
 - [ ] Smoke test with a throwaway account: opt in, chat, reopen on a second
       browser, delete one, delete all, export, delete account; confirm zero rows.
 - [ ] First month: watch `pg_total_relation_size('public.ai_messages')`.

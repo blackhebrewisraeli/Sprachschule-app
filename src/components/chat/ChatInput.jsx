@@ -1,6 +1,7 @@
 import { Mic, MicOff, LayoutGrid } from 'lucide-react';
 import { COLORS, FONT_BODY, RADIUS, SHADOW } from '../../lib/theme';
 import SendButton from './SendButton';
+import { MAX_USER_CHARS } from '../../lib/aiHistory';
 
 // Bottom input bar: mic toggle, text field, send button.
 // All behavior (speech recognition, sending) lives in the parent and is passed
@@ -73,6 +74,7 @@ export default function ChatInput({
       )}
       <input
         aria-label="Chat message in German"
+        maxLength={MAX_USER_CHARS}
         value={input}
         onChange={(e) => setInput(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && onSend()}

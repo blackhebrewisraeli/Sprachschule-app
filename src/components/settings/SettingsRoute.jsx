@@ -16,11 +16,13 @@ import EmailSection from './EmailSection';
 import ProfileSection from './ProfileSection';
 import OfflineCacheSection from './OfflineCacheSection';
 import NotificationsSection from './NotificationsSection';
+import TutorHistorySection from './TutorHistorySection';
 import InterestPicker from './InterestPicker';
 import ModelPicker from '../ModelPicker';
 import FeedbackDialog from '../FeedbackDialog';
 import { replayTutorial } from '../../lib/tutorialPref';
 import { isPushAvailable } from '../../lib/pushNotifications';
+import { isAiHistoryConfigured } from '../../lib/aiHistory';
 import { userTierOf } from '../../lib/ai-routing/preference.js';
 import { getThemeModeForUI, setThemePreference } from '../../lib/themeMode';
 import { isAuthConfigured } from '../../lib/auth.js';
@@ -163,6 +165,13 @@ export default function SettingsRoute({
                   <Subsection title="Email">
                     <EmailSection user={user} onToast={onToast} onReauth={onSignIn} />
                   </Subsection>
+
+                  {/* Dark until VITE_AI_HISTORY_ENABLED is set; signed-in only. */}
+                  {isAiHistoryConfigured() && (
+                    <Subsection title="Tutor conversations">
+                      <TutorHistorySection userId={user.id} onToast={onToast} />
+                    </Subsection>
+                  )}
                 </>
               ) : (
                 // A guest has no row to write. This used to render the whole

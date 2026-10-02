@@ -20,6 +20,8 @@ const {
   interestTopics: INTEREST_TOPICS,
 } = activePack.content;
 import { recordEvent } from '../lib/stats';
+import { newConversationId, windowHistory } from '../lib/aiHistory';
+import { useAiHistoryEnabled } from '../lib/useAiHistoryEnabled';
 import WelcomeBanner from './chat/WelcomeBanner';
 import ScenarioPicker from './chat/ScenarioPicker';
 import TaskPanel from './chat/TaskPanel';
@@ -125,6 +127,10 @@ export default function ChatTab({
     }
     setWelcomeVisible(false);
   };
+  const savedHistory = useAiHistoryEnabled(user?.id);
+  // One id per scene, minted when the scene opens and sent only while saving
+  // is on. A new scene is a new conversation.
+  const conversationIdRef = useRef(null);
   const recognitionRef = useRef(null);
   const messagesEndRef = useRef(null);
   // Bumped whenever a scene (re)opens. A reply that comes back carrying an
@@ -160,6 +166,12 @@ export default function ChatTab({
   // the plan falls back — so the prompt's improv register matches it.
   const { profile } = routeAiRequest(routingContext);
   const callOptions = { routingContext, level: chatLevel, vocab };
+  // Asks the server to keep this turn. Consent is checked again server-side;
+  // this only decides whether to ask. Never for a guest or an opted-out learner.
+  const conversationFor = (kickoff) =>
+    savedHistory.enabled && conversationIdRef.current
+      ? { id: conversationIdRef.current, scenario, kickoff }
+      : undefined;
 
   const systemPromptFor = (task) =>
     chatSystemPrompt({
@@ -178,6 +190,7 @@ export default function ChatTab({
   // to answer and stays in history, so the model always sees its own opener.
   const openScene = async () => {
     const id = ++sceneRef.current;
+    conversationIdRef.current = newConversationId();
     const kickoff = { role: 'user', de: chatKickoffMessage(), hidden: true };
     setMessages([kickoff]);
     setScaffold(null);
@@ -188,7 +201,10 @@ export default function ChatTab({
     try {
       // tasks[0]: a scene opens on its first task. taskIdx can still hold the
       // previous scenario's index until the reset effect's update lands.
-      const raw = await callClaude(systemPromptFor(tasks[0]), kickoff.de, [], callOptions);
+      const raw = await callClaude(systemPromptFor(tasks[0]), kickoff.de, [], {
+        ...callOptions,
+        conversation: conversationFor(true),
+      });
       if (id !== sceneRef.current) return;
       const parsed = parseReply(raw);
       setMessages([kickoff, assistantTurn(parsed)]);
@@ -245,7 +261,8 @@ export default function ChatTab({
     const text = overrideText ?? input;
     if (!text.trim() || thinking) return;
     const id = sceneRef.current;
-    const history = messages.map(toHistory);
+    // Only the recent turns go to the model, however long the thread is.
+    const history = windowHistory(messages.map(toHistory));
     setMessages((m) => [...m, { role: 'user', de: text }]);
     setInput('');
     setOpenerFailed(false);
@@ -253,7 +270,10 @@ export default function ChatTab({
     setThinking(true);
 
     try {
-      const raw = await callClaude(systemPromptFor(currentTask), text, history, callOptions);
+      const raw = await callClaude(systemPromptFor(currentTask), text, history, {
+        ...callOptions,
+        conversation: conversationFor(false),
+      });
       if (id !== sceneRef.current) return;
       const parsed = parseReply(raw);
       setMessages((m) => {

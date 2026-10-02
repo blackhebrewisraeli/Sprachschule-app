@@ -261,4 +261,41 @@ describe('callClaude', () => {
       tier: 'free',
     });
   });
+
+  describe('saved conversations', () => {
+    const conversation = {
+      id: '11111111-1111-4111-8111-111111111111',
+      scenario: 'cafe',
+      kickoff: false,
+    };
+
+    it('sends the conversation block on chat only', async () => {
+      await callClaude('sys', 'hi', [], { conversation });
+      expect(postedBody().conversation).toEqual(conversation);
+      await callClaude('sys', 'hi', [], { endpoint: 'grade', conversation });
+      expect(postedBody().conversation).toBeUndefined();
+    });
+
+    it('sends nothing when there is no conversation (guest or opted out)', async () => {
+      await callClaude('sys', 'hi');
+      expect('conversation' in postedBody()).toBe(false);
+    });
+
+    it('reports whether the server kept the turn, only when it said so', async () => {
+      const onSaved = vi.fn();
+      const answer = (saved) =>
+        fetch.mockResolvedValueOnce({
+          ok: true,
+          headers: { get: (h) => (h === 'X-Conversation-Saved' ? saved : null) },
+          json: () => Promise.resolve({ content: [{ type: 'text', text: 'x' }] }),
+        });
+      answer('1');
+      await callClaude('sys', 'hi', [], { conversation, onSaved });
+      answer('0');
+      await callClaude('sys', 'hi', [], { conversation, onSaved });
+      answer(null);
+      await callClaude('sys', 'hi', [], { conversation, onSaved });
+      expect(onSaved.mock.calls).toEqual([[true], [false]]);
+    });
+  });
 });
