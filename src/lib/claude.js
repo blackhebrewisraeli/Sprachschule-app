@@ -10,6 +10,9 @@
 // leave the automatic pick. The POST still sends a catalog model id — never
 // a vendor key.
 //
+// `conversation` ({ id, scenario, kickoff }) asks the server to keep a signed-in,
+// opted-in learner's turn; `onSaved(boolean)` reports whether it did.
+//
 // A signed-in learner's calls carry their session token so the server can
 // identify them; a guest's carry none (spec §6.3, authedFetch optional mode).
 
@@ -53,7 +56,7 @@ export const callClaude = async (
   systemPrompt,
   userMessage,
   conversationHistory = [],
-  { endpoint = 'chat', routingContext, level, vocab, onQuota } = {}
+  { endpoint = 'chat', routingContext, level, vocab, conversation, onQuota, onSaved } = {}
 ) => {
   const messages = [...conversationHistory, { role: 'user', content: userMessage }];
   const { model, maxTokens } = routeAiRequest(routingContextFor(routingContext));
@@ -70,6 +73,9 @@ export const callClaude = async (
   if (endpoint === 'chat') {
     if (level != null) body.level = level;
     if (Array.isArray(vocab)) body.vocab = vocab;
+    // Opt-in saved conversations: the caller only passes this for a signed-in,
+    // opted-in learner. The server re-checks consent and whether to keep it.
+    if (conversation && typeof conversation === 'object') body.conversation = conversation;
   }
 
   const response = await authedFetch(
@@ -103,6 +109,10 @@ export const callClaude = async (
       tier: response.headers.get('X-Quota-Tier'),
     });
   }
+
+  // Present only when the request asked to save: '1' kept, '0' not kept.
+  const saved = response.headers?.get('X-Conversation-Saved');
+  if (saved != null && typeof onSaved === 'function') onSaved(saved === '1');
 
   const data = await response.json();
   return data.content

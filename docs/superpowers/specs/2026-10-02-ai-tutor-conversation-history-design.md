@@ -535,7 +535,7 @@ Agents do not do these (AGENTS.md; `.mcp.json` points at production).
 3. **After H2/H3 deploy** with `AI_HISTORY_MODE` unset (inert): confirm the daily
    purge response now reports `conversations` and `messages`.
 4. **After H4 (legal copy) merges:** update the store privacy forms.
-5. **Release:** set `AI_HISTORY_MODE=on` in Vercel Production, redeploy. Roll back
+5. **Release:** set `AI_HISTORY_MODE=on` **and** `VITE_AI_HISTORY_ENABLED=true` in Vercel Production, redeploy (the second is baked in at build time). Roll back
    by setting it to `off`.
 
 ---
