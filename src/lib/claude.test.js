@@ -8,7 +8,7 @@ vi.mock('./auth.js', () => ({
   mayHaveSession: () => authMock.maySession,
 }));
 
-import { callClaude } from './claude';
+import { callClaude, QuotaExhaustedError } from './claude';
 import { MODELS, TASKS, COMPLEXITY_BUMP_AT } from './ai-routing/catalog.js';
 
 function postedBody() {
@@ -206,5 +206,59 @@ describe('callClaude', () => {
     });
 
     await expect(callClaude('sys', 'user')).rejects.toThrow('API call failed (500): {}');
+  });
+
+  it('throws QuotaExhaustedError with the server details on quota_exhausted', async () => {
+    fetch.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'quota_exhausted',
+            message: 'Daily AI limit reached.',
+            meter: 'chat',
+            tier: 'free',
+            limit: 20,
+            used: 20,
+            resetsAt: '2026-10-02T00:00:00.000Z',
+            rewardedEligible: true,
+          },
+        }),
+        { status: 429 }
+      )
+    );
+    const err = await callClaude('s', 'u').catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaExhaustedError);
+    expect(err).toMatchObject({ meter: 'chat', limit: 20, rewardedEligible: true });
+  });
+
+  it('a burst 429 (rate_limited) stays a plain Error', async () => {
+    fetch.mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'rate_limited', message: 'slow' } }), {
+        status: 429,
+      })
+    );
+    expect(await callClaude('s', 'u').catch((e) => e)).not.toBeInstanceOf(QuotaExhaustedError);
+  });
+
+  it('reports quota headers through onQuota', async () => {
+    const onQuota = vi.fn();
+    fetch.mockResolvedValue(
+      new Response(JSON.stringify({ content: [{ type: 'text', text: 'hi' }] }), {
+        status: 200,
+        headers: {
+          'X-Quota-Limit': '20',
+          'X-Quota-Used': '4',
+          'X-Quota-Reset': '2026-10-02T00:00:00.000Z',
+          'X-Quota-Tier': 'free',
+        },
+      })
+    );
+    await callClaude('s', 'u', [], { onQuota });
+    expect(onQuota).toHaveBeenCalledWith({
+      limit: 20,
+      used: 4,
+      resetsAt: '2026-10-02T00:00:00.000Z',
+      tier: 'free',
+    });
   });
 });

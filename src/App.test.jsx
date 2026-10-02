@@ -28,7 +28,7 @@ vi.mock('@capacitor/splash-screen', () => ({ SplashScreen: { hide: async () => {
 
 // Lets the App-level tests drive a real deck generation without a network call.
 const callClaude = vi.hoisted(() => vi.fn());
-vi.mock('./lib/claude', () => ({ callClaude }));
+vi.mock('./lib/claude', async (importActual) => ({ ...(await importActual()), callClaude }));
 
 /**
  * Mark the first-run walkthrough as already seen.
