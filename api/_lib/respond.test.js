@@ -30,6 +30,7 @@ describe('sendError', () => {
       signup_not_allowed: 403,
       method_not_allowed: 405,
       rate_limited: 429,
+      quota_exhausted: 429,
       upstream_error: 502,
       server_error: 500,
     });
@@ -67,5 +68,25 @@ describe('sendError', () => {
     sendError(res, 'rate_limited', 'slow down', { 'Retry-After': '42' });
     expect(res.statusCode).toBe(429);
     expect(res.headers['Retry-After']).toBe('42');
+  });
+
+  it('quota_exhausted is a 429 carrying details', () => {
+    const res = createRes();
+    sendError(res, 'quota_exhausted', 'Daily AI limit reached.', {}, { meter: 'chat', limit: 20 });
+    expect(res.statusCode).toBe(429);
+    expect(res.body).toEqual({
+      error: {
+        code: 'quota_exhausted',
+        message: 'Daily AI limit reached.',
+        meter: 'chat',
+        limit: 20,
+      },
+    });
+  });
+
+  it('details cannot overwrite code or message', () => {
+    const res = createRes();
+    sendError(res, 'bad_request', 'x', {}, { code: 'forged', message: 'forged' });
+    expect(res.body).toEqual({ error: { code: 'bad_request', message: 'x' } });
   });
 });

@@ -60,7 +60,9 @@ describe('withCors', () => {
     expect(inner).toHaveBeenCalledOnce();
     expect(res.statusCode).toBe(200);
     expect(res.headers['Access-Control-Allow-Origin']).toBe('https://localhost');
-    expect(res.headers['Access-Control-Expose-Headers']).toBe('Retry-After');
+    const exposed = res.headers['Access-Control-Expose-Headers'];
+    expect(exposed).toContain('Retry-After');
+    expect(exposed).toContain('X-Quota-Reset');
   });
 
   it('grants nothing to any other origin, preflight included', async () => {
