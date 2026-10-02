@@ -91,6 +91,46 @@ Constraints (requests violating any → `400 bad_request`):
 unchanged. Non-2xx: see the envelope table in `README.md`; upstream errors pass
 through with their status.
 
+## Quotas
+
+Each endpoint draws on a daily allowance per meter (`chat`, `deck`, `grade`)
+that resets at 00:00 UTC. `AI_QUOTA_MODE` selects the behaviour:
+
+| Mode      | Behaviour                                                     |
+| --------- | ------------------------------------------------------------- |
+| `off`     | Default when unset. No metering, no quota headers.            |
+| `shadow`  | Metered and logged (`quota_would_deny`), never denied.        |
+| `enforce` | Over-limit requests are denied. `AI_GUEST_ENABLED=false` too. |
+
+A chat turn costs 1, 2 or 4 units by model weight. The requested model is
+clamped to the tier the server resolves, and the units are re-priced to match.
+A provider failure or non-2xx refunds the units; cost is recorded on 2xx only.
+
+**Denial** — HTTP 429, no upstream call:
+
+```json
+{
+  "error": {
+    "code": "quota_exhausted",
+    "message": "Daily AI limit reached.",
+    "meter": "chat",
+    "tier": "free",
+    "limit": 20,
+    "used": 20,
+    "resetsAt": "2026-10-03T00:00:00.000Z",
+    "rewardedEligible": true
+  }
+}
+```
+
+`quota_exhausted` is distinct from `rate_limited` (burst flood control, carries
+`Retry-After`). Messages vary by cause: daily limit, shared pool, or guests
+paused.
+
+**Headers** on every non-denied response when metering is on:
+`X-Quota-Limit`, `X-Quota-Used`, `X-Quota-Reset` (ISO UTC), `X-Quota-Tier`.
+Native origins can read them cross-origin.
+
 ## Legacy alias
 
 `POST /api/chat` → same handler as `/api/v1/ai/chat`, through a `vercel.json`
