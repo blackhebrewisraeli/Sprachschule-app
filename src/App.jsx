@@ -76,6 +76,7 @@ const SETTINGS_HASH = '#/settings';
 const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
 import { fetchMyProfile } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
+import { useEntitlement } from './lib/useEntitlement';
 import ChatTab from './components/ChatTab';
 import AlphabetTab from './components/AlphabetTab';
 import VocabTab from './components/VocabTab';
@@ -1159,6 +1160,16 @@ export default function App() {
   });
   // Server-held balance; each completed quest pays once (see useTokenBalance).
   const tokens = useTokenBalance({ userId: user?.id, quests, todayKey: todayKey() });
+  // The server's tier, a hint for the model picker. Re-read when the app comes
+  // back to the foreground: a purchase or grant lands while it is backgrounded.
+  const { refresh: refreshEntitlement } = useEntitlement({ userId: user?.id });
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refreshEntitlement();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [refreshEntitlement]);
 
   const settingsPanel = (
     <SettingsRoute

@@ -55,6 +55,15 @@ describe('clearUserLocalState', () => {
     expect(localStorage.getItem(THEME_MODE_KEY)).toBe('light');
   });
 
+  it('sweeps the cached entitlement tier on sign-out', () => {
+    localStorage.setItem(
+      'deutsch-app-entitlement-v1',
+      JSON.stringify({ userId: 'u1', tier: 'premium', at: Date.now() })
+    );
+    clearUserLocalState();
+    expect(localStorage.getItem('deutsch-app-entitlement-v1')).toBeNull();
+  });
+
   it('leaves theme unset when it was never stored', () => {
     localStorage.setItem(STATE_KEY, '{"stats":{}}');
     clearUserLocalState();

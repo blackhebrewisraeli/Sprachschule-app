@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { setAccessTier } from '../accessTier.js';
 import { MODELS, DEFAULT_TIER } from './catalog.js';
 import {
   AUTO_MODEL,
@@ -38,6 +39,8 @@ describe('sanitizePreferredModel', () => {
 });
 
 describe('userTierOf', () => {
+  beforeEach(() => setAccessTier(null));
+
   it('treats a missing user as guest', () => {
     expect(userTierOf(undefined)).toBe(DEFAULT_TIER);
     expect(userTierOf(null)).toBe(DEFAULT_TIER);
@@ -55,10 +58,18 @@ describe('userTierOf', () => {
     expect(userTierOf({ id: 'u1', role: 'admin' })).toBe('free');
   });
 
-  it('reserves pro for an explicit plan/tier flag', () => {
-    expect(userTierOf({ id: 'u1', plan: 'pro' })).toBe('pro');
-    expect(userTierOf({ id: 'u1', tier: 'pro' })).toBe('pro');
-    expect(userTierOf({ id: 'u1', plan: 'free' })).toBe('free');
+  it('pro only when the server tier is premium', () => {
+    setAccessTier('premium');
+    expect(userTierOf({ id: 'u1' })).toBe('pro');
+    setAccessTier('free');
+    expect(userTierOf({ id: 'u1' })).toBe('free');
+    setAccessTier('premium');
+    expect(userTierOf(null)).toBe('guest');
+  });
+
+  it('ignores a forged user.plan', () => {
+    setAccessTier('free');
+    expect(userTierOf({ id: 'u1', plan: 'pro', tier: 'pro' })).toBe('free');
   });
 });
 
