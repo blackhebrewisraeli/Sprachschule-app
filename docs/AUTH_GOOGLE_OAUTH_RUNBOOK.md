@@ -81,9 +81,10 @@ window.
 
 ## 3 · Authorized JavaScript origins
 
-Add both:
+Add all three:
 
 - `https://www.sprachschule-app.com` (production)
+- `https://deutsch-app-dusky.vercel.app` (Vercel fallback)
 - `http://localhost:5173` (Vite dev server)
 
 ## 4 · Authorized redirect URI — the step people get wrong
@@ -142,6 +143,7 @@ rather than two.
 **Authentication → URL Configuration → Redirect URLs** must include:
 
 - `https://www.sprachschule-app.com`
+- `https://deutsch-app-dusky.vercel.app`
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
 

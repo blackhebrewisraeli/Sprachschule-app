@@ -35,7 +35,8 @@ com.sprachschule.deutsch://login-callback
 ```
 
 - **Keep every existing entry.** The web still needs
-  `https://www.sprachschule-app.com`, `http://localhost:5173` and
+  `https://www.sprachschule-app.com`, the provider fallback
+  `https://deutsch-app-dusky.vercel.app`, `http://localhost:5173` and
   `http://127.0.0.1:5173`.
 - **Don't change the Site URL.** It stays the production website.
 - **Enter it exactly as shown**, with no trailing slash and no wildcard.
@@ -47,6 +48,7 @@ After the change, the Redirect URLs list should read:
 | Redirect URL                                | Used by              |
 | ------------------------------------------- | -------------------- |
 | `https://www.sprachschule-app.com`          | Web (production)     |
+| `https://deutsch-app-dusky.vercel.app`      | Web (fallback)       |
 | `http://localhost:5173`                     | Local dev            |
 | `http://127.0.0.1:5173`                     | Local dev            |
 | `com.sprachschule.deutsch://login-callback` | **Native app (new)** |

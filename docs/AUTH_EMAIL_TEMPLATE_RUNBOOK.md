@@ -89,7 +89,8 @@ For the **hosted** project, set the same origins (plus production) under
 **Authentication → URL Configuration**:
 
 - Site URL → production origin (`https://www.sprachschule-app.com`)
-- Redirect URLs → production origin, `http://localhost:5173`,
+- Redirect URLs → production origin, the provider fallback
+  `https://deutsch-app-dusky.vercel.app`, `http://localhost:5173`, and
   `http://127.0.0.1:5173` (exact match — no wildcards for the local pair)
 
 `signInWithMagicLink` already passes `emailRedirectTo: window.location.origin`,
