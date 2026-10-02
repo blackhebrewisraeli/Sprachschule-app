@@ -8,7 +8,7 @@
 Android builds — that blends focused practice, deterministic gamification,
 secure cross-device sync, and AI where it genuinely helps.**
 
-[![Live demo](https://img.shields.io/badge/Live_demo-Open_app-D62828?style=for-the-badge)](https://deutsch-app-dusky.vercel.app)
+[![Live demo](https://img.shields.io/badge/Live_demo-Open_app-D62828?style=for-the-badge)](https://www.sprachschule-app.com)
 [![CI](https://img.shields.io/github/actions/workflow/status/blackhebrewisraeli/deutsch-app/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/blackhebrewisraeli/deutsch-app/actions/workflows/ci.yml)
 [![React 18](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Capacitor 8](https://img.shields.io/badge/Capacitor_8-iOS_%2B_Android-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)](https://capacitorjs.com/)
@@ -16,7 +16,7 @@ secure cross-device sync, and AI where it genuinely helps.**
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel)](https://vercel.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-F5C518?style=for-the-badge)](./LICENSE)
 
-[Try the app](https://deutsch-app-dusky.vercel.app) ·
+[Try the app](https://www.sprachschule-app.com) ·
 [Run it locally](#-quick-start) ·
 [See the architecture](#-system-at-a-glance) ·
 [Read the wiki](https://github.com/blackhebrewisraeli/deutsch-app/wiki)
@@ -225,7 +225,7 @@ their attribution are documented in [`CONTENT_LICENSE.md`](./CONTENT_LICENSE.md)
 **Built to help people learn German—and to make the hard parts of frontend
 engineering visible.**
 
-[Launch Deutsch·](https://deutsch-app-dusky.vercel.app) ·
+[Launch Deutsch·](https://www.sprachschule-app.com) ·
 [Back to top](#deutsch--german-practice-with-engineering-depth)
 
 </div>

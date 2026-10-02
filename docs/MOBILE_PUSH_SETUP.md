@@ -242,7 +242,7 @@ your reminder first, and the `only=` test would then report `due: 0`.
      '5 * * * *',
      $$
      select net.http_post(
-       url := 'https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder',
+       url := 'https://www.sprachschule-app.com/api/v1/push/streak-reminder',
        headers := jsonb_build_object(
          'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'push_cron_secret'),
          'Content-Type', 'application/json'
@@ -284,7 +284,7 @@ step 1 only):
 ```bash
 read -s S
 read -s L
-U=https://deutsch-app-dusky.vercel.app/api/v1/push/streak-reminder
+U=https://www.sprachschule-app.com/api/v1/push/streak-reminder
 ```
 
 1. `curl -s -o /dev/null -w '%{http_code}\n' -X POST "$U"` → `401`. Also try

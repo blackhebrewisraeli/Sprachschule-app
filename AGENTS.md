@@ -22,7 +22,9 @@ git-excluded and therefore absent from CI and fresh checkouts.
 **Linked environments:**
 
 - **GitHub:** https://github.com/blackhebrewisraeli/deutsch-app (origin, `main` is protected truth)
-- **Vercel:** auto-deploys `main` via the GitHub integration → https://deutsch-app-dusky.vercel.app
+- **Production:** Vercel auto-deploys `main` via the GitHub integration →
+  https://www.sprachschule-app.com (`deutsch-app-dusky.vercel.app` remains the
+  provider fallback domain)
 - **CI:** `.github/workflows/ci.yml` runs on every push/PR
 - **Local checkout:** `~/Projects/deutsch-app` (the only working copy — do not create others)
 

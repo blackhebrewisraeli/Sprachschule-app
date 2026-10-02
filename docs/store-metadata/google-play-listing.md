@@ -71,9 +71,9 @@ room to speak for yourself.
 ## Store contact fields
 
 - **Support email:** `sprachschule.support@gmail.com`
-- **Website:** `https://deutsch-app-dusky.vercel.app`
-- **Privacy policy:** `https://deutsch-app-dusky.vercel.app/privacy`
-- **Account deletion:** `https://deutsch-app-dusky.vercel.app/delete-account`
+- **Website:** `https://www.sprachschule-app.com`
+- **Privacy policy:** `https://www.sprachschule-app.com/privacy`
+- **Account deletion:** `https://www.sprachschule-app.com/delete-account`
 
 ## Checking the limits
 

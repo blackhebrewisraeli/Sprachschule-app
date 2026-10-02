@@ -57,7 +57,7 @@ mention.
 2. Fill in:
    - **Application name** — `sprachschule-app`. Users see it on the
      authorize screen.
-   - **Homepage URL** — `https://deutsch-app-dusky.vercel.app`
+   - **Homepage URL** — `https://www.sprachschule-app.com`
    - **Authorization callback URL** — exactly this:
 
      ```
@@ -132,7 +132,7 @@ Check the deploy from the origin, not your browser — the service worker keeps
 serving the previous bundle:
 
 ```bash
-curl -s "https://deutsch-app-dusky.vercel.app/?cb=$(date +%s)" | grep -o '/assets/index-[^"]*\.js'
+curl -s "https://www.sprachschule-app.com/?cb=$(date +%s)" | grep -o '/assets/index-[^"]*\.js'
 ```
 
 The hash must change. Do **not** grep the bundle for `Continue with GitHub`

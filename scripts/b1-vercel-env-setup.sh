@@ -23,7 +23,7 @@ TEAM_ID="${VERCEL_TEAM_ID:-team_PEb41JdFtiVB6me1YMSNrpQC}"
 PROJECT_NAME="${VERCEL_PROJECT_NAME:-deutsch-app}"
 PROJECT_ID="${VERCEL_PROJECT_ID:-prj_SXWLzEnoTRHWVgi4Rw0FNyWC7aqu}"
 SUPABASE_URL="${SUPABASE_URL:-https://xcnnlczvxmuwcqwychox.supabase.co}"
-ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://deutsch-app-dusky.vercel.app}"
+ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-https://www.sprachschule-app.com,https://deutsch-app-dusky.vercel.app}"
 
 VERCEL="${VERCEL_CMD:-npx vercel --non-interactive}"
 
@@ -179,7 +179,7 @@ Next:
        SUPABASE_SERVICE_ROLE_KEY=<same value you exported>
 
   2. Redeploy production so functions pick up the new vars:
-       npx vercel redeploy deutsch-app-dusky.vercel.app --target production
+       npx vercel redeploy www.sprachschule-app.com --target production
 
   3. Verify:
        ./scripts/verify-b1-production.sh
@@ -191,5 +191,5 @@ EOF
 
 if [[ "${REDEPLOY:-}" == "1" ]]; then
   echo "→ redeploying production"
-  $VERCEL redeploy deutsch-app-dusky.vercel.app --target production
+  $VERCEL redeploy www.sprachschule-app.com --target production
 fi

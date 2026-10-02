@@ -81,9 +81,10 @@ window.
 
 ## 3 · Authorized JavaScript origins
 
-Add both:
+Add all three:
 
-- `https://deutsch-app-dusky.vercel.app` (production)
+- `https://www.sprachschule-app.com` (production)
+- `https://deutsch-app-dusky.vercel.app` (Vercel fallback)
 - `http://localhost:5173` (Vite dev server)
 
 ## 4 · Authorized redirect URI — the step people get wrong
@@ -141,6 +142,7 @@ rather than two.
 
 **Authentication → URL Configuration → Redirect URLs** must include:
 
+- `https://www.sprachschule-app.com`
 - `https://deutsch-app-dusky.vercel.app`
 - `http://localhost:5173`
 - `http://127.0.0.1:5173`
@@ -173,7 +175,7 @@ To try it locally first: put `VITE_GOOGLE_AUTH_ENABLED=true` in `.env.local`
 > 2026-08-17. Confirm against the served bundle instead:
 >
 > ```bash
-> curl -s "https://deutsch-app-dusky.vercel.app/?cb=$(date +%s)" | grep -o '/assets/index-[^"]*\.js'
+> curl -s "https://www.sprachschule-app.com/?cb=$(date +%s)" | grep -o '/assets/index-[^"]*\.js'
 > ```
 >
 > The hash must change after a redeploy; then fetch that file and grep it for

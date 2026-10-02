@@ -60,8 +60,9 @@ future template change, re-paste via `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`.
 **Redirect URLs — still owner-only / unverified from the repo:**
 
 1. **Authentication → URL Configuration**:
-   - Site URL → `https://deutsch-app-dusky.vercel.app`
-   - Redirect URLs → production origin, `http://localhost:5173`,
+   - Site URL → `https://www.sprachschule-app.com`
+   - Redirect URLs → production origin, provider fallback
+     `https://deutsch-app-dusky.vercel.app`, `http://localhost:5173`, and
      `http://127.0.0.1:5173` (exact match, no wildcards for the local pair)
 
 Send one real magic-link email after any later template paste and confirm

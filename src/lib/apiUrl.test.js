@@ -12,16 +12,16 @@ describe('apiUrl', () => {
   });
 
   it('prefixes the native base, tolerating a trailing slash', () => {
-    vi.stubEnv('VITE_API_BASE_URL', 'https://deutsch-app-dusky.vercel.app/');
-    expect(apiUrl('/api/v1/ai/chat')).toBe('https://deutsch-app-dusky.vercel.app/api/v1/ai/chat');
+    vi.stubEnv('VITE_API_BASE_URL', 'https://www.sprachschule-app.com/');
+    expect(apiUrl('/api/v1/ai/chat')).toBe('https://www.sprachschule-app.com/api/v1/ai/chat');
   });
 
   it.each([
     'https://evil.example',
-    'https://deutsch-app-dusky.vercel.app.evil.example',
-    'https://evil.example@deutsch-app-dusky.vercel.app',
-    'https://deutsch-app-dusky.vercel.app/api',
-    'http://deutsch-app-dusky.vercel.app',
+    'https://www.sprachschule-app.com.evil.example',
+    'https://evil.example@www.sprachschule-app.com',
+    'https://www.sprachschule-app.com/api',
+    'http://www.sprachschule-app.com',
   ])('refuses unapproved native API base %s', (base) => {
     vi.stubEnv('VITE_API_BASE_URL', base);
     expect(() => apiUrl('/api/v1/social')).toThrow(
@@ -37,14 +37,14 @@ describe('apiUrl', () => {
     '',
     undefined,
   ])('refuses %s — the bearer token must never leave our API', (path) => {
-    vi.stubEnv('VITE_API_BASE_URL', 'https://deutsch-app-dusky.vercel.app');
+    vi.stubEnv('VITE_API_BASE_URL', 'https://www.sprachschule-app.com');
     expect(() => apiUrl(path)).toThrow(TypeError);
   });
 
   it('keeps a hostile-looking path on our own host', () => {
-    vi.stubEnv('VITE_API_BASE_URL', 'https://deutsch-app-dusky.vercel.app');
+    vi.stubEnv('VITE_API_BASE_URL', 'https://www.sprachschule-app.com');
     for (const path of ['/api/@evil.example', '/api/..//evil.example', '/api/v1/social?q=//evil']) {
-      expect(new URL(apiUrl(path)).host).toBe('deutsch-app-dusky.vercel.app');
+      expect(new URL(apiUrl(path)).host).toBe('www.sprachschule-app.com');
     }
   });
 });
