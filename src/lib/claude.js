@@ -31,11 +31,29 @@ function routingContextFor(routingContext) {
   return { ...DEFAULT_ROUTING_CONTEXT, ...routingContext };
 }
 
+// The daily product allowance is spent (HTTP 429, code quota_exhausted). Not a
+// failure to retry: callers show the learner when it resets. A burst 429
+// (rate_limited) stays a plain Error.
+export class QuotaExhaustedError extends Error {
+  constructor(detail) {
+    super(detail.message || 'Daily AI limit reached.');
+    this.name = 'QuotaExhaustedError';
+    Object.assign(this, {
+      meter: detail.meter,
+      tier: detail.tier,
+      limit: detail.limit,
+      used: detail.used,
+      resetsAt: detail.resetsAt,
+      rewardedEligible: !!detail.rewardedEligible,
+    });
+  }
+}
+
 export const callClaude = async (
   systemPrompt,
   userMessage,
   conversationHistory = [],
-  { endpoint = 'chat', routingContext, level, vocab } = {}
+  { endpoint = 'chat', routingContext, level, vocab, onQuota } = {}
 ) => {
   const messages = [...conversationHistory, { role: 'user', content: userMessage }];
   const { model, maxTokens } = routeAiRequest(routingContextFor(routingContext));
@@ -66,9 +84,24 @@ export const callClaude = async (
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    if (errorData?.error?.code === 'quota_exhausted') {
+      throw new QuotaExhaustedError(errorData.error);
+    }
     const detail = errorData?.error?.message || JSON.stringify(errorData);
     console.error('Claude API error:', response.status, detail);
     throw new Error(`API call failed (${response.status}): ${detail}`);
+  }
+
+  // Optional chaining: the headers exist only when metering is on, and a few
+  // callers' fetch doubles carry none.
+  const limit = response.headers?.get('X-Quota-Limit');
+  if (limit != null && typeof onQuota === 'function') {
+    onQuota({
+      limit: Number(limit),
+      used: Number(response.headers.get('X-Quota-Used')),
+      resetsAt: response.headers.get('X-Quota-Reset'),
+      tier: response.headers.get('X-Quota-Tier'),
+    });
   }
 
   const data = await response.json();

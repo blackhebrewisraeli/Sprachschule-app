@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { COLORS, FONT_BODY, FONT_SIZE, SPACE, RADIUS } from '../lib/theme';
-import { callClaude } from '../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../lib/claude';
 import { chatSystemPrompt, chatKickoffMessage } from '../lib/prompts';
 import { classifiedLevel } from '../lib/levelGate';
 import { getUserLevel } from '../lib/levelPref';
@@ -24,6 +24,7 @@ import WelcomeBanner from './chat/WelcomeBanner';
 import ScenarioPicker from './chat/ScenarioPicker';
 import TaskPanel from './chat/TaskPanel';
 import MessageList from './chat/MessageList';
+import QuotaNote from './chat/QuotaNote';
 import Composer from './chat/Composer';
 
 const WELCOME_KEY = 'deutsch-welcome-dismissed';
@@ -68,6 +69,7 @@ export default function ChatTab({
   preferredModel = 'auto',
   onPreferredModelChange,
   user = null,
+  onSignIn = null,
 }) {
   // Classified CEFR is the source of truth. A `level` prop (still passed by
   // App for tab-API consistency) cannot raise the band.
@@ -105,6 +107,8 @@ export default function ChatTab({
   }));
   const [scaffold, setScaffold] = useState(null);
   const [openerFailed, setOpenerFailed] = useState(false);
+  // A spent daily allowance is a state of the thread, not a reply in it.
+  const [quotaError, setQuotaError] = useState(null);
   const [tasksCompleted, setTasksCompleted] = useState(false);
   const [welcomeVisible, setWelcomeVisible] = useState(() => {
     try {
@@ -179,6 +183,7 @@ export default function ChatTab({
     setScaffold(null);
     setProgression({ stage: startingStage(chatLevel), streak: 0, moved: null });
     setOpenerFailed(false);
+    setQuotaError(null);
     setThinking(true);
     try {
       // tasks[0]: a scene opens on its first task. taskIdx can still hold the
@@ -190,6 +195,10 @@ export default function ChatTab({
       setScaffold(parseScaffold(parsed.next));
     } catch (err) {
       if (id !== sceneRef.current) return;
+      if (err instanceof QuotaExhaustedError) {
+        setQuotaError(err);
+        return;
+      }
       setMessages([kickoff, errorReply(err)]);
       setOpenerFailed(true);
     } finally {
@@ -240,6 +249,7 @@ export default function ChatTab({
     setMessages((m) => [...m, { role: 'user', de: text }]);
     setInput('');
     setOpenerFailed(false);
+    setQuotaError(null);
     setThinking(true);
 
     try {
@@ -272,6 +282,10 @@ export default function ChatTab({
       }
     } catch (err) {
       if (id !== sceneRef.current) return;
+      if (err instanceof QuotaExhaustedError) {
+        setQuotaError(err);
+        return;
+      }
       setMessages((m) => [...m, errorReply(err)]);
     } finally {
       if (id === sceneRef.current) setThinking(false);
@@ -355,6 +369,7 @@ export default function ChatTab({
             speaker={scene?.role?.name}
           />
 
+          {quotaError && <QuotaNote error={quotaError} onSignIn={onSignIn} />}
           {openerFailed && !thinking && (
             <div style={{ padding: `0 ${SPACE[4]}px ${SPACE[3]}px`, background: COLORS.surface }}>
               <Button variant="secondary" size="sm" onClick={openScene}>

@@ -2,13 +2,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChatTab from './ChatTab';
-import { callClaude } from '../lib/claude';
+import { callClaude, QuotaExhaustedError } from '../lib/claude';
 import { speak } from '../lib/speech';
 import { setUserLevel } from '../lib/levelPref';
 import { chatKickoffMessage, CHAT_IMPROV } from '../lib/prompts';
 import { activePack } from '../packs';
 
-vi.mock('../lib/claude', () => ({
+vi.mock('../lib/claude', async (importActual) => ({
+  ...(await importActual()),
   callClaude: vi.fn(),
 }));
 
@@ -518,5 +519,52 @@ describe('ChatTab conversation-first layout', () => {
     const { container } = await renderChat(<ChatTab wide={false} />);
     const grid = chatLayoutGrid(container);
     expect(grid.style.gridTemplateColumns).toBe('minmax(0, 1fr)');
+  });
+
+  describe('quota denial', () => {
+    const denial = () =>
+      new QuotaExhaustedError({
+        message: 'Daily AI limit reached.',
+        meter: 'chat',
+        tier: 'guest',
+        limit: 10,
+        used: 10,
+        resetsAt: '2026-10-02T00:00:00.000Z',
+        rewardedEligible: false,
+      });
+
+    it('shows the quota note, not the error bubble, and keeps the input usable', async () => {
+      await renderChat();
+      callClaude.mockReset();
+      callClaude.mockRejectedValueOnce(denial());
+      await sendHallo();
+      expect(await screen.findByRole('note')).toHaveTextContent('Daily AI limit reached');
+      expect(screen.queryByText(/Entschuldigung/)).not.toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: 'Chat message in German' })).toBeEnabled();
+    });
+
+    it('offers the guest sign-in through onSignIn', async () => {
+      const onSignIn = vi.fn();
+      await renderChat(<ChatTab onSignIn={onSignIn} />);
+      callClaude.mockReset();
+      callClaude.mockRejectedValueOnce(denial());
+      await sendHallo();
+      await userEvent.click(await screen.findByRole('button', { name: /Create a free account/ }));
+      expect(onSignIn).toHaveBeenCalledOnce();
+    });
+
+    it('clears the note after the next successful send', async () => {
+      await renderChat();
+      callClaude.mockReset();
+      callClaude.mockRejectedValueOnce(denial()).mockResolvedValue(reply);
+      await sendHallo();
+      await screen.findByRole('note');
+      await userEvent.type(
+        screen.getByRole('textbox', { name: 'Chat message in German' }),
+        'Nochmal'
+      );
+      await userEvent.click(screen.getByRole('button', { name: 'Send chat message' }));
+      await waitFor(() => expect(screen.queryByRole('note')).not.toBeInTheDocument());
+    });
   });
 });

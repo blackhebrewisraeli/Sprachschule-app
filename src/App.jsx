@@ -1665,6 +1665,7 @@ export default function App() {
                     preferredModel={preferredModel}
                     onPreferredModelChange={handlePreferredModelChange}
                     user={user}
+                    onSignIn={requestSignIn}
                   />
                 )}
                 {tab === 'alphabet' && (
