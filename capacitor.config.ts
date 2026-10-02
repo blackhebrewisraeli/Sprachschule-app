@@ -3,7 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.sprachschule.deutsch',
-  appName: 'sprachschule-app',
+  appName: 'Deutsch Sprachschule',
   webDir: 'dist',
   plugins: {
     SplashScreen: {
