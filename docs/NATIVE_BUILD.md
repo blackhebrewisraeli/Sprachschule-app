@@ -6,13 +6,13 @@ is not. `ios/App/App/public` and `android/app/src/main/assets/public` are
 gitignored and rebuilt by `npm run build:mobile`, so **every native build starts
 with that command**, on the machine that runs Xcode or Android Studio.
 
-| What              | Value                                                     |
-| ----------------- | --------------------------------------------------------- |
-| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)        |
-| Display name      | `sprachschule-app` (`CFBundleDisplayName` / `app_name`)   |
-| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)               |
-| Android           | minSdk 24 · target/compile 36                             |
-| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio |
+| What              | Value                                                                                                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)                                                                                                                                  |
+| Display name      | `sprachschule-app` (`CFBundleDisplayName` / `app_name`) — **differs from the store name "Deutsch Sprachschule"; see `docs/STORE_SUBMISSION_CHECKLIST.md` blocker matrix, row P1-3** |
+| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                                                                                                                         |
+| Android           | minSdk 24 · target/compile 36                                                                                                                                                       |
+| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio                                                                                                                           |
 
 ## 1. Production env — once per machine
 
@@ -32,7 +32,7 @@ VITE_SUPABASE_ANON_KEY=…
 VITE_SYNC_ENABLED=true
 VITE_LEAGUES_ENABLED=true
 VITE_GOOGLE_AUTH_ENABLED=true
-VITE_GITHUB_AUTH_ENABLED=…   # whatever Production has
+# VITE_GITHUB_AUTH_ENABLED is pinned true by build:mobile (package.json); do not set it here
 # VITE_PUSH_ENABLED is pinned OFF in build:mobile — see docs/MOBILE_PUSH_SETUP.md §4
 VITE_SENTRY_DSN=…            # optional, as Production has them
 VITE_SENTRY_ENVIRONMENT=…

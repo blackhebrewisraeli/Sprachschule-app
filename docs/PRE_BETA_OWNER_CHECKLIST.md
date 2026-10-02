@@ -24,7 +24,7 @@ Only if a leak is confirmed (secret-scanning alert, paste in a ticket, or a
 
 1. Supabase → project **Sprachschule** → **Settings → API Keys**.
 2. Rotate the **secret** / legacy **service_role** key. Do not create a new
-   key *named* `service_role` — that name is reserved.
+   key _named_ `service_role` — that name is reserved.
 3. Vercel → project → **Settings → Environment Variables** → update
    **`SUPABASE_SERVICE_ROLE_KEY`** on Production and Preview.
    - **Never** `VITE_SUPABASE_SERVICE_ROLE_KEY`. Vite inlines every `VITE_*`
@@ -139,6 +139,10 @@ admin UI as the owner. Note the choice next to this item.
 
 ## 7. Enable leaked-password protection
 
+> **Low value here.** The product is passwordless (magic link and Google, no
+> password anywhere), so no learner password exists to check. Enabling it
+> silences the advisor; it does not change a user-facing risk. P2.
+
 Supabase advisor WARN `auth_leaked_password_protection` is currently
 firing: Auth is not checking passwords against HaveIBeenPwned.
 
@@ -148,17 +152,16 @@ password security) → enable **Leaked password protection**.
 This is a hosted Auth setting. Editing `supabase/config.toml` only affects
 local `supabase start`.
 
-## 8. Apply pending security-hardening migrations — ⚠️ ONE OUTSTANDING (8c)
+## 8. Apply pending security-hardening migrations — ✅ all three applied
 
 Two files were applied on 2026-09-21, in this order: **#290 then #293**
 (BACKLOG owner actions #6 then #7). A **third arrived on 2026-09-22**
-(§8c, the `profile_follows` follow-up to #316) and is **not applied**.
-
-8a and 8b are kept below as the record of what ran and how it was
-verified. 8c is the one still to do.
+(§8c, the `profile_follows` follow-up to #316). **All three are now applied**
+(8c confirmed 2026-10-03, see below). The sections are kept as the record of
+what ran and how it was verified.
 
 Verified 2026-09-21 by production read-only check plus Migration Drift
-CI — see *Verification* below. No `supabase migration repair`, `db push`,
+CI — see _Verification_ below. No `supabase migration repair`, `db push`,
 `db pull`, `db reset`, or MCP apply was used; the SQL ran verbatim in the
 Sprachschule dashboard SQL editor.
 
@@ -199,9 +202,11 @@ and is stale on `main` on purpose (`AGENTS.md`).
 
 Repo file: `supabase/migrations/20260921210000_profile_follows_deny_policies.sql`.
 
-**NOT APPLIED — owner action.** Apply it in the Sprachschule dashboard SQL
-editor, after the two above (they are already applied). No
-`migration repair`, `db push`, `db reset`, or MCP apply.
+**✅ Applied** (confirmed 2026-10-03: read-only `list_migrations` on
+production lists `profile_follows_deny_policies` at `20260921210000`, the
+filename's own version, and the live security advisors no longer report
+0008 `rls_enabled_no_policy`). The original instruction was the dashboard SQL
+editor, never `migration repair`, `db push`, `db reset`, or MCP apply.
 
 `#316` added `public.profile_follows` with RLS enabled and every grant
 revoked from `anon` and `authenticated`, which already denies the Data
@@ -222,9 +227,12 @@ created or removed, never edited, so `service_role` gets
 `supabase/tests/rls/server-only-tables.test.js` asserts both the granted
 and the withheld privileges.
 
-After it runs: advisor 0008 should clear for `profile_follows`, leaving
-`auth_leaked_password_protection` (§7) as the only outstanding security
-advisor. The profile endpoints are unaffected — they already use the
+Result: advisor 0008 is clear. The live security advisors on 2026-10-03 show
+`auth_leaked_password_protection` (§7) plus 0029 on five `SECURITY DEFINER`
+RPCs that signed-in users are meant to call (`accept_legal_terms`,
+`award_tokens`, `spend_tokens`, `register_push_device`,
+`unregister_push_device`); each checks `auth.uid()` itself. Treat 0029 as
+accepted, not as a blocker. The profile endpoints are unaffected — they already use the
 service role. There is no UI smoke test; learners never touch this table
 from the browser.
 

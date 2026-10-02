@@ -7,15 +7,15 @@ Notifications switch in Settings does not appear, on any platform.
 
 ## What is built, and what is not
 
-| Piece                                                 | Where                                                                                                                                       | Status                                    |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| Plugin (`@capacitor/push-notifications`)              | `package.json`, synced into `android/` and `ios/App/CapApp-SPM`                                                                             | Built                                     |
-| Opt-in switch                                         | Settings → System → Notifications (`NotificationsSection.jsx`)                                                                              | Built, dark                               |
-| Permission → register → token → save                  | `src/lib/pushNotifications.js`                                                                                                              | Built                                     |
-| Token refresh on launch, drop on opt-out and sign-out | same file, wired from `App.jsx` and `clearUserState.js`                                                                                     | Built                                     |
-| Device registry + RPCs                                | `supabase/migrations/20260927120000_user_devices.sql`, then `20261001120000_push_streak_reminders.sql` (time zone, FCM-only tokens, claims) | First applied; second needs applying (§1) |
-| iOS token hand-off (AppDelegate)                      | `ios/App/App/AppDelegate.swift`                                                                                                             | Built                                     |
-| Sender: daily streak reminder                         | `api/v1/push/streak-reminder.js`, `api/_lib/streakReminder.js`, `api/_lib/fcm.js`                                                           | Built, inert until §6                     |
+| Piece                                                 | Where                                                                                                                                       | Status                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Plugin (`@capacitor/push-notifications`)              | `package.json`, synced into `android/` and `ios/App/CapApp-SPM`                                                                             | Built                             |
+| Opt-in switch                                         | Settings → System → Notifications (`NotificationsSection.jsx`)                                                                              | Built, dark                       |
+| Permission → register → token → save                  | `src/lib/pushNotifications.js`                                                                                                              | Built                             |
+| Token refresh on launch, drop on opt-out and sign-out | same file, wired from `App.jsx` and `clearUserState.js`                                                                                     | Built                             |
+| Device registry + RPCs                                | `supabase/migrations/20260927120000_user_devices.sql`, then `20261001120000_push_streak_reminders.sql` (time zone, FCM-only tokens, claims) | Both applied (checked 2026-10-03) |
+| iOS token hand-off (AppDelegate)                      | `ios/App/App/AppDelegate.swift`                                                                                                             | Built                             |
+| Sender: daily streak reminder                         | `api/v1/push/streak-reminder.js`, `api/_lib/streakReminder.js`, `api/_lib/fcm.js`                                                           | Built, inert until §6             |
 
 The sender is built but inert until §6 is done: it needs Firebase
 credentials, a cron secret and the Supabase schedule. Design:
@@ -68,9 +68,11 @@ anyway, so the first build with the flag works end to end.
 **Then apply the second migration,
 `supabase/migrations/20261001120000_push_streak_reminders.sql`, with its own
 command.** The block above hard-codes the `user_devices` file, so reusing it
-would apply the wrong one. Production history already lists `user_devices`
-(checked 2026-10-01), so this is the outstanding one; a fresh project runs both,
-in order. Same token handling:
+would apply the wrong one. **Both migrations are already applied to production** (read-only
+`list_migrations`, 2026-10-03: `user_devices` at `20260927120000`,
+`push_streak_reminders` at `20261001120000`, each equal to its filename, so no
+rename is owed). The two commands below are kept for a fresh project, which runs
+both in order; do not re-run them against production. Same token handling:
 
 ```bash
 read -s SUPABASE_MIGRATIONS_TOKEN
@@ -96,7 +98,10 @@ version recorded in migration history, in a PR (as #383 did).
 1. [Firebase console](https://console.firebase.google.com) → add a project (or
    use an existing one) → **Add app → Android**, package name
    `com.sprachschule.deutsch`.
-2. Download **`google-services.json`** and put it at
+2. **Already done for the production project:** `android/app/google-services.json`
+   is committed (#374; Firebase project `deutsch-sprachschule`, package
+   `com.sprachschule.deutsch`). Only repeat this for a different Firebase
+   project. Download **`google-services.json`** and put it at
    **`android/app/google-services.json`**. `android/app/build.gradle` already
    applies the Google Services plugin whenever that file exists, and skips it
    when it does not.
