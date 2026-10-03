@@ -33,6 +33,7 @@
     "gen:assets": "node scripts/gen-assets/index.js && capacitor-assets generate --ios --android",
     "check:migrations": "node scripts/check-migrations/index.js",
     "seed:lessons": "node scripts/seed-lessons/index.js",
+    "seed:screenshots": "node scripts/dev/screenshot-seed.js",
     "import:lexicon": "node --max-old-space-size=4096 scripts/import-lexicon/index.js"
   },
   "dependencies": {

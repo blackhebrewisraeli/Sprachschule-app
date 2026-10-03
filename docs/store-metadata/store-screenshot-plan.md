@@ -69,6 +69,21 @@ add a control, score, response, or correction in the image editor.
 3. Seed a believable but modest history: a seven-day streak, an in-progress
    daily goal, three quests, and a populated league. Avoid implausible scores
    or claims that look like a ranking endorsement.
+   **Seeding the guest half.** `npm run seed:screenshots` prints a one-line
+   snippet that loads exactly this state (A2, a seven-day streak ending
+   yesterday, today at 26 of a 50 XP goal, 24 learned words across four decks)
+   into the app's real localStorage keys; `scripts/dev/screenshot-seed.js`
+   documents the shape and `screenshot-seed.test.js` proves the numbers with the
+   app's own streak and XP functions. Run the app on the simulator or emulator,
+   attach the WebView inspector (Safari → Develop on iOS, `chrome://inspect` on
+   Android), paste the snippet and let the page reload. Then tap **Try it first**
+   on the welcome gate (a guest sees it on every launch) and **Not now** on the
+   "Ready to check your level?" card. The inspector only attaches to a **debug**
+   build of the same web bundle, not to a release candidate, so seed on the
+   debug build, or finish the state through the fictional account instead; the
+   plan's "exact release candidate" rule is yours to relax or keep. The weekly
+   league table and a signed-in profile are server state and are not seeded
+   here: use the dedicated fictional account for scenes 4 and 5.
 4. Capture the Chat reply through the real submitted AI flow. Review the German
    and correction before capture; do not expose model names, token limits, or
    internal errors.
