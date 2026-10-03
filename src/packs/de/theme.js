@@ -31,15 +31,23 @@ export const progress = ['ground', 'accentAlt', 'accent'];
 // latin+latin-ext that is 869.5 KB against 165.9 KB for the ranges below, which
 // cover every weight in between and keep `opsz` continuous as well.
 //
-// `subsets` sits on the family, not the pack, because the two faces render
+// `subsets` sits on the family, not the pack, because the faces render
 // different alphabets. Prose needs latin (ä ö ü ß and the „quotes" are all
-// inside it) plus latin-ext for the odd foreign proper noun. The mono face
-// additionally renders IPA — VocabTab shows every card's pronunciation in it —
-// and IPA borrows θ and χ from Greek, so dropping that subset would silently
-// fall those two glyphs back to a system font. It costs 6.6 KB.
+// inside it) plus latin-ext for the odd foreign proper noun.
+//
+// IPA has its own face (owner's call, 2026-10-03). It used to ride on the mono
+// face, which turned out to lack 26 of the 38 phonetic characters the content
+// uses (the stress mark ˈ, ː, ɐ, ɛ, ɡ, ʁ and the combining marks among them)
+// even though its latin-ext file DECLARES that range. iOS and desktop quietly
+// borrowed the glyphs from system fonts; Android has none to borrow and drew
+// every pronunciation as boxes. Noto Sans Mono has all of them. `text: 'ipa'`
+// vendors exactly the characters under the content's `ipa` keys (~6 KB, one
+// weight), which also reaches the combining marks no named Google subset
+// serves (U+032F, as in diːɐ̯, alone is used 1,239 times).
 //
 // src/lib/fontCoverage.test.js fails if a subset that is carrying real content
-// gets dropped from either list.
+// gets dropped, and if the IPA face lacks a glyph any `ipa` string uses,
+// checked against each file's own glyph map rather than its declared ranges.
 /**
  * Body sans — adopted 2026-09-01, on the product owner's call.
  *
@@ -54,8 +62,7 @@ export const progress = ['ground', 'accentAlt', 'accent'];
  * form copy, which Fraunces set at 13–15px more decoratively than legibly.
  *
  * IPA is not affected and must not be. Phonetics render through `TEXT.ipa`,
- * which is pinned to the mono face because this sans is vendored latin-only
- * and IPA borrows θ and χ from the greek subset. See the families list below.
+ * which is pinned to the `ipa` stack below, never to this latin-only sans.
  *
  * Weights stop at 700: body copy uses regular through bold, and asking for the
  * full 200..800 range widens each subset file for two weights nothing renders.
@@ -66,6 +73,9 @@ export const font = {
   display: "'Fraunces', Georgia, serif",
   body: BODY_SANS,
   mono: "'JetBrains Mono', 'Courier New', monospace",
+  // Phonetics only (TEXT.ipa). JetBrains Mono stays behind it for any character
+  // a new IPA string adds before the next `npm run vendor:fonts`.
+  ipa: "'Noto Sans Mono', 'JetBrains Mono', monospace",
   families: [
     { name: 'Fraunces', axes: 'opsz,wght@9..144,300..900', subsets: ['latin', 'latin-ext'] },
     {
@@ -76,6 +86,8 @@ export const font = {
     // Prose subsets only — the sans never renders IPA, so it needs neither the
     // greek nor the vietnamese subset the mono face carries.
     { name: 'Plus Jakarta Sans', axes: 'wght@400..700', subsets: ['latin', 'latin-ext'] },
+    // TEXT.ipa sets one weight, so one is all it ships.
+    { name: 'Noto Sans Mono', axes: 'wght@400', text: 'ipa' },
   ],
 };
 

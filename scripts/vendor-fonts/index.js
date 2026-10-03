@@ -6,7 +6,7 @@
 // every file, so a later re-run that produces different bytes is visible in the
 // diff rather than silent.
 
-import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync, existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,8 @@ import { buildGoogleFontsUrl } from './googleFontsUrl.js';
 // One definition, shared with the runtime that reads these directories.
 import { familySlug } from '../../src/lib/injectFonts.js';
 import { parseFaces, renderFaceCss, localFileName } from './css.js';
+import { ipaText } from './ipaText.js';
+import { woff2Codepoints } from './woff2Cmap.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..', '..');
@@ -33,6 +35,22 @@ const LICENSES = {
   Fraunces: 'https://raw.githubusercontent.com/undercasetype/Fraunces/master/OFL.txt',
   'JetBrains Mono': 'https://raw.githubusercontent.com/JetBrains/JetBrainsMono/master/OFL.txt',
   'Plus Jakarta Sans': 'https://raw.githubusercontent.com/tokotype/PlusJakartaSans/master/OFL.txt',
+  'Noto Sans Mono': 'https://raw.githubusercontent.com/notofonts/latin-greek-cyrillic/main/OFL.txt',
+};
+
+// Families declared with `text` are fetched as an exact-characters subset
+// instead of Google's named subsets. Each source names the content it covers.
+const TEXT_SOURCES = {
+  // Every character under an `ipa` key in the pack and in its lexicon.
+  ipa: (pack) => {
+    const dir = join(ROOT, 'public', 'lexicon', pack.meta.id);
+    const chunks = existsSync(dir)
+      ? readdirSync(dir)
+          .filter((f) => /^chunk-\d+\.json$/.test(f))
+          .map((f) => JSON.parse(readFileSync(join(dir, f), 'utf8')))
+      : [];
+    return ipaText(pack.content, chunks);
+  },
 };
 
 async function fetchText(url) {
@@ -53,7 +71,9 @@ export async function vendorFonts({ out = OUT, pack = activePack, log = console.
     throw new Error('pack declares no font families');
   }
   for (const f of families) {
-    if (!Array.isArray(f.subsets) || f.subsets.length === 0) {
+    if (f.text) {
+      if (!TEXT_SOURCES[f.text]) throw new Error(`${f.name}: unknown text source "${f.text}"`);
+    } else if (!Array.isArray(f.subsets) || f.subsets.length === 0) {
       throw new Error(`${f.name} declares no subsets — refusing to guess`);
     }
   }
@@ -63,7 +83,8 @@ export async function vendorFonts({ out = OUT, pack = activePack, log = console.
     throw new Error(`no licence source recorded for: ${missing.join(', ')}. Add it to LICENSES.`);
   }
 
-  const url = buildGoogleFontsUrl(families);
+  const named = families.filter((f) => !f.text);
+  const url = buildGoogleFontsUrl(named);
   log(`css2  ${url}`);
   const css = await fetchText(url);
   if (!css.includes('woff2')) {
@@ -71,9 +92,21 @@ export async function vendorFonts({ out = OUT, pack = activePack, log = console.
   }
 
   const all = parseFaces(css);
-  const wanted = all.filter((f) =>
-    (families.find((d) => d.name === f.family)?.subsets ?? []).includes(f.subset)
-  );
+  // `text` applies to every family in a css2 request, so each exact-characters
+  // family gets its own.
+  const wantedText = {};
+  for (const family of families.filter((f) => f.text)) {
+    const text = TEXT_SOURCES[family.text](pack);
+    if (!text) throw new Error(`${family.name}: text source "${family.text}" is empty`);
+    wantedText[family.name] = text;
+    const textUrl = buildGoogleFontsUrl([family], { text });
+    log(`css2  ${family.name}: ${[...text].length} characters (${family.text})`);
+    all.push(...parseFaces(await fetchText(textUrl), { subset: family.text }));
+  }
+  const wanted = all.filter((f) => {
+    const d = families.find((x) => x.name === f.family);
+    return d?.text ? f.subset === d.text : (d?.subsets ?? []).includes(f.subset);
+  });
   if (wanted.length === 0) throw new Error('no faces matched the declared subsets');
   log(`faces ${all.length} returned, ${wanted.length} kept`);
 
@@ -94,6 +127,17 @@ export async function vendorFonts({ out = OUT, pack = activePack, log = console.
     const files = [];
     for (const face of faces) {
       const bytes = await fetchBytes(face.url);
+      // Google returns a file for any request, quietly leaving out characters
+      // the font lacks. Refuse it rather than ship boxes.
+      if (family.text) {
+        const have = woff2Codepoints(bytes);
+        const lacking = [...wantedText[family.name]].filter((ch) => !have.has(ch.codePointAt(0)));
+        if (lacking.length) {
+          throw new Error(
+            `${family.name} lacks ${lacking.length} requested glyphs: ${lacking.join(' ')}`
+          );
+        }
+      }
       files.push({
         localName: face.localName,
         bytes,
@@ -140,14 +184,18 @@ export async function vendorFonts({ out = OUT, pack = activePack, log = console.
     // ranges so fontCoverage.test.js can tell "this glyph was never on offer"
     // (emoji, mathematical alphanumerics — no text font has them) apart from
     // "this glyph was on offer and we dropped it", which is a real regression.
-    const skipped = all
-      .filter((f) => f.family === family.name && !family.subsets.includes(f.subset))
-      .map((f) => ({ subset: f.subset, unicodeRange: f.unicodeRange }));
+    // An exact-characters family skips nothing: it asked for what it needs.
+    const skipped = family.text
+      ? []
+      : all
+          .filter((f) => f.family === family.name && !family.subsets.includes(f.subset))
+          .map((f) => ({ subset: f.subset, unicodeRange: f.unicodeRange }));
 
     manifest.families[family.name] = {
       slug,
       axes: family.axes ?? null,
-      subsets: family.subsets,
+      subsets: family.subsets ?? null,
+      ...(family.text ? { text: family.text, characters: wantedText[family.name] } : {}),
       files: files.map((f) => f.meta),
       skipped,
     };

@@ -69,4 +69,9 @@ export function applyTheme(mode = 'light', packTheme) {
   );
   root.style.setProperty('--f-body', font?.body ?? "'Fraunces', Georgia, serif");
   root.style.setProperty('--f-mono', font?.mono ?? "'JetBrains Mono', 'Courier New', monospace");
+  // A pack without its own phonetic face keeps setting IPA in the mono one.
+  root.style.setProperty(
+    '--f-ipa',
+    font?.ipa ?? font?.mono ?? "'JetBrains Mono', 'Courier New', monospace"
+  );
 }
