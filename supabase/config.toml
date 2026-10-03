@@ -246,7 +246,7 @@ otp_expiry = 300
 # Hosted project still needs a one-time paste into the dashboard — see
 # docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md (local `supabase start` reads this).
 [auth.email.template.magic_link]
-subject = "Your sign-in code for sprachschule-app"
+subject = "Your sign-in code for Deutsch · Sprachschule"
 content_path = "./supabase/templates/magic_link.html"
 
 # Uncomment to customize email template
