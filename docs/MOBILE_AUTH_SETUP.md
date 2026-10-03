@@ -108,6 +108,6 @@ character.
   other app from claiming the scheme. PKCE already makes an intercepted
   callback useless, so this is hardening, not a blocker. It needs an
   `apple-app-site-association` / `assetlinks.json` hosted on the domain.
-- **App Store Review Guideline 4.8** (login services). Before submitting an
-  iOS build that offers Google sign-in, check whether Sign in with Apple is
-  required as well.
+- **App Store Review Guideline 4.8** (login services). Sign in with Apple is
+  built and dark; setup, the account-deletion token revocation it still needs,
+  and the flag flip are in `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`.

@@ -8,6 +8,7 @@ const {
   isAuthConfigured,
   isGoogleAuthConfigured,
   isGitHubAuthConfigured,
+  isAppleAuthConfigured,
   signInWithGoogle,
   recordIntent,
   clearIntent,
@@ -17,6 +18,7 @@ const {
   isAuthConfigured: vi.fn(() => true),
   isGoogleAuthConfigured: vi.fn(() => false),
   isGitHubAuthConfigured: vi.fn(() => false),
+  isAppleAuthConfigured: vi.fn(() => false),
   signInWithGoogle: vi.fn(() => Promise.resolve({ error: null })),
   recordIntent: vi.fn(),
   clearIntent: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('../../lib/auth.js', () => ({
   isAuthConfigured,
   isGoogleAuthConfigured,
   isGitHubAuthConfigured,
+  isAppleAuthConfigured,
   signInWithGoogle,
   signInWithMagicLink: vi.fn(() => Promise.resolve({ error: null })),
   verifyCode: vi.fn(() => Promise.resolve({ error: null })),
@@ -60,6 +63,7 @@ describe('AuthSheet', () => {
     // Flags off is the merge state and the one CI runs.
     isGoogleAuthConfigured.mockReturnValue(false);
     isGitHubAuthConfigured.mockReturnValue(false);
+    isAppleAuthConfigured.mockReturnValue(false);
     signInWithGoogle.mockClear();
     recordIntent.mockClear();
     clearIntent.mockClear();
@@ -173,6 +177,39 @@ describe('AuthSheet', () => {
     it('keeps the email form intact — it gains a sibling, not a rewrite', () => {
       render(<AuthSheet open intent="create" onClose={() => {}} onSuccess={() => {}} />);
       expect(screen.getByTestId('magic-link-form')).toHaveTextContent('Create your account');
+    });
+  });
+
+  describe('with Apple on', () => {
+    beforeEach(() => isAppleAuthConfigured.mockReturnValue(true));
+
+    // Alone, Apple gets the divider and the top slot.
+    it('stands alone above the form, with the divider', () => {
+      render(<AuthSheet open intent="signin" onClose={() => {}} onSuccess={() => {}} />);
+      const apple = screen.getByRole('button', { name: /continue with apple/i });
+      expect(screen.getByText(/^or$/i)).toBeInTheDocument();
+      expect(apple.compareDocumentPosition(screen.getByTestId('magic-link-form'))).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    });
+
+    it('routes to its own handler and marks only itself busy', async () => {
+      const onApple = vi.fn();
+      const onGoogle = vi.fn();
+      render(
+        <AuthSheet
+          open
+          intent="signin"
+          onClose={() => {}}
+          onSuccess={() => {}}
+          onApple={onApple}
+          onGoogle={onGoogle}
+          appleBusy
+        />
+      );
+      const apple = screen.getByRole('button', { name: /continue with apple/i });
+      expect(apple).toHaveAttribute('aria-busy', 'true');
+      expect(apple).not.toBeDisabled();
     });
   });
 
@@ -390,6 +427,14 @@ describe('AuthSheet', () => {
       expect(screen.getByRole('button', { name: /continue with google/i })).toHaveFocus();
     });
 
+    it('focuses Apple when it is the only provider', async () => {
+      isAppleAuthConfigured.mockReturnValue(true);
+      const user = userEvent.setup();
+      render(<Harness />);
+      await user.click(screen.getByRole('button', { name: 'Sign in trigger' }));
+      expect(screen.getByRole('button', { name: /continue with apple/i })).toHaveFocus();
+    });
+
     it('focuses GitHub when it is the only provider', async () => {
       isGitHubAuthConfigured.mockReturnValue(true);
       const user = userEvent.setup();
@@ -471,6 +516,22 @@ describe('AuthSheet — terms consent', () => {
     expect(recordIntent).toHaveBeenCalledTimes(1);
     expect(onGoogle).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Apple obeys the same consent guard', async () => {
+    isAppleAuthConfigured.mockReturnValue(true);
+    const onApple = vi.fn();
+    const { rerender } = render(
+      <AuthSheet {...base} intent="create" draft={draft} onApple={onApple} />
+    );
+    await userEvent.click(screen.getByRole('button', { name: /continue with apple/i }));
+    expect(onApple).not.toHaveBeenCalled();
+    rerender(
+      <AuthSheet {...base} intent="create" draft={{ ...draft, accepted: true }} onApple={onApple} />
+    );
+    await userEvent.click(screen.getByRole('button', { name: /continue with apple/i }));
+    expect(onApple).toHaveBeenCalledTimes(1);
+    expect(recordIntent).toHaveBeenCalled();
   });
 
   it('checked: GitHub starts and the intent is recorded', async () => {

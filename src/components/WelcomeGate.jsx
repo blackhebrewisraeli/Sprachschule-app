@@ -3,6 +3,7 @@ import { isAuthConfigured } from '../lib/auth.js';
 import Button from './ui/Button';
 import GoogleButton from './auth/GoogleButton';
 import GitHubButton from './auth/GitHubButton';
+import AppleButton from './auth/AppleButton';
 import ThemeChip from './ThemeChip';
 
 /** Minimum comfortable touch target, px — the iOS Human Interface guideline. */
@@ -19,6 +20,8 @@ export default function WelcomeGate({
   googleBusy = false,
   onGitHub,
   gitHubBusy = false,
+  onApple,
+  appleBusy = false,
 }) {
   const authOn = isAuthConfigured();
   return (
@@ -73,6 +76,7 @@ export default function WelcomeGate({
           <>
             <GoogleButton onClick={onGoogle} busy={googleBusy} />
             <GitHubButton onClick={onGitHub} busy={gitHubBusy} />
+            <AppleButton onClick={onApple} busy={appleBusy} />
             <Button onClick={() => onAuth('create')}>Create account</Button>
             <Button variant="secondary" onClick={() => onAuth('signin')}>
               Sign in

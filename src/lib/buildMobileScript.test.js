@@ -13,6 +13,13 @@ describe('build:mobile', () => {
     expect(script).toMatch(/(^|\s)VITE_PUSH_ENABLED=false(\s|$)/);
   });
 
+  // Dark until docs/AUTH_APPLE_OAUTH_RUNBOOK.md is done: a live button over an
+  // unconfigured Supabase provider is a sign-in that cannot work, on the
+  // platform that rejects apps for exactly that. Flip in the release commit.
+  it('pins Sign in with Apple off', () => {
+    expect(script).toMatch(/(^|\s)VITE_APPLE_AUTH_ENABLED=false(\s|$)/);
+  });
+
   it('pins saved tutor conversations off', () => {
     expect(script).toMatch(/(^|\s)VITE_AI_HISTORY_ENABLED=false(\s|$)/);
   });

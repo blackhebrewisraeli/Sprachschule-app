@@ -50,6 +50,16 @@ export function isGitHubAuthConfigured() {
 }
 
 /**
+ * Sign in with Apple: its own flag again, because it has its own dashboard
+ * setup (docs/AUTH_APPLE_OAUTH_RUNBOOK.md) and must stay dark until that setup,
+ * and the Apple token revocation on account deletion, are done. Same build-time
+ * caveat as above.
+ */
+export function isAppleAuthConfigured() {
+  return isAuthConfigured() && import.meta.env.VITE_APPLE_AUTH_ENABLED === 'true';
+}
+
+/**
  * Where Supabase sends the learner back to after a magic link, an OAuth consent
  * screen, or an email-change confirmation. Every one of those flows uses this
  * value, so each environment needs one allow-list entry, not one per flow.
@@ -262,6 +272,18 @@ export async function signInWithGoogle() {
 export async function signInWithGitHub() {
   if (!isGitHubAuthConfigured()) return NOT_CONFIGURED;
   return startOAuth('github');
+}
+
+/**
+ * Start the Apple OAuth round trip: the same redirect target, stale-tab guard
+ * and (on native) system-browser path as Google and GitHub. It is the OAuth
+ * web flow, not the native ASAuthorization sheet, so it needs a Services ID
+ * and no extra app entitlement. No `scopes`: Supabase requests name and email,
+ * which is all Apple will return and all the app uses.
+ */
+export async function signInWithApple() {
+  if (!isAppleAuthConfigured()) return NOT_CONFIGURED;
+  return startOAuth('apple');
 }
 
 const BROWSER_FAILED = { error: { message: 'Could not open the sign-in page.' } };
