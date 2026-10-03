@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ChatInput from './ChatInput';
@@ -14,6 +14,10 @@ const baseProps = {
 };
 
 describe('ChatInput', () => {
+  // jsdom has no speech recognition; Chrome and Safari do.
+  beforeEach(() => vi.stubGlobal('webkitSpeechRecognition', function SR() {}));
+  afterEach(() => vi.unstubAllGlobals());
+
   it('forwards typing to setInput', async () => {
     const setInput = vi.fn();
     render(<ChatInput {...baseProps} setInput={setInput} />);
@@ -83,5 +87,21 @@ describe('ChatInput', () => {
     expect(send).toHaveStyle({ width: '40px', height: '40px' });
     expect(mic).toHaveStyle({ width: '40px', height: '40px' });
     expect(send).not.toHaveTextContent('SEND');
+  });
+
+  it('hides the mic where the browser has no speech recognition', () => {
+    vi.stubGlobal('webkitSpeechRecognition', undefined);
+    render(<ChatInput {...baseProps} />);
+    expect(screen.queryByRole('button', { name: 'Start voice input' })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Chat message in German' })).toBeInTheDocument();
+  });
+
+  // Android's WebView has no recognition, and iOS's WKWebView kills an app that
+  // reaches the microphone without usage descriptions in Info.plist, which the
+  // native build does not ship (the store privacy answers declare no audio).
+  it('hides the mic in the native app even when recognition exists', () => {
+    vi.stubGlobal('Capacitor', { isNativePlatform: () => true });
+    render(<ChatInput {...baseProps} />);
+    expect(screen.queryByRole('button', { name: 'Start voice input' })).not.toBeInTheDocument();
   });
 });

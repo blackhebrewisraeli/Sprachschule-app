@@ -261,10 +261,7 @@ export default function ChatTab({
 
   const startListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      alert('Speech recognition not supported in this browser. Try Chrome.');
-      return;
-    }
+    if (!SR) return; // ChatInput hides the mic when recognition is missing
     const rec = new SR();
     rec.lang = 'de-DE';
     rec.interimResults = false;
