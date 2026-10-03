@@ -260,8 +260,8 @@ export default function ChatTab({
   }, [scenario, chatLevel]);
 
   const startListening = () => {
+    // ChatInput renders the mic only where recognition exists.
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return; // ChatInput hides the mic when recognition is missing
     const rec = new SR();
     rec.lang = 'de-DE';
     rec.interimResults = false;
