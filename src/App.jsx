@@ -104,6 +104,7 @@ import {
   humanAuthError,
 } from './lib/auth';
 import { signOutAndReset } from './lib/clearUserState';
+import { readAppleRefreshToken } from './lib/appleRevokeToken';
 import { useLegalAcceptance } from './lib/useLegalAcceptance';
 import { clearIntent } from './lib/legalAcceptance';
 import { loadSyncMeta } from './lib/sync/syncMeta';
@@ -685,7 +686,9 @@ export default function App() {
     const res = await fetch(apiUrl('/api/v1/account/delete'), {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ confirm }),
+      // Apple learners also send the token the server must revoke (see
+      // appleRevokeToken.js). Absent for everyone else, and then omitted.
+      body: JSON.stringify({ confirm, appleRefreshToken: readAppleRefreshToken() ?? undefined }),
     });
 
     if (!res.ok) {
@@ -699,6 +702,9 @@ export default function App() {
         .catch(() => null);
       if (code === 'reauth_required') {
         showToast('Please sign in again to confirm deletion.');
+        requestSignIn();
+      } else if (code === 'apple_token_required') {
+        showToast('Sign in with Apple again to finish deleting your account.');
         requestSignIn();
       } else {
         showToast('Could not delete account — try again.');

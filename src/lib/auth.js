@@ -3,6 +3,7 @@
 // by design; RLS is the authorization layer). When the vars are absent
 // (CI, or any environment before B2.3 wires them), the module no-ops and
 // isAuthConfigured() is false, so the app behaves exactly as it does today.
+import { captureAppleRefreshToken } from './appleRevokeToken.js';
 import { useState, useEffect } from 'react';
 import {
   readClientSignupAllowlist,
@@ -458,6 +459,7 @@ export function useAuth() {
     let unsubscribe = null;
 
     const applySession = (c, next) => {
+      captureAppleRefreshToken(next);
       if (next && !userAllowedBySignupList(next.user, clientSignupList())) {
         setSignupRejected(true);
         setSession(null);

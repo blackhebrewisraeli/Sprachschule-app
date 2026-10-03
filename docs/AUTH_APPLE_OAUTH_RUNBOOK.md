@@ -34,12 +34,25 @@ provider slot (unchanged).
    put the renewal date in your calendar, because an expired secret silently
    breaks Apple sign-in. No change to the Redirect URL allow-list is needed:
    `com.sprachschule.deutsch://login-callback` already covers the app.
-4. **Account deletion must revoke the Apple token.** Apple requires an app that
-   offers Sign in with Apple to revoke the user's token when they delete their
-   account. Supabase's user deletion does not do this. **This is not built.** It
-   needs the Apple key and a server call to Apple's revoke endpoint from the
-   account-delete handler, so it is a follow-up PR that must land before the
-   flag is flipped. Do not ship the button without it.
+4. **Account deletion revokes the Apple token** (built). Apple requires it, and
+   Supabase's user deletion does not do it, so the delete endpoint does it first.
+   It needs four server variables in Vercel **Production**, all **Sensitive**,
+   none with a `VITE_` prefix (Vite would publish them): `APPLE_SERVICES_ID`
+   (the Services ID from step 1), `APPLE_TEAM_ID`, `APPLE_KEY_ID`, and
+   `APPLE_PRIVATE_KEY` (the whole `.p8` text; flattened `\n` is accepted).
+   Redeploy afterwards. How it behaves:
+   - The token is Supabase's one-time `provider_refresh_token`, available only
+     in the session that finishes an Apple sign-in. Deleting already demands a
+     sign-in within 15 minutes, so an Apple learner signs in with Apple again,
+     the app keeps the token in `sessionStorage` for that tab, and sends it with
+     the delete request. With no token the server answers `apple_token_required`
+     and the app sends them back through sign-in; nothing is deleted.
+   - Apple is called **before** anything is erased. If Apple is down, the
+     request fails and the learner retries; nothing was deleted.
+   - Erasure is never blocked by **our** misconfiguration: with the variables
+     missing or Apple rejecting our key, the server logs `Apple token NOT
+revoked` (search Vercel logs) and still deletes. Check the logs after the
+     first Apple deletion.
 5. **Flip the flag.** In one release commit change the `build:mobile` pin to
    `VITE_APPLE_AUTH_ENABLED=true`, update `src/lib/buildMobileScript.test.js` in
    the same commit, and rebuild. Leave `VITE_APPLE_AUTH_ENABLED` **unset in
@@ -63,6 +76,8 @@ provider slot (unchanged).
    the sheet; with the flag off it appears nowhere.
 2. On an iPhone: Continue with Apple opens the system browser, completes, and
    returns to the app signed in ("Signed in"), including with **Hide My Email**.
-3. Delete that account in the app, then confirm in Apple ID settings that the app
-   no longer appears under Sign in with Apple (this proves step 4).
+3. Delete that account in the app: it asks for a fresh Apple sign-in first. Then
+   confirm in Apple ID settings that the app no longer appears under Sign in
+   with Apple (this proves step 4), and that the Vercel logs show no `Apple token
+NOT revoked` line.
 4. Sign in again with Apple on a second device; the same learner state loads.
