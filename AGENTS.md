@@ -63,20 +63,23 @@ git-excluded and therefore absent from CI and fresh checkouts.
   (COLORS / RADIUS / SHADOW / BUTTON / CARD). Never hardcode colors, radii, or
   shadows. UI primitives live in `src/components/ui/`.
 - **Typography:** Fraunces serif for display words, Plus Jakarta Sans for body
-  prose, JetBrains Mono for UI labels (uppercase) **and for IPA**. Don't change
-  fonts without the owner's say-so; all three are vendored under `public/fonts/`
-  and declared in `src/packs/de/theme.js`.
+  prose, JetBrains Mono for UI labels (uppercase), and **Noto Sans Mono for
+  IPA**. Don't change fonts without the owner's say-so; all four are vendored
+  under `public/fonts/` and declared in `src/packs/de/theme.js`.
   - **Body was Fraunces until 2026-09-01**, when the owner moved prose to the
     sans that had been vendored in advance for exactly that decision. Display
     stayed Fraunces — the serif is the brand at headword scale. If you are
     reading an older doc that says "Fraunces for display and body", this is the
     line that supersedes it.
-  - **IPA on the mono face is a constraint, not a preference.** Phonetics borrow
-    θ and χ from the `greek` subset, and of the three vendored families only
-    JetBrains Mono ships it — the sans is deliberately latin-only, so setting a
-    sans on IPA renders those glyphs as tofu. Phonetics render through
-    `TEXT.ipa`, which pins the face; `fontCoverage.test.js` guards the subset
-    and `theme.test.js` guards the recipe.
+  - **IPA has its own face (owner's call, 2026-10-03).** JetBrains Mono lacks
+    26 of the 38 phonetic characters the content uses (ˈ ː ɐ ɡ ʁ and the
+    combining marks), though its latin-ext file _declares_ that range; Android
+    drew every pronunciation as boxes. Phonetics render through `TEXT.ipa`
+    (`--f-ipa`), and `vendor:fonts` fetches Noto Sans Mono as an exact-characters
+    subset of every `ipa` string (`text: 'ipa'`, ~6 KB), refusing a download
+    that lacks any of them. `fontCoverage.test.js` checks the face's real glyph
+    map against the content, so **after adding IPA with a new character, run
+    `npm run vendor:fonts`**: the test names the missing glyph until you do.
   - `fontCoverage.test.js` resolves each role from the pack's font _stack_, not
     from a position in the `families` array. Keep it that way: the positional
     version audited whichever family happened to be first, which silently

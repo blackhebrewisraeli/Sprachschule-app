@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { activePack } from '../packs/index';
 import { familySlug } from './injectFonts';
+import { woff2Codepoints } from '../../scripts/vendor-fonts/woff2Cmap.js';
 
 // Guards the vendored fonts against the text the app actually renders.
 //
@@ -210,9 +211,10 @@ describe('no dropped subset is carrying content', () => {
    *
    * This is what makes an outright coverage assertion possible at all. The
    * naive form — "the body face covers every authored codepoint" — cannot pass
-   * and should not: the content holds emoji (👋 🍞 ✈), arrows, and IPA
-   * combining marks like U+032F that NO text font here offers, and those fall
-   * back to a system face by design.
+   * and should not: the content holds emoji (👋 🍞 ✈) and arrows that no
+   * text font here offers, and those fall back to a system face by design.
+   * (IPA is not among them any more: it has its own face, checked glyph by
+   * glyph at the bottom of this file.)
    *
    * Membership of this union is the difference between "we could have had this
    * glyph and did not take it" and "no font we vendor was ever going to supply
@@ -317,7 +319,9 @@ describe('no dropped subset is carrying content', () => {
     );
   });
 
-  it('the mono face keeps the greek subset that IPA borrows θ and χ from', () => {
+  // The ipa face draws IPA now; the mono face is its fallback in the stack, so
+  // its greek subset still has to hold for θ and χ.
+  it('the mono face keeps the greek subset the IPA fallback borrows θ and χ from', () => {
     const entries = lexicon().flatMap((chunk) => Object.values(chunk));
     const found = codepoints(
       (function* () {
@@ -329,5 +333,64 @@ describe('no dropped subset is carrying content', () => {
     expect(dropped.map(([cp, ex]) => `${show(cp)} in ${JSON.stringify(ex.slice(0, 60))}`)).toEqual(
       []
     );
+  });
+});
+
+// Everything above reasons from DECLARED unicode-ranges, which is why it stayed
+// green while Android drew IPA as boxes: JetBrains Mono's latin-ext file
+// declares U+0250–02BA and contains none of ɐ ɛ ɡ ɪ ʁ ʃ, nor the stress mark
+// ˈ. Desktop and iOS hid it by borrowing glyphs from system fonts; Android's
+// WebView has none to borrow. These read each vendored file's own glyph map.
+describe('the IPA face draws every phonetic glyph', () => {
+  const { font } = activePack.theme;
+  // The face TEXT.ipa renders with: the pack's `ipa` stack, else the mono one.
+  const ipaFamily = (font.ipa ?? font.mono).match(/'([^']+)'/)?.[1];
+  const monoFamily = font.mono.match(/'([^']+)'/)?.[1];
+
+  const glyphs = (name) => {
+    const slug = familySlug(name);
+    const all = new Set();
+    for (const [, ref] of readFileSync(`${FONT_DIR}/${slug}/face.css`, 'utf8').matchAll(
+      /url\(([^)]+)\)/g
+    )) {
+      for (const cp of woff2Codepoints(readFileSync(`public${ref.trim()}`))) all.add(cp);
+    }
+    return all;
+  };
+
+  function* ipaFields(value, depth = 0) {
+    if (depth > 8 || value == null || typeof value !== 'object') return;
+    for (const [key, v] of Object.entries(value)) {
+      if (key === 'ipa' && typeof v === 'string') yield v;
+      else yield* ipaFields(v, depth + 1);
+    }
+  }
+  const phonetic = codepoints(
+    (function* () {
+      yield* ipaFields(activePack.content);
+      yield* ipaFields(lexicon());
+    })()
+  );
+  const missingFrom = (name) => {
+    const have = glyphs(name);
+    return [...phonetic]
+      .filter(([cp]) => !have.has(cp))
+      .map(([cp, ex]) => `${show(cp)} in ${JSON.stringify(ex.slice(0, 40))}`);
+  };
+
+  it('reads real phonetic content, not an empty set', () => {
+    expect(phonetic.size).toBeGreaterThan(30);
+    for (const ch of 'ˈːəɐɡʁ\u032f') expect(phonetic.has(ch.codePointAt(0)), ch).toBe(true);
+  });
+
+  it('has a glyph for every character of every IPA string in the pack and the lexicon', () => {
+    expect(missingFrom(ipaFamily)).toEqual([]);
+  });
+
+  // Guards the guard: the same check on the UI mono face must fail, or it is
+  // reading declared ranges again rather than glyphs.
+  it('would catch the face that drew boxes on Android', () => {
+    expect(monoFamily).toBe('JetBrains Mono');
+    expect(missingFrom(monoFamily).length).toBeGreaterThan(20);
   });
 });

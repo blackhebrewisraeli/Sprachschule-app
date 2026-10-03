@@ -1,0 +1,10 @@
+/* ipa */
+@font-face {
+  font-family: 'Noto Sans Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(/fonts/noto-sans-mono/noto-sans-mono-ipa-normal-400.woff2) format('woff2');
+  unicode-range: U+20, U+28-29, U+2e-2f, U+5b, U+5d, U+61-66, U+68-70, U+72-76, U+78-7a, U+e3-e4, U+e6-e7, U+eb, U+ef, U+f1, U+f5-f6, U+f8, U+fc, U+ff, U+129, U+137, U+13c, U+146, U+14b, U+153, U+157, U+15f, U+163, U+169, U+229, U+250-251, U+254, U+258-259, U+25b, U+261, U+26a, U+271, U+280-281, U+283, U+28a, U+28f, U+292, U+294, U+2b0, U+2bc, U+2c8, U+2cc, U+2d0-2d1, U+303, U+308, U+30d, U+325, U+327, U+329-32a, U+32f, U+361, U+3c7, U+1e01, U+1e11, U+1e27, U+1e29, U+1e4f, U+1e7d, U+1e8d, U+1e97, U+1ebd, U+1ef9;
+}

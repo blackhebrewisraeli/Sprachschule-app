@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseFaces, renderFaceCss, localFileName } from './css.js';
+import { buildGoogleFontsUrl } from './googleFontsUrl.js';
 
 // A verbatim two-block excerpt of what css2 returns for the German pack.
 const CSS = `/* latin-ext */
@@ -44,6 +45,46 @@ describe('parseFaces', () => {
 
   it('ignores a block with no src url rather than emitting a partial face', () => {
     expect(parseFaces('/* latin */\n@font-face {\n  font-family: X;\n}')).toEqual([]);
+  });
+});
+
+// A verbatim `text=` response: one face, no subset comment.
+const TEXT_CSS = `@font-face {
+  font-family: 'Noto Sans Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: 100%;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/l/font?kit=abc&skey=def&v=v37) format('woff2');
+  unicode-range: U+61-62, U+250;
+}`;
+
+describe('parseFaces on a text= response', () => {
+  it('names the comment-less face with the given subset', () => {
+    const [face] = parseFaces(TEXT_CSS, { subset: 'ipa' });
+    expect(face).toMatchObject({ subset: 'ipa', family: 'Noto Sans Mono', weight: '400' });
+    expect(face.url).toBe('https://fonts.gstatic.com/l/font?kit=abc&skey=def&v=v37');
+    expect(face.unicodeRange).toBe('U+61-62, U+250');
+  });
+
+  it('skips a comment-less face when no subset name is given, as before', () => {
+    expect(parseFaces(TEXT_CSS)).toEqual([]);
+  });
+});
+
+describe('buildGoogleFontsUrl', () => {
+  it('asks for named subsets by default', () => {
+    expect(buildGoogleFontsUrl([{ name: 'JetBrains Mono', axes: 'wght@400..700' }])).toBe(
+      'https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400..700&display=swap'
+    );
+  });
+
+  it('asks for exactly the given characters with text=, encoded', () => {
+    expect(
+      buildGoogleFontsUrl([{ name: 'Noto Sans Mono', axes: 'wght@400' }], { text: '[ɐ̯]' })
+    ).toBe(
+      'https://fonts.googleapis.com/css2?family=Noto+Sans+Mono:wght@400&text=%5B%C9%90%CC%AF%5D&display=swap'
+    );
   });
 });
 

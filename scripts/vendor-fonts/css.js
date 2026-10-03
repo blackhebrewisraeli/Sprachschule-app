@@ -11,15 +11,21 @@
 
 /**
  * Parse @font-face blocks out of a css2 response.
+ *
+ * A `text=` request (an exact-characters subset) answers with one face and no
+ * subset comment; `subset` names it instead.
  * @param {string} css
+ * @param {{ subset?: string }} [opts]
  * @returns {Face[]}
  */
-export function parseFaces(css) {
+export function parseFaces(css, { subset: fallbackSubset } = {}) {
   const faces = [];
-  const re = /\/\*\s*([a-z0-9-]+)\s*\*\/\s*@font-face\s*\{([^}]*)\}/gi;
+  const re = /(?:\/\*\s*([a-z0-9-]+)\s*\*\/\s*)?@font-face\s*\{([^}]*)\}/gi;
   let m;
   while ((m = re.exec(css)) !== null) {
-    const [, subset, block] = m;
+    const [, commented, block] = m;
+    const subset = commented ?? fallbackSubset;
+    if (!subset) continue;
     const pick = (prop) => {
       const hit = new RegExp(`${prop}:\\s*([^;]+);`, 'i').exec(block);
       return hit ? hit[1].trim() : '';

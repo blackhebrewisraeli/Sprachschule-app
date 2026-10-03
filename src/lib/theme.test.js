@@ -85,14 +85,15 @@ describe('theme tokens', () => {
     expect(TEXT.kicker.color).toBe(COLORS.red);
   });
 
-  // Not a style preference. Of the three vendored families only the mono face
-  // carries the greek subset, and IPA borrows θ and χ from it — a sans here
-  // renders those as tofu. fontCoverage.test.js guards the subset; this guards
-  // the one recipe that has to consume it.
-  it('keeps IPA on the mono face, which is the only one with the greek subset', () => {
-    expect(TEXT.ipa.fontFamily).toBe(FONTS.mono);
-    expect(TEXT.ipa.fontFamily).not.toBe(FONTS.body);
-    expect(TEXT.ipa.fontFamily).not.toBe(FONTS.display);
+  // Not a style preference. Only the pack's `ipa` face can draw IPA: the mono
+  // face lacks 26 of the 38 phonetic characters (Android drew them as boxes)
+  // and the sans is latin-only. fontCoverage.test.js checks that face's glyphs
+  // against every `ipa` string; this guards the one recipe that consumes it.
+  it('sets IPA in the phonetic face, not the mono, body or display one', () => {
+    expect(TEXT.ipa.fontFamily).toBe(FONTS.ipa);
+    for (const other of [FONTS.mono, FONTS.body, FONTS.display]) {
+      expect(TEXT.ipa.fontFamily).not.toBe(other);
+    }
   });
 
   // The rendered-DOM contrast audit measures the opacity too, so "softer"

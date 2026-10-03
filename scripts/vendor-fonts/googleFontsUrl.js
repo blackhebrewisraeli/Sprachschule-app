@@ -9,13 +9,19 @@
 // would be two definitions that a future rename could silently split. It is
 // imported from the runtime module instead — see scripts/vendor-fonts/index.js.
 
-/** @param {Array<{ name: string, weights?: number[], axes?: string }>} families */
-export function buildGoogleFontsUrl(families) {
+/**
+ * @param {Array<{ name: string, weights?: number[], axes?: string }>} families
+ * @param {{ text?: string }} [opts] `text` asks for a file holding exactly these
+ *   characters, which also reaches glyphs no named subset covers (the IPA
+ *   combining marks, e.g. U+032F). It applies to every family in the request.
+ */
+export function buildGoogleFontsUrl(families, { text } = {}) {
   const parts = families.map((f) => {
     const name = encodeURIComponent(f.name).replace(/%20/g, '+');
     if (f.axes) return `family=${name}:${f.axes}`;
     const weights = (f.weights?.length ? f.weights : [400]).join(';');
     return `family=${name}:wght@${weights}`;
   });
-  return `https://fonts.googleapis.com/css2?${parts.join('&')}&display=swap`;
+  const only = text ? `&text=${encodeURIComponent(text)}` : '';
+  return `https://fonts.googleapis.com/css2?${parts.join('&')}${only}&display=swap`;
 }

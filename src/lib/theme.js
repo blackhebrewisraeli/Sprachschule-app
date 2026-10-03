@@ -106,6 +106,8 @@ export const FONTS = {
   display: 'var(--f-display)',
   mono: 'var(--f-mono)',
   body: 'var(--f-body)',
+  // Phonetic transcriptions only; see TEXT.ipa.
+  ipa: 'var(--f-ipa)',
 };
 
 // Backward-compat aliases — existing components import these directly
@@ -448,10 +450,12 @@ export const TEXT = {
   // vocab card, which drifted to 0.7 and 0.6 opacity at two sizes while this
   // token sat unused.
   //
-  // The face stays MONO and is not negotiable: IPA borrows θ and χ from the
-  // greek subset, and of the three vendored families only JetBrains Mono
-  // carries it — the sans is deliberately latin-only. Setting a sans here
-  // renders those glyphs as tofu, and fontCoverage.test.js is the guard.
+  // The face is the pack's `ipa` stack and is not negotiable. No other
+  // vendored family can draw IPA: JetBrains Mono lacks 26 of the 38 phonetic
+  // characters the content uses (ˈ ː ɐ ɡ ʁ, the combining marks), which Android
+  // drew as boxes, and the sans is latin-only. fontCoverage.test.js checks the
+  // ipa face's actual glyphs against every `ipa` string; theme.test.js guards
+  // this pin.
   //
   // Everything else is tuned for legibility rather than restraint. 12px over
   // 11 because IPA is read glyph by glyph, not scanned; explicit 400 so it
@@ -462,7 +466,7 @@ export const TEXT = {
   // contrast audit measures the result, so softening past this reads as a
   // failure rather than as taste.
   ipa: {
-    fontFamily: FONTS.mono,
+    fontFamily: FONTS.ipa,
     fontSize: FONT_SIZE.sm,
     fontWeight: FONT_WEIGHT.normal,
     letterSpacing: LETTER_SPACING.wide,

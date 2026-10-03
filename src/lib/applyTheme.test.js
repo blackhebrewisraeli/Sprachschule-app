@@ -86,4 +86,17 @@ describe('applyTheme', () => {
       );
     }
   });
+
+  // TEXT.ipa reads --f-ipa. A pack with its own phonetic face sets it; one
+  // without keeps IPA in its mono face rather than dropping to the browser
+  // default, which is a proportional serif.
+  it('sets the IPA face from the pack, falling back to its mono face', () => {
+    const root = document.documentElement.style;
+    applyTheme('light', { font: { mono: "'Mono A', monospace", ipa: "'Phon B', 'Mono A'" } });
+    expect(root.getPropertyValue('--f-ipa')).toBe("'Phon B', 'Mono A'");
+    applyTheme('light', { font: { mono: "'Mono A', monospace" } });
+    expect(root.getPropertyValue('--f-ipa')).toBe("'Mono A', monospace");
+    applyTheme('light');
+    expect(root.getPropertyValue('--f-ipa')).toBe(root.getPropertyValue('--f-mono'));
+  });
 });
