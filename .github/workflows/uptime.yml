@@ -33,7 +33,7 @@ jobs:
     steps:
       - name: Check every hop
         env:
-          APP_URL: https://deutsch-app-dusky.vercel.app
+          APP_URL: https://www.sprachschule-app.com
           SUPABASE_URL: ${{ secrets.MONITOR_SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.MONITOR_SUPABASE_ANON_KEY }}
         run: |
