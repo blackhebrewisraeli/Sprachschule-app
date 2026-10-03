@@ -34,6 +34,7 @@
     "check:migrations": "node scripts/check-migrations/index.js",
     "seed:lessons": "node scripts/seed-lessons/index.js",
     "seed:screenshots": "node scripts/dev/screenshot-seed.js",
+    "screenshots:capture": "node scripts/screenshots/capture.mjs",
     "import:lexicon": "node --max-old-space-size=4096 scripts/import-lexicon/index.js"
   },
   "dependencies": {

@@ -3,6 +3,8 @@ import { screenshotSeed, pasteSnippet, SEED_GOAL, SEED_STREAK_DAYS } from './scr
 import { STATE_KEY } from './learning-path-seed.js';
 import { currentStreak, bestStreakFromHistory } from '../../src/lib/streak.js';
 import { xpForDay } from '../../src/lib/xpCore.js';
+import { trialStatus } from '../../src/lib/trial.js';
+import { TRIAL_ROUND_CAP } from '../../src/lib/gameConfig.js';
 
 const NOW = new Date(2026, 9, 5, 14, 0, 0); // local noon-ish, any day works
 const TODAY = '2026-10-05';
@@ -37,6 +39,16 @@ describe('screenshotSeed', () => {
     expect(blob.gamification.goal).toBe(SEED_GOAL);
     // Every learned card is scheduled, none overdue: no review-due banner.
     for (const row of Object.values(blob.srs)) expect(row.nextDue).toBeGreaterThan(NOW.getTime());
+  });
+
+  // Over the cap, a guest sees the blocking "Save your progress" sheet on every
+  // practice tab, so no practice scene could be captured. Leave room for the
+  // rounds a capture answers on the day.
+  it('keeps a guest inside the trial, with room for a capture session', () => {
+    const blob = blobOf(screenshotSeed({ now: NOW }));
+    const trial = trialStatus(blob.daily, blob.gamification);
+    expect(trial.exhausted).toBe(false);
+    expect(TRIAL_ROUND_CAP - trial.roundsUsed).toBeGreaterThanOrEqual(10);
   });
 
   it('holds no personal data', () => {
