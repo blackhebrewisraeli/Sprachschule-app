@@ -36,6 +36,7 @@
     "seed:screenshots": "node scripts/dev/screenshot-seed.js",
     "screenshots:capture": "node scripts/screenshots/capture.mjs",
     "release:bump": "node scripts/release/bump.mjs",
+    "ios:upload": "node scripts/release/ios-upload.mjs",
     "import:lexicon": "node --max-old-space-size=4096 scripts/import-lexicon/index.js"
   },
   "dependencies": {
