@@ -31,7 +31,7 @@
 
 import { execFile, execFileSync, spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, rmSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
@@ -43,7 +43,7 @@ import { answerKeys } from './answers.js';
 import { SCENES, TARGETS, FEATURE_GRAPHIC, capturableScenes } from './scenes.js';
 import { composeScreenshot, composeFeatureGraphic } from './compose.mjs';
 import { exportProblems, pngInfo } from './png.js';
-import { parseArgs, injectDriver, reportMarkdown } from './lib.js';
+import { parseArgs, injectDriver, reportMarkdown, mergeEarlierExports } from './lib.js';
 
 const exec = promisify(execFile);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -615,14 +615,42 @@ async function main() {
     rmSync(join(BUILD, 'compose.html'), { force: true });
   }
 
+  // Keep the exports this run did not touch in the report, re-verified.
+  const existing = new Map();
+  for (const [key, target] of Object.entries(TARGETS)) {
+    for (const f of [...SCENES, ...(key === 'play' ? [FEATURE_GRAPHIC] : [])]) {
+      const file = join(OUT, key, f.file);
+      if (!existsSync(file)) continue;
+      const size = f === FEATURE_GRAPHIC ? FEATURE_GRAPHIC : target;
+      existing.set(`${key}/${f.file}`, {
+        problems: exportProblems(readFileSync(file), size),
+        // Local time, so it matches the clock the owner reads.
+        date: statSync(file).mtime.toLocaleString('sv-SE').slice(0, 16),
+      });
+    }
+  }
+  const allRows = mergeEarlierExports({
+    rows,
+    scenes: SCENES,
+    targets: TARGETS,
+    graphic: FEATURE_GRAPHIC,
+    existing,
+  });
   writeFileSync(
     join(OUT, 'REPORT.md'),
-    reportMarkdown({ rows, notes, scenes: SCENES, targets: TARGETS, graphic: FEATURE_GRAPHIC })
+    reportMarkdown({
+      rows: allRows,
+      notes,
+      scenes: SCENES,
+      targets: TARGETS,
+      graphic: FEATURE_GRAPHIC,
+    })
   );
-  for (const r of rows) log(`${r.status.padEnd(7)} ${r.target.padEnd(6)} ${r.file} — ${r.detail}`);
+  for (const r of allRows)
+    log(`${r.status.padEnd(7)} ${r.target.padEnd(6)} ${r.file} — ${r.detail}`);
   for (const n of notes) log(n);
   log(`report: ${join(OUT, 'REPORT.md')}`);
-  process.exitCode = rows.some((r) => r.status === 'failed') ? 1 : 0;
+  process.exitCode = allRows.some((r) => r.status === 'failed') ? 1 : 0;
 }
 
 main().catch((err) => {
