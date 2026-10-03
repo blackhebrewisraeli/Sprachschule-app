@@ -23,9 +23,9 @@ Owner-applied 2026-09-18:
 Re-paste the template after any future `magic_link.html` edit — hosted
 Auth does not read the file automatically.
 
-**Rename pending (2026-09-30):** the repo template and `config.toml` subject
-now say `sprachschule-app`, but the hosted copy applied 2026-09-18 still says
-`Deutsch · Sprachschule` until you re-paste the subject and body (steps below).
+**Brand (owner choice, 2026-10-03):** the email says `Deutsch · Sprachschule`,
+matching the native app label and the deletion page. The 2026-09-30 rename to
+`sprachschule-app` was reverted for this template before it was ever pasted.
 "Sprachschule" in the heading above is the Supabase dashboard project label,
 which is unchanged.
 
@@ -45,12 +45,11 @@ one-time (and on-change) sync into production.
    sign-in).
 3. Set the **Subject** to match `supabase/config.toml`:
 
-   `Your sign-in code for sprachschule-app`
+   `Your sign-in code for Deutsch · Sprachschule`
 
 4. Replace the **Body** with the full contents of
    `supabase/templates/magic_link.html` (HTML source). Confirm both of these
    GoTrue placeholders remain:
-
    - `{{ .Token }}` — 6-digit code (primary for the installed PWA)
    - `{{ .ConfirmationURL }}` — magic link (browser convenience)
 
@@ -79,9 +78,9 @@ dashboard step for local GoTrue.
 Local Auth must redirect back to the Vite dev server, not the default GoTrue
 `:3000` site:
 
-| Setting | Value |
-|---|---|
-| `site_url` | `http://localhost:5173` |
+| Setting                    | Value                                            |
+| -------------------------- | ------------------------------------------------ |
+| `site_url`                 | `http://localhost:5173`                          |
 | `additional_redirect_urls` | `http://localhost:5173`, `http://127.0.0.1:5173` |
 
 These live in `supabase/config.toml` and apply to local `supabase start` only.
