@@ -1,5 +1,6 @@
 import { createAccountHandler } from './accountHandler.js';
 import { sendError } from './respond.js';
+import { hasAppleIdentity, readAppleConfig, revokeAppleToken } from './appleRevoke.js';
 export { REAUTH_MAX_AGE_SEC } from './authTime.js';
 import { REAUTH_MAX_AGE_SEC } from './authTime.js';
 
@@ -373,6 +374,21 @@ export async function removeAvatarObjects(db, userId) {
   }
 }
 
+// The Apple refresh token rides in the body next to the confirm phrase. Only a
+// string is accepted; anything else is treated as absent.
+function readAppleToken(body) {
+  let parsed = body;
+  if (typeof body === 'string') {
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      return null;
+    }
+  }
+  const token = parsed?.appleRefreshToken;
+  return typeof token === 'string' && token.length > 0 ? token : null;
+}
+
 export const deleteHandler = createAccountHandler({
   method: 'DELETE',
   // Deleting is a once-ever action; the only legitimate repeat is a retry after
@@ -387,6 +403,44 @@ export const deleteHandler = createAccountHandler({
   run: async ({ req, res, auth, db }) => {
     if (readConfirm(req.body) !== CONFIRM_PHRASE) {
       return sendError(res, 'bad_request', `Type ${CONFIRM_PHRASE} to confirm.`);
+    }
+
+    // Sign in with Apple: Apple requires the learner's token to be revoked when
+    // they delete their account, and Supabase's deleteUser does not do it. It
+    // runs BEFORE anything is erased, so a failure leaves the account intact
+    // and the learner can simply retry; after deleteUser there is no way back
+    // to the token. Order of precedence, deliberately:
+    //   - erasure is never blocked by OUR misconfiguration (no env, or Apple
+    //     rejecting our key): that is logged for the owner and the delete goes
+    //     ahead;
+    //   - a transient Apple failure fails the request so the learner retries;
+    //   - a learner who signed in with Apple but sent no token is asked to sign
+    //     in with Apple again (apple_token_required), since only that mints one.
+    if (hasAppleIdentity(auth.user)) {
+      const config = readAppleConfig();
+      if (!config) {
+        console.error(
+          `account.delete: user ${auth.userId} has an Apple identity but APPLE_* is not configured; Apple token NOT revoked`
+        );
+      } else {
+        const token = readAppleToken(req.body);
+        if (!token) {
+          return sendError(
+            res,
+            'apple_token_required',
+            'Sign in with Apple again to finish deleting your account.'
+          );
+        }
+        const result = await revokeAppleToken(config, token);
+        if (result.outcome === 'transient') {
+          throw new Error('Apple token revocation failed transiently');
+        }
+        if (result.outcome === 'config') {
+          console.error(
+            `account.delete: Apple rejected our credentials (status ${result.status}, ${result.error}); Apple token NOT revoked for user ${auth.userId}`
+          );
+        }
+      }
     }
 
     // STORAGE IS NOT IN THE CASCADE. Every user-owned TABLE goes when the auth

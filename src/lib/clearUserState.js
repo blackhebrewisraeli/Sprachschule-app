@@ -18,6 +18,7 @@
 //      Same-URL assign('/') is a no-op on `/`.
 import { signOut as authSignOut } from './auth.js';
 import { forgetPushDevice } from './pushNotifications.js';
+import { clearAppleRefreshToken } from './appleRevokeToken.js';
 import { freezePersist } from './storage.js';
 import { THEME_MODE_KEY } from './themeMode.js';
 
@@ -46,6 +47,7 @@ export const locationReset = {
 /** Wipe every localStorage key except device theme. */
 export function clearUserLocalState() {
   freezePersist();
+  clearAppleRefreshToken();
   try {
     const preserved = {};
     for (const key of PRESERVED_LOCAL_KEYS) {

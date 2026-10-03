@@ -18,6 +18,7 @@ contract, arriving in phase B1). Spec:
   | `bad_request`        | 400  | body failed validation                             |
   | `unauthorized`       | 401  | reserved for B2 (JWT auth)                         |
   | `reauth_required`    | 401  | valid token, but the action needs a fresh sign-in  |
+  | `apple_token_required` | 401 | Apple learner deleting an account without an Apple token: sign in with Apple again |
   | `forbidden`          | 403  | Origin present but not allow-listed                |
   | `signup_not_allowed` | 403  | valid token, email not on `SIGNUP_EMAIL_ALLOWLIST` |
   | `method_not_allowed` | 405  | only POST is accepted                              |

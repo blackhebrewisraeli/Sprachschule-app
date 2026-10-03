@@ -8,6 +8,10 @@ export const ERROR_CODES = {
   // destructive enough to demand a recent authentication. The client must
   // re-authenticate and retry rather than treat the session as expired.
   reauth_required: 401,
+  // The learner signed in with Apple, so deleting the account must revoke their
+  // Apple token, and only a fresh Apple sign-in carries one. The client sends
+  // them through Apple again rather than deleting without revoking.
+  apple_token_required: 401,
   forbidden: 403,
   // Distinct from `forbidden`: the token IS valid, but this verified email is
   // not on SIGNUP_EMAIL_ALLOWLIST. The client must sign the user out and

@@ -26,6 +26,7 @@ describe('sendError', () => {
       bad_request: 400,
       unauthorized: 401,
       reauth_required: 401,
+      apple_token_required: 401,
       forbidden: 403,
       signup_not_allowed: 403,
       method_not_allowed: 405,

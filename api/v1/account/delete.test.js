@@ -8,6 +8,7 @@ import { deleteHandler as handler } from '../../_lib/accountEndpoints.js';
 import { serviceClient } from '../../_lib/supabase.js';
 import { requireAuth } from '../../_lib/auth-middleware.js';
 import { createRes } from '../../_lib/test-helpers.js';
+import { generateKeyPairSync } from 'node:crypto';
 
 const USER = { userId: 'uid-1', email: 'a@b.com' };
 
@@ -284,5 +285,113 @@ describe('account deletion clears the avatar folder', () => {
     await handler(makeReq(), res);
     expect(res.statusCode).toBe(204);
     expect(deleteUser).toHaveBeenCalled();
+  });
+});
+
+// Sign in with Apple: the token is revoked BEFORE anything is erased
+// (docs/AUTH_APPLE_OAUTH_RUNBOOK.md).
+describe('DELETE /api/v1/account — Apple token revocation', () => {
+  const APPLE_USER = () => ({
+    ...freshUser(),
+    user: { app_metadata: { provider: 'apple', providers: ['apple'] } },
+  });
+  const { privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  const appleEnv = {
+    APPLE_SERVICES_ID: 'com.example.signin',
+    APPLE_TEAM_ID: 'TEAM123456',
+    APPLE_KEY_ID: 'KEY1234567',
+    APPLE_PRIVATE_KEY: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+  };
+  const withToken = { confirm: 'DELETE', appleRefreshToken: 'r.apple' };
+  let fetchSpy;
+  const apple = (status, body = {}) =>
+    fetchSpy.mockResolvedValue({ ok: status < 300, status, json: async () => body });
+
+  beforeEach(() => {
+    requireAuth.mockResolvedValue(APPLE_USER());
+    deleteUser.mockResolvedValue({ error: null });
+    serviceClient.mockReturnValue(mockDb());
+    for (const [k, v] of Object.entries(appleEnv)) vi.stubEnv(k, v);
+    fetchSpy = vi.spyOn(globalThis, 'fetch');
+    apple(200);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fetchSpy.mockRestore();
+    vi.clearAllMocks();
+  });
+
+  it('revokes the Apple token first, then deletes', async () => {
+    const order = [];
+    fetchSpy.mockImplementation(async () => {
+      order.push('apple');
+      return { ok: true, status: 200, json: async () => ({}) };
+    });
+    deleteUser.mockImplementation(async () => {
+      order.push('delete');
+      return { error: null };
+    });
+    const res = createRes();
+    await handler(makeReq('DELETE', freshToken(), withToken), res);
+    expect(res.statusCode).toBe(204);
+    expect(order).toEqual(['apple', 'delete']);
+    expect(new URLSearchParams(fetchSpy.mock.calls[0][1].body).get('token')).toBe('r.apple');
+  });
+
+  it('asks an Apple learner with no token to sign in with Apple, and deletes nothing', async () => {
+    const res = createRes();
+    await handler(makeReq('DELETE', freshToken(), { confirm: 'DELETE' }), res);
+    expect(res.statusCode).toBe(401);
+    expect(res.body.error.code).toBe('apple_token_required');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(storageOps).toEqual([]);
+  });
+
+  it('fails without deleting when Apple is unreachable, so the learner can retry', async () => {
+    apple(503);
+    const res = createRes();
+    await handler(makeReq('DELETE', freshToken(), withToken), res);
+    expect(res.statusCode).toBe(500);
+    expect(deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('still deletes when Apple says the token is already gone', async () => {
+    apple(400, { error: 'invalid_grant' });
+    const res = createRes();
+    await handler(makeReq('DELETE', freshToken(), withToken), res);
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('never blocks erasure on our own misconfiguration: logs and deletes', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    apple(400, { error: 'invalid_client' });
+    let res = createRes();
+    await handler(makeReq('DELETE', freshToken(), withToken), res);
+    expect(res.statusCode).toBe(204);
+
+    vi.stubEnv('APPLE_PRIVATE_KEY', '');
+    requireAuth.mockResolvedValue(APPLE_USER());
+    res = createRes();
+    await handler(makeReq('DELETE', freshToken(), { confirm: 'DELETE' }), res);
+    expect(res.statusCode).toBe(204);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('Apple token NOT revoked'));
+    log.mockRestore();
+  });
+
+  it('does not touch Apple for anyone else', async () => {
+    requireAuth.mockResolvedValue(freshUser());
+    const res = createRes();
+    await handler(makeReq(), res);
+    expect(res.statusCode).toBe(204);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('never writes the token to the logs', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    apple(400, { error: 'invalid_client' });
+    await handler(makeReq('DELETE', freshToken(), withToken), createRes());
+    expect(JSON.stringify(log.mock.calls)).not.toContain('r.apple');
+    log.mockRestore();
   });
 });
