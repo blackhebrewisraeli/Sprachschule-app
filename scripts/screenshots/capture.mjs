@@ -54,7 +54,17 @@ const ANDROID_SDK = process.env.ANDROID_HOME ?? join(homedir(), 'Library/Android
 const ADB = existsSync(join(ANDROID_SDK, 'platform-tools/adb'))
   ? join(ANDROID_SDK, 'platform-tools/adb')
   : 'adb';
-const STUDIO_JDK = '/Applications/Android Studio.app/Contents/jbr/Contents/Home';
+// Gradle 8.14 cannot compile build scripts on Java 25 (Android Studio's bundled
+// JDK), and Capacitor 8 needs at least 21 to compile, so 17 is out too. CI pins
+// Temurin 21; prefer a local 21 the same way. docs/NATIVE_BUILD.md §4.
+function androidJavaHome() {
+  try {
+    return execFileSync('/usr/libexec/java_home', ['-v', '21'], { encoding: 'utf8' }).trim();
+  } catch {
+    const studio = '/Applications/Android Studio.app/Contents/jbr/Contents/Home';
+    return existsSync(studio) ? studio : null;
+  }
+}
 const BUNDLES = {
   ios: join(REPO, 'ios/App/App/public/index.html'),
   android: join(REPO, 'android/app/src/main/assets/public/index.html'),
@@ -365,7 +375,8 @@ async function androidSerial() {
 // inspection flag differs.
 async function buildAndroid() {
   log('building the Android APK (assembleDebug, for WebView inspection)…');
-  const env = existsSync(STUDIO_JDK) ? { JAVA_HOME: STUDIO_JDK } : {};
+  const javaHome = androidJavaHome();
+  const env = javaHome ? { JAVA_HOME: javaHome } : {};
   await run('./gradlew', ['-q', 'assembleDebug'], { cwd: join(REPO, 'android'), env });
   return join(REPO, 'android/app/build/outputs/apk/debug/app-debug.apk');
 }
