@@ -24,15 +24,18 @@ export const SEED_STREAK_DAYS = 7;
 const LEARNED_PER_DECK = 6;
 
 // Verdict counts per past day: every day clears the 50 XP goal by a plausible,
-// uneven margin so the heatmap does not look generated.
+// uneven margin so the heatmap does not look generated. Kept lean on purpose:
+// a guest's trial ends at TRIAL_ROUND_CAP (60) answered rounds, and a seed
+// above it put the "Save your progress" wall over every practice tab. The test
+// proves the headroom with the app's own trialStatus.
 const PAST_DAYS = [
-  { correct: 7, almost: 1 },
-  { correct: 6, almost: 2 },
-  { correct: 9, almost: 0 },
-  { correct: 7, almost: 2 },
-  { correct: 8, almost: 1 },
-  { correct: 6, almost: 1 },
-  { correct: 8, almost: 2 },
+  { correct: 5, almost: 1 },
+  { correct: 4, almost: 2 },
+  { correct: 5, almost: 0 },
+  { correct: 5, almost: 1 },
+  { correct: 4, almost: 2 },
+  { correct: 6, almost: 0 },
+  { correct: 5, almost: 1 },
 ];
 
 function day(counts, level) {

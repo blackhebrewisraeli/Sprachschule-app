@@ -60,6 +60,52 @@ If the final release build cannot produce one of these exact states without a
 debug-only control, replace that scene with another real shipped state. Never
 add a control, score, response, or correction in the image editor.
 
+## Automated capture
+
+```bash
+npm run screenshots:capture
+```
+
+One command produces the iPhone, iPad and Play sets plus the feature graphic in
+`store-screenshots/` (gitignored), with a `REPORT.md` listing every file, its
+verified size, the Play alt text, and this plan's export checklist ticked only
+where the run can prove it. Flags: `--targets iphone,ipad,play`,
+`--scenes chat,home`, `--skip-build` (reuse the last native builds). The code is
+in `scripts/screenshots/`.
+
+How it stays inside this plan's rules:
+
+- **Real native captures.** It runs `npm run build:mobile` (the store build's
+  flags: push, saved conversations, Sentry and Apple sign-in off), builds the
+  iOS **Release** app for the Simulator and the Android **debug** APK, and
+  takes each frame with `simctl io screenshot` / `adb exec-out screencap`. The
+  iPad set is a real iPad layout and the Play set a real Android one. Android
+  uses the debug shell because the driver talks to it over the WebView's
+  DevTools socket, which release builds switch off: Android refuses cleartext
+  HTTP even to `127.0.0.1`, and opening it would mean loosening the app's
+  manifest. The web bundle inside is the same `build:mobile` output.
+- **Only what a learner could do.** A small driver (`driver.js`) is injected
+  into the _copied_ bundle (`ios/App/App/public`,
+  `android/app/src/main/assets/public`, both gitignored) and removed with
+  `npx cap copy` afterwards, even on failure. It taps the same controls a
+  learner taps. Vocab and Translate answers come from the shipped pack
+  (`answers.js`), so the app grades a genuinely right answer, and the Chat
+  reply and correction come from the live AI flow.
+- **Fictional, clean state.** Every scene starts from a cleared, seeded
+  localStorage (`screenshot-seed.js`), on dedicated "Deutsch Shots" Simulators
+  set to English (U.S.) and light mode, with a 9:41 status bar, full battery
+  and signal, and no notifications (Android demo mode).
+- **Composition.** The capture is scaled proportionally (never stretched)
+  under a headline band of 17% of the canvas, inside the 5% safe margin, with
+  no device frame (`layout.js`, `compose.mjs`). Every export is checked from
+  its own bytes for exact size, 8-bit depth and no alpha (`png.js`).
+
+**Still by hand:** scene 5 needs the weekly league table, which is server state
+that only a signed-in account has, so the run skips it and says so. Capture it
+from the dedicated fictional account. The Simulators and emulator stay on your
+Mac; the first run creates them. Android needs an emulator or phone attached
+(`adb devices`); without one the Play set is skipped and the report says so.
+
 ## Safe capture state
 
 1. Build the exact release candidate. Keep every not-yet-launched flag off,
