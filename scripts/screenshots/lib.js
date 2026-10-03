@@ -42,6 +42,47 @@ export function injectDriver(html, driverSource, cfg) {
 }
 
 /**
+ * Rows for exports a partial run did not touch (`--scenes vocab`,
+ * `--targets iphone`). Without these, REPORT.md listed only that run's files
+ * while the rest still sat in the folder, unverified and unreported. Each
+ * earlier file is re-checked from its bytes and carries its date, so an image
+ * older than a fix (say, IPA before #427) reads as old instead of vanishing.
+ *
+ * @param {{ rows: object[], scenes: object[], targets: Record<string, object>,
+ *           graphic: { file: string },
+ *           existing: Map<string, { problems: string[], date: string }> }} o
+ *   `existing` is keyed `target/file` for every export found on disk.
+ * @returns {object[]} this run's rows plus the earlier ones, in story order
+ */
+export function mergeEarlierExports({ rows, scenes, targets, graphic, existing }) {
+  const has = new Set(rows.map((r) => `${r.target}/${r.file}`));
+  const out = [...rows];
+  for (const target of Object.keys(targets)) {
+    const files = [...scenes, ...(target === 'play' ? [graphic] : [])];
+    const anyOnDisk = files.some((f) => existing.has(`${target}/${f.file}`));
+    for (const f of files) {
+      const key = `${target}/${f.file}`;
+      if (has.has(key)) continue;
+      const found = existing.get(key);
+      if (found) {
+        out.push({
+          target,
+          file: f.file,
+          status: found.problems.length ? 'failed' : 'ok',
+          detail: `${found.problems.join('; ') || 'verified'}; from an earlier run (${found.date})`,
+        });
+      } else if (f.skip && anyOnDisk) {
+        out.push({ target, file: f.file, status: 'skipped', detail: f.skip });
+      }
+    }
+  }
+  const order = (r) =>
+    Object.keys(targets).indexOf(r.target) * 100 +
+    (r.file === graphic.file ? 99 : scenes.findIndex((s) => s.file === r.file));
+  return out.sort((a, b) => order(a) - order(b));
+}
+
+/**
  * REPORT.md: what was produced, what was skipped and why, and the plan's
  * export checklist with the boxes this run can honestly tick.
  */

@@ -6,7 +6,13 @@ import { SCENES, TARGETS, FEATURE_GRAPHIC, capturableScenes } from './scenes.js'
 import { answerKeys } from './answers.js';
 import { pngInfo, exportProblems } from './png.js';
 import { screenshotLayout, HEADLINE_SHARE, SAFE_SHARE } from './layout.js';
-import { parseArgs, injectDriver, reportMarkdown, DRIVER_MARK } from './lib.js';
+import {
+  parseArgs,
+  injectDriver,
+  reportMarkdown,
+  mergeEarlierExports,
+  DRIVER_MARK,
+} from './lib.js';
 import { activePack } from '../../src/packs/index.js';
 
 const PLAN = readFileSync(
@@ -267,5 +273,62 @@ describe('reportMarkdown', () => {
     expect(reportMarkdown({ ...base, rows: [], notes: ['Play skipped'] })).toContain(
       '> Play skipped'
     );
+  });
+});
+
+describe('mergeEarlierExports', () => {
+  const base = { scenes: SCENES, targets: TARGETS, graphic: FEATURE_GRAPHIC };
+  const at = '2026-10-03 11:23';
+  // A `--scenes vocab` run on iPhone, with an earlier full set still on disk.
+  const rows = [
+    { target: 'iphone', file: '03-vocab-remember-more.png', status: 'ok', detail: 'fresh' },
+  ];
+  const existing = new Map([
+    ['iphone/01-chat-real-situations.png', { problems: [], date: at }],
+    ['iphone/03-vocab-remember-more.png', { problems: [], date: at }],
+    [
+      'play/03-vocab-remember-more.png',
+      { problems: ['is 1×1, needs exactly 1080×1920'], date: at },
+    ],
+  ]);
+  const merged = mergeEarlierExports({ ...base, rows, existing });
+  const find = (t, f) => merged.find((r) => r.target === t && r.file === f);
+
+  it('keeps an export this run did not touch, re-verified and dated', () => {
+    expect(find('iphone', '01-chat-real-situations.png')).toEqual({
+      target: 'iphone',
+      file: '01-chat-real-situations.png',
+      status: 'ok',
+      detail: `verified; from an earlier run (${at})`,
+    });
+  });
+
+  it('prefers this run over the earlier copy of the same file', () => {
+    expect(
+      merged.filter((r) => r.file === '03-vocab-remember-more.png' && r.target === 'iphone')
+    ).toEqual(rows);
+  });
+
+  it('reports an earlier file that no longer passes as failed', () => {
+    expect(find('play', '03-vocab-remember-more.png').status).toBe('failed');
+  });
+
+  it('lists the by-design skip for a target with files, and nothing for one without', () => {
+    expect(find('iphone', '05-stats-and-leagues.png').status).toBe('skipped');
+    expect(merged.some((r) => r.target === 'ipad')).toBe(false);
+  });
+
+  it('orders rows by target, then story order, feature graphic last', () => {
+    expect(merged.filter((r) => r.target === 'iphone').map((r) => r.file.slice(0, 2))).toEqual([
+      '01',
+      '03',
+      '05',
+    ]);
+    const graphicRun = mergeEarlierExports({
+      ...base,
+      rows: [{ target: 'play', file: FEATURE_GRAPHIC.file, status: 'ok', detail: '' }],
+      existing,
+    });
+    expect(graphicRun.filter((r) => r.target === 'play').at(-1).file).toBe(FEATURE_GRAPHIC.file);
   });
 });
