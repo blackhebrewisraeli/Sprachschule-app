@@ -62,9 +62,10 @@ After the change, the Redirect URLs list should read:
   callback is Supabase's, and the GitHub button goes through the same
   `redirectTo` and the same system-browser flow as Google.
 - **Email templates.** `supabase/templates/magic_link.html` links through
-  `{{ .ConfirmationURL }}`, which carries the `redirectTo` above. The copy
-  "tap this link to sign in in your browser" reads a little oddly now that the
-  link opens the app. Rewording it is optional.
+  `{{ .ConfirmationURL }}`, which carries the `redirectTo` above. Its copy
+  says "tap this link to sign in on this device", true on web and native
+  (PKCE ties the link to the requesting device). The hosted copy changes only
+  when re-pasted (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`).
 
 ## How the native flow behaves (for testing)
 
