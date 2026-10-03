@@ -85,6 +85,24 @@ ever disagree. Versions are `MAJOR.MINOR.PATCH`, the most Apple accepts.
 
 ## 3. iOS — IPA
 
+**One command, for TestFlight / App Store Connect:**
+
+```bash
+npm run release:bump    # a new build number, then commit it
+npm run ios:upload      # build:mobile → archive → sign → upload
+```
+
+`ios:upload` signs with the Team set in the project (Automatic signing, so
+Xcode manages the distribution certificate in Apple's cloud) and uploads as the
+Apple ID signed in to **Xcode → Settings → Accounts**; nothing secret is in the
+repo. It needs the app record in App Store Connect (bundle ID
+`com.sprachschule.deutsch`). On failure it prints the next step: not signed in,
+team cannot distribute, no app record, build number already used. Archives and
+logs land in `store-builds/ios/` (gitignored). `-- --archive-only` stops before
+the upload. The build shows in TestFlight after Apple processes it.
+
+**Or by hand in Xcode:**
+
 1. **App target → Signing & Capabilities:** pick your Team (Automatic signing).
 2. Version and build: `npm run release:bump` (above), not the General tab, so
    Android stays in step.

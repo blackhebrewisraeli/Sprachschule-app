@@ -70,3 +70,5 @@ smoke-auth-failure-*.png
 dist-profile-audit/
 # npm run screenshots:capture output (raw captures, store exports, build cache)
 store-screenshots/
+# npm run ios:upload archives, export options and logs
+store-builds/
