@@ -9,7 +9,7 @@ bottom after editing.
 
 **Deutsch Sprachschule**
 
-Set by the owner on 2026-09-30. **The native home-screen display name is still `sprachschule-app`** (`Info.plist` `CFBundleDisplayName`), so the two differ until that string is changed in code (blocker P1-3 in `docs/STORE_SUBMISSION_CHECKLIST.md`).
+Set by the owner on 2026-09-30. The native display name (`Info.plist` `CFBundleDisplayName`, Android `app_name`) is the same string since #414.
 
 ## Subtitle [30]
 

@@ -3,10 +3,21 @@ import { readFileSync } from 'node:fs';
 
 // build:mobile pins every VITE_* flag a native build must not inherit from a
 // local .env file. Push stays OFF until docs/STORE_SUBMISSION_CHECKLIST.md is done.
+// Saved tutor conversations and Sentry are pinned off too: the App Privacy and
+// Data Safety answers describe a native build with neither, so a stray line in
+// .env.production.local must not be able to make those answers untrue.
 describe('build:mobile', () => {
   const script = JSON.parse(readFileSync('package.json', 'utf8')).scripts['build:mobile'];
 
   it('pins push notifications off', () => {
     expect(script).toMatch(/(^|\s)VITE_PUSH_ENABLED=false(\s|$)/);
+  });
+
+  it('pins saved tutor conversations off', () => {
+    expect(script).toMatch(/(^|\s)VITE_AI_HISTORY_ENABLED=false(\s|$)/);
+  });
+
+  it('pins the Sentry DSN empty, so native builds send no crash data', () => {
+    expect(script).toMatch(/(^|\s)VITE_SENTRY_DSN=(\s|$)/);
   });
 });

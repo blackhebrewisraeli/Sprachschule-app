@@ -6,13 +6,13 @@ is not. `ios/App/App/public` and `android/app/src/main/assets/public` are
 gitignored and rebuilt by `npm run build:mobile`, so **every native build starts
 with that command**, on the machine that runs Xcode or Android Studio.
 
-| What              | Value                                                                                                                                                                               |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)                                                                                                                                  |
-| Display name      | `sprachschule-app` (`CFBundleDisplayName` / `app_name`) — **differs from the store name "Deutsch Sprachschule"; see `docs/STORE_SUBMISSION_CHECKLIST.md` blocker matrix, row P1-3** |
-| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                                                                                                                         |
-| Android           | minSdk 24 · target/compile 36                                                                                                                                                       |
-| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio                                                                                                                           |
+| What              | Value                                                                                   |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)                                      |
+| Display name      | `Deutsch Sprachschule` (`CFBundleDisplayName` / `app_name`), same as the store listings |
+| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                             |
+| Android           | minSdk 24 · target/compile 36                                                           |
+| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio                               |
 
 ## 1. Production env — once per machine
 
@@ -34,9 +34,13 @@ VITE_LEAGUES_ENABLED=true
 VITE_GOOGLE_AUTH_ENABLED=true
 # VITE_GITHUB_AUTH_ENABLED is pinned true by build:mobile (package.json); do not set it here
 # VITE_PUSH_ENABLED is pinned OFF in build:mobile — see docs/MOBILE_PUSH_SETUP.md §4
-VITE_SENTRY_DSN=…            # optional, as Production has them
-VITE_SENTRY_ENVIRONMENT=…
 ```
+
+`build:mobile` also pins `VITE_SENTRY_DSN` empty and `VITE_AI_HISTORY_ENABLED=false`,
+so putting either in this file does nothing. The App Privacy and Data Safety
+answers in `docs/STORE_SUBMISSION_CHECKLIST.md` describe a native build with no
+crash reporting and no saved tutor conversations; to change that, remove the pin
+in a PR together with the form answers.
 
 …plus any other `VITE_*` Production carries (e.g. `VITE_SIGNUP_EMAIL_ALLOWLIST`
 once owner action #8 is enabled).
