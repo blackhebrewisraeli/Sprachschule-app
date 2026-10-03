@@ -12,10 +12,12 @@ Companion to Phase C of
 
 ## Current production (Sprachschule)
 
-Owner-applied 2026-09-18:
+Owner-applied 2026-09-18, body re-pasted 2026-10-03:
 
 - **Magic Link** subject + body pasted from the repo template (6-digit
-  code + link; footer says the code expires in five minutes).
+  code + link; footer says the code expires in five minutes). The
+  2026-10-03 paste carries the "Deutsch · Sprachschule" brand (#424) and
+  the "…to sign in on this device" line (#423); a test email confirmed it.
 - **Email OTP / magic-link expiry** = 300 seconds (5 minutes). Repo
   `supabase/config.toml` `[auth.email] otp_expiry` matches. JWT expiry is
   unchanged.

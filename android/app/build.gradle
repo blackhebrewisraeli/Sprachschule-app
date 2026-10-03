@@ -25,8 +25,8 @@ android {
         applicationId "com.sprachschule.deutsch"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -47,8 +47,16 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.release
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // R8 shrinks the native shell: Capacitor's own consumer rules keep
+            // every Plugin subclass and its @PluginMethod / @PermissionCallback
+            // methods, and the default optimize file keeps @JavascriptInterface,
+            // which the bridge's postMessage needs. Verified by running the
+            // release APK on an emulator (docs/NATIVE_BUILD.md §4). The web
+            // bundle in assets/public is untouched by either setting, and the
+            // R8 map travels inside the .aab, so Play deobfuscates crashes.
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }

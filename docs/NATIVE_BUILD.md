@@ -12,7 +12,7 @@ with that command**, on the machine that runs Xcode or Android Studio.
 | Display name      | `Deutsch Sprachschule` (`CFBundleDisplayName` / `app_name`), same as the store listings |
 | iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                             |
 | Android           | minSdk 24 · target/compile 36                                                           |
-| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio                               |
+| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio, **JDK 21** for Gradle (§4)   |
 
 ## 1. Production env — once per machine
 
@@ -69,12 +69,25 @@ npx cap open ios                   # Xcode — ios/App/App.xcodeproj
 npx cap open android               # Android Studio — android/
 ```
 
+## Version and build number — before every upload
+
+```bash
+npm run release:bump               # same version, next build number
+npm run release:bump -- 1.1.0      # new version, next build number
+```
+
+One command keeps `package.json`, Android (`versionName` / `versionCode`) and
+iOS (`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`) on one version and one
+shared build number. Both stores reject an upload whose build number is not
+higher than the last, so run it before each TestFlight or Play upload and
+commit the result. `scripts/release/version.test.js` fails if the three files
+ever disagree. Versions are `MAJOR.MINOR.PATCH`, the most Apple accepts.
+
 ## 3. iOS — IPA
 
 1. **App target → Signing & Capabilities:** pick your Team (Automatic signing).
-2. **App target → General:** raise _Version_ (`MARKETING_VERSION`) and _Build_
-   (`CURRENT_PROJECT_VERSION`). Every App Store Connect upload needs a higher
-   build number.
+2. Version and build: `npm run release:bump` (above), not the General tab, so
+   Android stays in step.
 3. Destination: **Any iOS Device (arm64)**, then **Product → Archive**.
 4. The Organizer opens: **Distribute App** → _App Store Connect_ to upload
    (TestFlight / review), or _Release Testing_ / _Debugging_ to export an
@@ -82,8 +95,7 @@ npx cap open android               # Android Studio — android/
 
 ## 4. Android — APK or AAB
 
-1. Raise `versionCode` (integer, must increase every upload) and `versionName`
-   in `android/app/build.gradle`.
+1. Version and build: `npm run release:bump` (above).
 2. **Build → Generate Signed App Bundle or APK…**
    - **Android App Bundle (`.aab`)** for Google Play — Play no longer accepts
      APKs for new apps.
@@ -97,14 +109,33 @@ npx cap open android               # Android Studio — android/
 
 **From the command line**, `cd android && ./gradlew bundleRelease` signs with
 `android/keystore.properties` and writes
-`android/app/build/outputs/bundle/release/app-release.aab`. Gradle must run on a
-JDK 17–21: a newer default JDK (e.g. OpenJDK 26) fails in AGP's `jlink` step
-with `Execution failed for JdkImageTransform`. Point it at Android Studio's
-bundled one:
+`android/app/build/outputs/bundle/release/app-release.aab`.
+
+**Gradle needs JDK 21**, the version CI pins (Temurin 21). Capacitor 8 compiles
+at Java 21, so JDK 17 fails (`invalid source release: 21`); Gradle 8.14 cannot
+compile build scripts on Java 25, which is what Android Studio now bundles, so
+that fails too (`Unsupported class file major version 69`), though only after a
+`build.gradle` edit forces a recompile, which makes it look intermittent.
+OpenJDK 26 also fails, in AGP's `jlink` step. Install Temurin 21 (user-level
+is fine) and point Gradle at it:
 
 ```bash
-JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew bundleRelease
+JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew bundleRelease
 ```
+
+If a build fails right after switching JDKs, run `./gradlew --stop` first: a
+daemon started on another JDK keeps serving builds.
+
+**Release builds are shrunk** (`minifyEnabled` + `shrinkResources`, R8). The
+native shell went from 10.0 MB of DEX to 1.4 MB, the APK from 6.8 to 3.7 MB.
+Capacitor's consumer rules keep every plugin and its `@PluginMethod`s, and the
+R8 map ships inside the `.aab`, so Play shows readable crash traces. Shrinking
+fails at runtime, not at build time, so after changing a plugin or the keep
+rules, install the release APK on an emulator and check: launch past the
+splash, open a tab, tap **Continue with Google** (opens the browser), and
+`adb shell am start -a android.intent.action.VIEW -d
+"com.sprachschule.deutsch://login-callback?error=access_denied"` (shows
+**Sign-in cancelled**).
 
 An unsigned debug APK for a quick device test needs no keystore:
 `cd android && ./gradlew assembleDebug` → `android/app/build/outputs/apk/debug/app-debug.apk`.
