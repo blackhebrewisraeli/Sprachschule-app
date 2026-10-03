@@ -99,6 +99,7 @@ import {
   mayHaveSession,
   signInWithGoogle,
   signInWithGitHub,
+  signInWithApple,
   signOut,
   humanAuthError,
 } from './lib/auth';
@@ -549,7 +550,7 @@ export default function App() {
   // ONE in-flight value across providers, not a flag each: a tap on Google and
   // then on GitHub must not start two round trips racing to redirect the tab.
   // It holds which provider is in flight so only that button shows the spinner.
-  const [oauthBusy, setOAuthBusy] = useState(null); // 'google' | 'github' | null
+  const [oauthBusy, setOAuthBusy] = useState(null); // 'google' | 'github' | 'apple' | null
   const startOAuth = async (provider, signIn) => {
     if (oauthBusy) return;
     setOAuthBusy(provider);
@@ -569,10 +570,16 @@ export default function App() {
     clearIntent();
     return startOAuth('github', signInWithGitHub);
   };
+  const handleApple = () => {
+    clearIntent();
+    return startOAuth('apple', signInWithApple);
+  };
   const handleGoogleCreate = () => startOAuth('google', signInWithGoogle);
   const handleGitHubCreate = () => startOAuth('github', signInWithGitHub);
+  const handleAppleCreate = () => startOAuth('apple', signInWithApple);
   const googleBusy = oauthBusy === 'google';
   const gitHubBusy = oauthBusy === 'github';
+  const appleBusy = oauthBusy === 'apple';
 
   // Preferences write LOCAL state and let the existing reconcile push them.
   // Writing Supabase directly here would bypass the LWW merge that PR #151
@@ -1260,6 +1267,8 @@ export default function App() {
         googleBusy={googleBusy}
         onGitHub={authModal === 'create' ? handleGitHubCreate : handleGitHub}
         gitHubBusy={gitHubBusy}
+        onApple={authModal === 'create' ? handleAppleCreate : handleApple}
+        appleBusy={appleBusy}
         draft={authDraft}
         onDraftChange={patchAuthDraft}
         onNavigateLegal={openLegalFromConsent}
@@ -1304,6 +1313,8 @@ export default function App() {
           googleBusy={googleBusy}
           onGitHub={handleGitHub}
           gitHubBusy={gitHubBusy}
+          onApple={handleApple}
+          appleBusy={appleBusy}
         />
         {authOverlay}
       </>

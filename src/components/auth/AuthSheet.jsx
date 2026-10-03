@@ -4,11 +4,13 @@ import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, RADIUS, SHADOW, SPACE } from 
 import {
   isAuthConfigured,
   isGitHubAuthConfigured,
+  isAppleAuthConfigured,
   isGoogleAuthConfigured,
 } from '../../lib/auth.js';
 import MagicLinkForm from './MagicLinkForm';
 import GoogleButton from './GoogleButton';
 import GitHubButton from './GitHubButton';
+import AppleButton from './AppleButton';
 import useFocusTrap from '../../lib/useFocusTrap.js';
 import { recordIntent, clearIntent } from '../../lib/legalAcceptance.js';
 import LegalConsent from './LegalConsent';
@@ -43,6 +45,8 @@ export default function AuthSheet({
   googleBusy = false,
   onGitHub,
   gitHubBusy = false,
+  onApple,
+  appleBusy = false,
   draft,
   onDraftChange,
   onNavigateLegal,
@@ -116,7 +120,8 @@ export default function AuthSheet({
   // self-guards, but a bare "or" left behind when both flags are off would
   // change this sheet in exactly the state that must stay identical to today.
   const googleOn = isGoogleAuthConfigured();
-  const oauthOn = googleOn || isGitHubAuthConfigured();
+  const gitHubOn = isGitHubAuthConfigured();
+  const oauthOn = googleOn || gitHubOn || isAppleAuthConfigured();
 
   // One guard for every way to start an account flow from this sheet. On the
   // create sheet it refuses until the box is ticked and records the intent the
@@ -251,6 +256,11 @@ export default function AuthSheet({
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[3] }}>
               <GoogleButton onClick={guarded(onGoogle)} busy={googleBusy} autoFocus />
               <GitHubButton onClick={guarded(onGitHub)} busy={gitHubBusy} autoFocus={!googleOn} />
+              <AppleButton
+                onClick={guarded(onApple)}
+                busy={appleBusy}
+                autoFocus={!googleOn && !gitHubOn}
+              />
             </div>
             <div
               aria-hidden="true"

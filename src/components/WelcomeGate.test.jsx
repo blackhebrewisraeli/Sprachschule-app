@@ -2,15 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
-const { isGoogleAuthConfigured, isGitHubAuthConfigured } = vi.hoisted(() => ({
-  isGoogleAuthConfigured: vi.fn(() => false),
-  isGitHubAuthConfigured: vi.fn(() => false),
-}));
+const { isGoogleAuthConfigured, isGitHubAuthConfigured, isAppleAuthConfigured } = vi.hoisted(
+  () => ({
+    isAppleAuthConfigured: vi.fn(() => false),
+    isGoogleAuthConfigured: vi.fn(() => false),
+    isGitHubAuthConfigured: vi.fn(() => false),
+  })
+);
 // Auth is configured in this test so the auth buttons render.
 vi.mock('../lib/auth.js', () => ({
   isAuthConfigured: () => true,
   isGoogleAuthConfigured,
   isGitHubAuthConfigured,
+  isAppleAuthConfigured,
 }));
 import WelcomeGate from './WelcomeGate';
 
@@ -19,6 +23,7 @@ describe('WelcomeGate', () => {
     // Flags off is the merge state and the one CI runs.
     isGoogleAuthConfigured.mockReturnValue(false);
     isGitHubAuthConfigured.mockReturnValue(false);
+    isAppleAuthConfigured.mockReturnValue(false);
   });
 
   // The guest path is now a bounded trial, so the gate says so up front — a
@@ -85,6 +90,40 @@ describe('WelcomeGate', () => {
       const button = screen.getByRole('button', { name: /continue with google/i });
       expect(button).toHaveAttribute('aria-busy', 'true');
       expect(button).not.toBeDisabled();
+    });
+  });
+
+  describe('with Apple on', () => {
+    beforeEach(() => {
+      isGoogleAuthConfigured.mockReturnValue(true);
+      isGitHubAuthConfigured.mockReturnValue(true);
+      isAppleAuthConfigured.mockReturnValue(true);
+    });
+
+    it('puts Apple under GitHub and above create and sign in', () => {
+      render(<WelcomeGate onGuest={() => {}} onAuth={() => {}} />);
+      const github = screen.getByRole('button', { name: /continue with github/i });
+      const apple = screen.getByRole('button', { name: /continue with apple/i });
+      const create = screen.getByRole('button', { name: 'Create account' });
+      expect(github.compareDocumentPosition(apple)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(apple.compareDocumentPosition(create)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    it('routes to the handler App passes and marks only itself busy', async () => {
+      const onApple = vi.fn();
+      const { rerender } = render(
+        <WelcomeGate onGuest={() => {}} onAuth={() => {}} onApple={onApple} />
+      );
+      await userEvent.click(screen.getByRole('button', { name: /continue with apple/i }));
+      expect(onApple).toHaveBeenCalledTimes(1);
+      rerender(<WelcomeGate onGuest={() => {}} onAuth={() => {}} appleBusy />);
+      expect(screen.getByRole('button', { name: /continue with apple/i })).toHaveAttribute(
+        'aria-busy',
+        'true'
+      );
+      expect(screen.getByRole('button', { name: /continue with github/i })).not.toHaveAttribute(
+        'aria-busy'
+      );
     });
   });
 

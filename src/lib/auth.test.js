@@ -486,6 +486,56 @@ describe('isGoogleAuthConfigured', () => {
   });
 });
 
+// Sign in with Apple: one more provider on its own flag, same redirect target
+// and stale-tab guard. Dark until docs/AUTH_APPLE_OAUTH_RUNBOOK.md is done.
+describe('signInWithApple', () => {
+  beforeEach(() => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://x.supabase.co');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', 'anon-key');
+    vi.stubEnv('VITE_APPLE_AUTH_ENABLED', 'true');
+    vi.resetModules();
+    Object.values(mockAuth).forEach((fn) => fn.mockClear?.());
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('starts the OAuth round trip with the app origin as redirectTo and no extra scopes', async () => {
+    const { signInWithApple } = await import('./auth.js');
+    expect((await signInWithApple()).error).toBeNull();
+    expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'apple',
+      options: { redirectTo: window.location.origin },
+    });
+  });
+
+  it('refuses when the flag is off, even though auth is configured', async () => {
+    vi.stubEnv('VITE_APPLE_AUTH_ENABLED', 'false');
+    vi.resetModules();
+    const { signInWithApple } = await import('./auth.js');
+    expect((await signInWithApple()).error).toBeTruthy();
+    expect(mockAuth.signInWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it('is not switched on by the Google or GitHub flags', async () => {
+    vi.stubEnv('VITE_APPLE_AUTH_ENABLED', undefined);
+    vi.stubEnv('VITE_GOOGLE_AUTH_ENABLED', 'true');
+    vi.stubEnv('VITE_GITHUB_AUTH_ENABLED', 'true');
+    vi.resetModules();
+    const { signInWithApple, isAppleAuthConfigured } = await import('./auth.js');
+    expect(isAppleAuthConfigured()).toBe(false);
+    expect((await signInWithApple()).error).toBeTruthy();
+    expect(mockAuth.signInWithOAuth).not.toHaveBeenCalled();
+  });
+
+  it('refuses when auth is unconfigured, even with the flag on', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', '');
+    vi.stubEnv('VITE_SUPABASE_ANON_KEY', '');
+    vi.resetModules();
+    const { signInWithApple } = await import('./auth.js');
+    expect((await signInWithApple()).error).toBeTruthy();
+    expect(mockAuth.signInWithOAuth).not.toHaveBeenCalled();
+  });
+});
+
 // GitHub is gated exactly like Google, on its own flag: the two providers are
 // set up — and rolled back — independently, so neither flag may switch the
 // other one on.
@@ -825,6 +875,25 @@ describe('native app (Capacitor)', () => {
     await vi.waitFor(() => expect(nativePlugins.browserOpen).toHaveBeenCalledWith({ url }));
     expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'github',
+      options: { redirectTo: CALLBACK, skipBrowserRedirect: true },
+    });
+    nativePlugins.browserFinished();
+    expect((await pending).error).toBeNull();
+  });
+
+  it('sends Apple through the system browser too', async () => {
+    vi.stubEnv('VITE_APPLE_AUTH_ENABLED', 'true');
+    vi.resetModules();
+    const url = 'https://x.supabase.co/auth/v1/authorize?provider=apple';
+    mockAuth.signInWithOAuth.mockResolvedValueOnce({
+      data: { provider: 'apple', url },
+      error: null,
+    });
+    const { signInWithApple } = await import('./auth.js');
+    const pending = signInWithApple();
+    await vi.waitFor(() => expect(nativePlugins.browserOpen).toHaveBeenCalledWith({ url }));
+    expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: 'apple',
       options: { redirectTo: CALLBACK, skipBrowserRedirect: true },
     });
     nativePlugins.browserFinished();
