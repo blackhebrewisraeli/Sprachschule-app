@@ -32,8 +32,8 @@
     { "source": "/api/v1/admin/users", "destination": "/api/v1/admin?op=users" },
     { "source": "/api/v1/admin/block", "destination": "/api/v1/admin?op=block" },
 
-    { "source": "/privacy", "destination": "/index.html" },
-    { "source": "/terms", "destination": "/index.html" },
-    { "source": "/delete-account", "destination": "/index.html" }
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/delete-account", "destination": "/delete-account.html" }
   ]
 }

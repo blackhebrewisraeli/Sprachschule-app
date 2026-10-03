@@ -2,7 +2,10 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { sentryVitePlugin } from '@sentry/vite-plugin';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { resolveRelease } from './scripts/lib/resolveRelease.js';
+import { renderLegalShell, LEGAL_SHELLS } from './scripts/lib/legalShells.js';
 import { MODE_COLORS } from './src/lib/themeTokens.js';
 
 const SENTRY_RELEASE = resolveRelease();
@@ -17,6 +20,30 @@ const SENTRY_RELEASE = resolveRelease();
  * into a public bundle. It is a build-time secret and must stay one.
  */
 const SENTRY_UPLOAD = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
+/**
+ * Writes privacy.html, terms.html and delete-account.html next to index.html,
+ * each with its own head metadata and <noscript> facts (scripts/lib/legalShells.js).
+ * vercel.json rewrites the three paths to them. Runs after every other plugin
+ * has finished index.html, so it copies the final document.
+ */
+function legalShellsPlugin() {
+  let outDir;
+  return {
+    name: 'legal-shells',
+    apply: 'build',
+    enforce: 'post',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const indexHtml = readFileSync(resolve(outDir, 'index.html'), 'utf8');
+      for (const route of Object.keys(LEGAL_SHELLS)) {
+        writeFileSync(resolve(outDir, `${route}.html`), renderLegalShell(indexHtml, route));
+      }
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 // API calls go to /api/v1/ai/* — Vercel functions in production, served
@@ -38,6 +65,7 @@ export default defineConfig({
     sourcemap: SENTRY_UPLOAD,
   },
   plugins: [
+    legalShellsPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
