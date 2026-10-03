@@ -95,6 +95,17 @@ npx cap open android               # Android Studio — android/
    same listing.
 4. Choose **release**. Output lands in `android/app/release/`.
 
+**From the command line**, `cd android && ./gradlew bundleRelease` signs with
+`android/keystore.properties` and writes
+`android/app/build/outputs/bundle/release/app-release.aab`. Gradle must run on a
+JDK 17–21: a newer default JDK (e.g. OpenJDK 26) fails in AGP's `jlink` step
+with `Execution failed for JdkImageTransform`. Point it at Android Studio's
+bundled one:
+
+```bash
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew bundleRelease
+```
+
 An unsigned debug APK for a quick device test needs no keystore:
 `cd android && ./gradlew assembleDebug` → `android/app/build/outputs/apk/debug/app-debug.apk`.
 
