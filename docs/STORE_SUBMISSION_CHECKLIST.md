@@ -57,7 +57,7 @@ a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 | P2-2 | **AI history release.** Waits for the shadow-week review (~2026-10-09/10). Native builds get it only with the flag baked in, and the store forms must be updated first (P1-2).                                                                                                                               | Owner         | `AI_HISTORY_RELEASE_RUNBOOK.md` §0          | Runbook §3 smoke test, §4 purge check                                       | dashboard          |
 | P2-3 | **Sentry source maps.** Dormant until `SENTRY_AUTH_TOKEN` exists in Vercel; native builds are local and upload only if the token is in that shell. Whether the token is set: **owner confirmation required**.                                                                                                | Owner         | `BACKLOG.md` §Sentry source-map upload      | Build log has no `SENTRY SOURCE-MAP UPLOAD FAILED`; release lists artifacts | dashboard          |
 | P2-4 | ✅ **CI tracks the custom domain.** Uptime and both native CI builds now use `www.sprachschule-app.com`; docs keep `deutsch-app-dusky.vercel.app` as the allow-listed provider fallback on purpose.                                                                                                          | —             | —                                           | Next scheduled Uptime run green against `www`                               | code               |
-| P2-5 | Leaked-password advisor (no passwords exist, `PRE_BETA_OWNER_CHECKLIST.md` §7), Universal/App Links, Android `minifyEnabled`, GitHub sign-in on web (item 13), voice input on native (item 11), in-app wordmark rename (item 14).                                                                            | Owner / agent | —                                           | —                                                                           | mixed              |
+| P2-5 | Leaked-password advisor (no passwords exist, `PRE_BETA_OWNER_CHECKLIST.md` §7), Universal/App Links, Android `minifyEnabled`, GitHub sign-in on web (item 13), in-app wordmark rename (item 14).                                                                                                             | Owner / agent | —                                           | —                                                                           | mixed              |
 
 ### Account deletion and export coverage (verified from `api/_lib/accountEndpoints.js`)
 
@@ -194,9 +194,14 @@ matching `ios/App/App/PrivacyInfo.xcprivacy`.
 
 10. Sentry → Project Settings → Security & Privacy → **Prevent Storing of IP
     Addresses**.
-11. Verify voice input in the native app. If the microphone prompt can appear,
-    add `NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`
-    to `ios/App/App/Info.plist` and declare Audio Data.
+11. ✅ **Voice input is off in the native app** (2026-10-03). `ChatInput` hides
+    the mic when `isNativeApp()` or when the browser has no speech recognition:
+    Android's WebView has none, and iOS kills an app that reaches the
+    microphone without `NSMicrophoneUsageDescription` /
+    `NSSpeechRecognitionUsageDescription`. So the native build never asks for
+    the mic and declares no Audio Data. To ship voice on native, add both
+    Info.plist strings, update the App Privacy / Data Safety answers, and lift
+    the gate in one PR.
 12. Confirm Vercel still documents Web Analytics and Speed Insights as
     cookieless (the policy says so).
 13. Decide whether GitHub sign-in should be on for the web

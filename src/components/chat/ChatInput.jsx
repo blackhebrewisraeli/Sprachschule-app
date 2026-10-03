@@ -2,6 +2,8 @@ import { Mic, MicOff, LayoutGrid } from 'lucide-react';
 import { COLORS, FONT_BODY, RADIUS, SHADOW } from '../../lib/theme';
 import SendButton from './SendButton';
 import { MAX_USER_CHARS } from '../../lib/aiHistory';
+import { isSpeechRecognitionSupported } from '../../lib/speech';
+import { isNativeApp } from '../../lib/nativeApp';
 
 // Bottom input bar: mic toggle, text field, send button.
 // All behavior (speech recognition, sending) lives in the parent and is passed
@@ -17,6 +19,10 @@ export default function ChatInput({
   onSwitchToWordBank,
 }) {
   const canSend = Boolean(input.trim()) && !thinking;
+  // No mic in the native app: Android's WebView has no recognition, and iOS
+  // kills an app that opens the microphone without Info.plist usage strings,
+  // which the native build does not ship (its privacy answers declare no audio).
+  const showMic = !isNativeApp() && isSpeechRecognitionSupported();
   return (
     <div
       style={{
@@ -28,28 +34,30 @@ export default function ChatInput({
         alignItems: 'center',
       }}
     >
-      <button
-        type="button"
-        data-ui="button"
-        data-focus-on-dark=""
-        onClick={listening ? onStopListening : onStartListening}
-        aria-label={listening ? 'Stop voice input' : 'Start voice input'}
-        style={{
-          width: 40,
-          height: 40,
-          background: listening ? COLORS.red : COLORS.ink,
-          color: COLORS.paper,
-          border: 'none',
-          borderRadius: RADIUS.md,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          animation: listening ? 'pulse-red 1.2s infinite' : 'none',
-          flexShrink: 0,
-        }}
-      >
-        {listening ? <MicOff size={18} /> : <Mic size={18} />}
-      </button>
+      {showMic && (
+        <button
+          type="button"
+          data-ui="button"
+          data-focus-on-dark=""
+          onClick={listening ? onStopListening : onStartListening}
+          aria-label={listening ? 'Stop voice input' : 'Start voice input'}
+          style={{
+            width: 40,
+            height: 40,
+            background: listening ? COLORS.red : COLORS.ink,
+            color: COLORS.paper,
+            border: 'none',
+            borderRadius: RADIUS.md,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            animation: listening ? 'pulse-red 1.2s infinite' : 'none',
+            flexShrink: 0,
+          }}
+        >
+          {listening ? <MicOff size={18} /> : <Mic size={18} />}
+        </button>
+      )}
       {onSwitchToWordBank && (
         <button
           type="button"

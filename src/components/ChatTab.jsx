@@ -260,11 +260,8 @@ export default function ChatTab({
   }, [scenario, chatLevel]);
 
   const startListening = () => {
+    // ChatInput renders the mic only where recognition exists.
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) {
-      alert('Speech recognition not supported in this browser. Try Chrome.');
-      return;
-    }
     const rec = new SR();
     rec.lang = 'de-DE';
     rec.interimResults = false;
