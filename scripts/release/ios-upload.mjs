@@ -98,7 +98,10 @@ async function main() {
   log(
     `uploaded ${version} (${build}). It shows in App Store Connect → TestFlight after Apple processes it (usually 5–30 minutes).`
   );
-  log('Commit the version bump if you have not: git add package.json android ios && git commit');
+  // main takes no direct pushes, so the bump lands like any other change.
+  log(
+    'Land the version bump if it is not on main yet: a branch and a PR with package.json, android/ and ios/.'
+  );
 }
 
 main().catch((err) => {
