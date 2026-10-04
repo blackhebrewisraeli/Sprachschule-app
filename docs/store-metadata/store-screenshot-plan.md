@@ -94,7 +94,10 @@ How it stays inside this plan's rules:
 - **Fictional, clean state.** Every scene starts from a cleared, seeded
   localStorage (`screenshot-seed.js`), on dedicated "Deutsch Shots" Simulators
   set to English (U.S.) and light mode, with a 9:41 status bar, full battery
-  and signal, and no notifications (Android demo mode).
+  and signal, and no notifications (Android demo mode). The app is uninstalled
+  from each device when its scenes finish: left installed, it holds the seed's
+  fake guest history, and signing in there would merge that history into a real
+  account (which happened once, on 2026-10-04).
 - **Composition.** The capture is scaled proportionally (never stretched)
   under a headline band of 17% of the canvas, inside the 5% safe margin, with
   no device frame (`layout.js`, `compose.mjs`). Every export is checked from
