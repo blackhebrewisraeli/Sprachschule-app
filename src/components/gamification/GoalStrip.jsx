@@ -12,7 +12,7 @@ export default function GoalStrip({ streak, current, target, mult = 1 }) {
         alignItems: 'center',
         gap: SPACE[3],
         padding: `${SPACE[2]}px ${SPACE[3]}px`,
-        marginBottom: SPACE[5],
+        marginBottom: SPACE[4],
         background: COLORS.paperDeep,
         border: BORDER.standard,
         borderRadius: RADIUS.lg,

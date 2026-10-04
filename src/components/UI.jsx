@@ -93,11 +93,28 @@ export function SectionLabel({ num, text }) {
 
 // ── Hero ──────────────────────────────────────────────────────
 // Full-width section title block: kicker + big heading + subtitle.
-export function Hero({ kicker, title, sub, align = 'start' }) {
+// Clips to 1×1 while staying in the accessibility tree (heading, kicker and
+// description are still read out).
+const VISUALLY_HIDDEN = {
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  padding: 0,
+  margin: -1,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+  whiteSpace: 'nowrap',
+  border: 0,
+};
+
+// `srOnly` is the phone layout of every practice tab: the masthead costs ~200px
+// above the first control, so it is clipped there and the task starts on-screen.
+export function Hero({ kicker, title, sub, align = 'start', srOnly = false }) {
   const centered = align === 'center';
   return (
     <div
       style={{
+        ...(srOnly ? VISUALLY_HIDDEN : null),
         borderBottom: BORDER.standard,
         paddingBottom: SPACE[6],
         textAlign: centered ? 'center' : undefined,

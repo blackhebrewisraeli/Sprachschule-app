@@ -4,7 +4,7 @@ import PersonalHub from './PersonalHub';
 import { FONT_SIZE, SPACE } from '../lib/theme';
 
 const AVATAR_DESKTOP = SPACE[16] * 4;
-const IDENTITY_COLUMNS_NARROW = 'minmax(0, 1fr) minmax(0, 1fr)';
+const IDENTITY_COLUMNS_NARROW = `${SPACE[16] + SPACE[4]}px minmax(0, 1fr)`;
 
 // isAuthConfigured() reads import.meta.env.VITE_SUPABASE_*, which Vitest loads
 // from .env — true on a developer's machine and false in CI. Unmocked, this
@@ -164,7 +164,7 @@ describe('PersonalHub', () => {
     });
   });
 
-  it('keeps a natural half-band avatar beside the clamped greeting at 375px', () => {
+  it('keeps a compact avatar beside the clamped greeting at 375px', () => {
     setViewportWidth(375);
     render(<PersonalHub user={user} profile={profile} cefrLevel="a2" score={score} />);
     expect(screen.getByTestId('home-identity-row')).toHaveStyle({
@@ -173,7 +173,7 @@ describe('PersonalHub', () => {
     });
   });
 
-  it('keeps the avatar balanced with the greeting track at 320px', () => {
+  it('keeps the compact avatar beside the greeting at 320px', () => {
     setViewportWidth(320);
     render(<PersonalHub user={user} profile={profile} cefrLevel="a2" score={score} />);
     expect(screen.getByTestId('home-identity-row')).toHaveStyle({
@@ -349,37 +349,35 @@ describe('PersonalHub', () => {
     });
   });
 
-  it.each([320, 375])(
-    'stacks massive XP and a long rank into full-width tiles at %spx',
-    (width) => {
-      setViewportWidth(width);
-      render(
-        <PersonalHub
-          user={user}
-          profile={profile}
-          cefrLevel="a2"
-          score={{ ...score, totalXp: 55087, rankName: 'Muttersprachler' }}
-        />
-      );
+  // From 360px the two tiles share a row (density), and still wrap inside
+  // themselves rather than overflow; below it each gets a full row.
+  it.each([
+    [320, '1 / -1'],
+    [375, ''],
+  ])('keeps massive XP and a long rank inside their tiles at %spx', (width, gridColumn) => {
+    setViewportWidth(width);
+    render(
+      <PersonalHub
+        user={user}
+        profile={profile}
+        cefrLevel="a2"
+        score={{ ...score, totalXp: 55087, rankName: 'Muttersprachler' }}
+      />
+    );
 
-      expect(screen.getByTestId('home-identity-xp')).toHaveStyle({
-        gridColumn: '1 / -1',
-        flexWrap: 'wrap',
-      });
-      expect(screen.getByTestId('home-identity-xp-value')).toHaveStyle({
-        maxWidth: '100%',
-        overflowWrap: 'anywhere',
-      });
-      expect(screen.getByTestId('home-identity-level-group')).toHaveStyle({
-        gridColumn: '1 / -1',
-        flexWrap: 'wrap',
-      });
-      expect(screen.getByText('Muttersprachler')).toHaveStyle({
-        minWidth: '0',
-        overflowWrap: 'anywhere',
-      });
-    }
-  );
+    expect(screen.getByTestId('home-identity-xp').style.gridColumn).toBe(gridColumn);
+    expect(screen.getByTestId('home-identity-xp')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByTestId('home-identity-xp-value')).toHaveStyle({
+      maxWidth: '100%',
+      overflowWrap: 'anywhere',
+    });
+    expect(screen.getByTestId('home-identity-level-group').style.gridColumn).toBe(gridColumn);
+    expect(screen.getByTestId('home-identity-level-group')).toHaveStyle({ flexWrap: 'wrap' });
+    expect(screen.getByText('Muttersprachler')).toHaveStyle({
+      minWidth: '0',
+      overflowWrap: 'anywhere',
+    });
+  });
 
   it.each([320, 375])('keeps the league widget in the full-width mobile stack at %spx', (width) => {
     setViewportWidth(width);

@@ -25,6 +25,11 @@ describe('build:mobile', () => {
     expect(script).toMatch(/(^|\s)VITE_AI_HISTORY_ENABLED=false(\s|$)/);
   });
 
+  // The store answers say "no ads", and Vercel Hobby forbids them (spec §8).
+  it('pins ads off', () => {
+    expect(script).toMatch(/(^|\s)VITE_ADS_ENABLED=false(\s|$)/);
+  });
+
   it('pins the Sentry DSN empty, so native builds send no crash data', () => {
     expect(script).toMatch(/(^|\s)VITE_SENTRY_DSN=(\s|$)/);
   });
