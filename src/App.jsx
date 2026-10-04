@@ -816,7 +816,22 @@ export default function App() {
   //     default lands, `autoPlacement` goes false (they now HAVE a level), and
   //     without this the screen would vanish out from under them.
   const [firstRunPlacement, setFirstRunPlacement] = useState(false);
-  const showPlacement = retakePlacement || autoPlacement || firstRunPlacement;
+  // `autoPlacement` is set by an effect, so it answers for the PREVIOUS render.
+  // Signing in from the welcome gate drops the gate in the same render that
+  // auth changes, while autoPlacement still holds the guest's "no level" — the
+  // test painted for that frame, stamped A1 and stuck (firstRunPlacement)
+  // although the account's level was still on its way down. The live check
+  // closes that frame; the state still lets closePlacement dismiss the test
+  // when storage cannot hold a level.
+  const autoPlacementNow =
+    autoPlacement &&
+    shouldOpenPlacement({
+      hasLevel: hasStoredLevel(),
+      authStatus: isAuthConfigured() ? authStatus : 'anonymous',
+      syncEnabled: SYNC_ENABLED,
+      syncSettled: syncStatus.settled,
+    });
+  const showPlacement = retakePlacement || autoPlacementNow || firstRunPlacement;
   const closePlacement = useCallback(() => {
     setRetakePlacement(false);
     setAutoPlacement(false);
@@ -1289,7 +1304,7 @@ export default function App() {
   // gate who picks "Sign in" instead must not be stamped A1 before their own
   // account's level has had a chance to arrive. From here on the learner has a
   // level, so the gate can never fire for them again, whatever they do next.
-  const placementPainting = autoPlacement && !retakePlacement && !showGate && !legalRoute;
+  const placementPainting = autoPlacementNow && !retakePlacement && !showGate && !legalRoute;
   useEffect(() => {
     if (!placementPainting) return;
     applyDefaultPlacement();
