@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { COLORS } from '../../lib/theme';
+import { COLORS, SPACE } from '../../lib/theme';
 
 const {
   isAuthConfigured,
@@ -146,6 +146,15 @@ describe('AuthSheet', () => {
       expect(screen.getByText(/^or$/i)).toBeInTheDocument();
       // Google is primary, so it comes first in the DOM and in the tab order.
       expect(google.compareDocumentPosition(form)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+
+    // The close button is absolute at the top right (12px down, 32px tall).
+    // The sign-in sheet has no consent block above the providers, so without
+    // this margin it sat on top of "Continue with Google".
+    it('starts the providers below the close button on the sign-in sheet', () => {
+      render(<AuthSheet open intent="signin" onClose={() => {}} onSuccess={() => {}} />);
+      const providers = screen.getByTestId('auth-providers');
+      expect(providers).toHaveStyle({ marginTop: `${SPACE[6]}px` });
     });
 
     it('routes the button to the handler App passes, not its own call', async () => {

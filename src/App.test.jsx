@@ -101,6 +101,14 @@ vi.mock('./lib/auth', async (importOriginal) => ({
   isGitHubAuthConfigured: () => false,
   isAppleAuthConfigured: () => false,
   mayHaveSession: () => authMock.mayHaveSession,
+  // Captured so a test can deliver a sign-in that comes back through the
+  // native app's URL scheme.
+  onNativeAuthCallback: (fn) => {
+    authMock.nativeCallback = fn;
+    return () => {
+      if (authMock.nativeCallback === fn) authMock.nativeCallback = null;
+    };
+  },
   signOut: authSignOutMock,
   getAccessToken: () => Promise.resolve(authMock.token),
   useAuth: () => ({
@@ -1255,6 +1263,29 @@ describe('entry gate', () => {
 
     expect(screen.queryByRole('heading', { name: /find your level/i })).toBeNull();
     expect(localStorage.getItem('deutsch-level')).toBeNull();
+  });
+
+  // Native OAuth: the session comes back through the URL scheme while the
+  // sheet is open on the gate. Signing in swaps the gate for the app, and the
+  // landing that finishes the flow (and closes the sheet) was rendered in a
+  // different place in each branch, so it remounted, forgot the sign-in was in
+  // flight, and left the "Sign in" sheet over the signed-in app.
+  it('closes the sign-in sheet when a native sign-in lands', async () => {
+    localStorage.setItem('deutsch-level', 'a1');
+    const { rerender } = render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+    expect(screen.getByRole('dialog', { name: /^sign in$/i })).toBeInTheDocument();
+
+    act(() => authMock.nativeCallback({ kind: 'pending', reason: null }));
+    expect(screen.getByText('Signing you in…')).toBeInTheDocument();
+
+    authMock.status = 'authenticated';
+    authMock.mayHaveSession = true;
+    rerender(<App />);
+
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
+    expect(screen.getByText('Signed in')).toBeInTheDocument();
   });
 
   it('lets a signed-in user straight through to the app', () => {
