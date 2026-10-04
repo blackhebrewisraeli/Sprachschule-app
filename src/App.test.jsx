@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, within, act, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import App from './App';
+import App, { SESSION_SPLASH_MAX_MS } from './App';
 import { todayKey } from './lib/stats';
 import { isLevelBoostEnabled, setLevelBoostEnabled } from './lib/xpEntitlement';
 import { TUTORIAL_KEY } from './lib/tutorialPref';
@@ -1251,6 +1251,32 @@ describe('entry gate', () => {
     localStorage.setItem('deutsch-level', 'a1');
     render(<App />);
     expect(gate()).toBeNull();
+  });
+
+  // The token may be stale: it resolves to anonymous and the gate takes over.
+  // Rendering the app meanwhile flashed a guest the full Home first.
+  it('shows neither the app nor the gate while a stored session resolves', () => {
+    authMock.status = 'loading';
+    authMock.mayHaveSession = true;
+    localStorage.setItem('deutsch-level', 'a1');
+    render(<App />);
+    expect(screen.getByTestId('session-splash')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).toBeNull();
+  });
+
+  it('shows the app if the stored session is still resolving at the cap', () => {
+    vi.useFakeTimers();
+    try {
+      authMock.status = 'loading';
+      authMock.mayHaveSession = true;
+      localStorage.setItem('deutsch-level', 'a1');
+      render(<App />);
+      act(() => vi.advanceTimersByTime(SESSION_SPLASH_MAX_MS));
+      expect(screen.queryByTestId('session-splash')).toBeNull();
+      expect(screen.getByRole('navigation')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('shows the gate during loading when the device holds no token', () => {
