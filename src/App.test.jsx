@@ -1204,6 +1204,7 @@ describe('entry gate', () => {
     authMock.configured = true;
     authMock.status = 'anonymous';
     authMock.mayHaveSession = false;
+    syncMock.enabled = false;
     setViewportWidth(1280);
     setLevelBoostEnabled(false);
     authSignOutMock.mockClear();
@@ -1232,6 +1233,28 @@ describe('entry gate', () => {
     await userEvent.click(gate());
     expect(screen.getByRole('heading', { name: /find your level/i })).toBeInTheDocument();
     expect(screen.queryByRole('navigation')).toBeNull();
+  });
+
+  // Sign out wipes the level, so the gate is up with "no level" decided for a
+  // guest. Signing in drops the gate in the same render, before that decision
+  // is re-made for an account whose level is still on its way down; the test
+  // painted for that one frame, stamped A1, and stayed up (firstRunPlacement)
+  // although the account had B1 on the server.
+  it.each([
+    ['still restoring', 'loading'],
+    ['signed in, first sync pending', 'authenticated'],
+  ])('never opens placement for an account that is %s', (_label, status) => {
+    syncMock.enabled = true;
+    localStorage.removeItem('deutsch-level');
+    const { rerender } = render(<App />);
+    expect(gate()).toBeInTheDocument();
+
+    authMock.status = status;
+    authMock.mayHaveSession = true;
+    rerender(<App />);
+
+    expect(screen.queryByRole('heading', { name: /find your level/i })).toBeNull();
+    expect(localStorage.getItem('deutsch-level')).toBeNull();
   });
 
   it('lets a signed-in user straight through to the app', () => {
