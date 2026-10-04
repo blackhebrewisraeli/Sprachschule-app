@@ -14,39 +14,34 @@ with that command**, on the machine that runs Xcode or Android Studio.
 | Android           | minSdk 24 · target/compile 36                                                           |
 | Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio, **JDK 21** for Gradle (§4)   |
 
-## 1. Production env — once per machine
+## 1. Production env — nothing to set up
 
 Vite inlines every `VITE_*` value **at build time**, into the bundle the app
-ships. A native build therefore takes whatever `.env*` files are on disk — and
-the committed `.env.example` points Supabase at the local Docker stack
-(`127.0.0.1`), which on a phone means sign-in that can never connect.
+ships, and a production build reads `.env` and `.env.production.local` along
+the way. So **`npm run build:mobile` pins every value a store build depends
+on** in `package.json`: the production Supabase URL and key, `VITE_API_BASE_URL`
+(a Capacitor webview has no `/api` of its own), and every feature flag. A clean
+clone with no `.env` at all (Xcode Cloud, CI, a second Mac) builds the same app.
 
-Create `.env.production.local` in the repo root (`.env*` is gitignored; Vite
-reads this file for `vite build` and it overrides `.env`). Copy the **production**
-values from Vercel → Project → Settings → Environment Variables, `VITE_*` only —
-never a server secret such as `ANTHROPIC_API_KEY` or the service-role key:
+| Pinned                                | Value       | Why                                                     |
+| ------------------------------------- | ----------- | ------------------------------------------------------- |
+| sync, leagues                         | on          | as production web ships them                            |
+| Google, GitHub sign-in                | on          | the buttons; providers are configured in Supabase       |
+| push                                  | off         | until `docs/MOBILE_PUSH_SETUP.md` is done               |
+| Apple sign-in                         | off         | until `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` is done        |
+| saved tutor conversations, Sentry DSN | off / empty | the store privacy answers describe a build without them |
 
-```bash
-VITE_SUPABASE_URL=…
-VITE_SUPABASE_ANON_KEY=…
-VITE_SYNC_ENABLED=true
-VITE_LEAGUES_ENABLED=true
-VITE_GOOGLE_AUTH_ENABLED=true
-# VITE_GITHUB_AUTH_ENABLED is pinned true by build:mobile (package.json); do not set it here
-# VITE_PUSH_ENABLED is pinned OFF in build:mobile — see docs/MOBILE_PUSH_SETUP.md §4
-```
+**Why this matters:** until 2026-10-04 sync and leagues were not pinned. Local
+`.env` sets both to `false` for the Docker stack, so every native build from the
+owner's Mac shipped **without sync or leagues** while production web had both.
+`src/lib/buildMobileScript.test.js` now fails if any `VITE_*_ENABLED` flag the
+app reads is left unpinned. To change a pinned value, change it in
+`package.json` in a PR (with the store privacy answers, where they depend on it).
 
-`build:mobile` also pins `VITE_SENTRY_DSN` empty and `VITE_AI_HISTORY_ENABLED=false`,
-so putting either in this file does nothing. The App Privacy and Data Safety
-answers in `docs/STORE_SUBMISSION_CHECKLIST.md` describe a native build with no
-crash reporting and no saved tutor conversations; to change that, remove the pin
-in a PR together with the form answers.
-
-…plus any other `VITE_*` Production carries (e.g. `VITE_SIGNUP_EMAIL_ALLOWLIST`
-once owner action #8 is enabled).
-
-`VITE_API_BASE_URL` is **not** in this list: `npm run build:mobile` sets it to
-production itself, because a Capacitor webview has no `/api` of its own.
+Still read from local env files, because they are not store-build decisions:
+`VITE_SENTRY_RELEASE` / `VITE_SENTRY_ENVIRONMENT` (inert while the DSN is
+empty) and `VITE_SIGNUP_EMAIL_ALLOWLIST`, which production web sets and native
+builds currently do not (P1-8 in the store checklist).
 
 Native sign-in also needs owner action #11 in `docs/BACKLOG.md` (the
 `com.sprachschule.deutsch://login-callback` redirect URL in Supabase). Without it
@@ -110,6 +105,23 @@ the upload. The build shows in TestFlight after Apple processes it.
 4. The Organizer opens: **Distribute App** → _App Store Connect_ to upload
    (TestFlight / review), or _Release Testing_ / _Debugging_ to export an
    `.ipa` for devices registered on your account.
+
+## Xcode Cloud
+
+A workflow ("App | Default") builds the app on Apple's servers and reports to
+GitHub as a check. Its clone has no `node_modules`, and the Capacitor Swift
+packages resolve from `node_modules/@capacitor/*`, so without help it fails in
+under a minute with `Could not resolve package dependencies`.
+`ios/App/ci_scripts/ci_post_clone.sh` fixes that: Xcode Cloud runs it after
+cloning, and it installs Node 22 with Homebrew, runs `npm ci` and
+`npm run build:mobile`. It must stay **executable** and stay in `ci_scripts/`
+next to `App.xcodeproj`, or Xcode Cloud silently skips it.
+
+Xcode Cloud numbers the builds it archives itself (App Store Connect → Xcode
+Cloud → Settings → Build Number), separately from `npm run release:bump`. If
+you distribute to TestFlight from both Xcode Cloud and `npm run ios:upload`,
+set Xcode Cloud's next build number above ours, or one of them will hit "build
+number already used". Simplest: pick one.
 
 ## 4. Android — APK or AAB
 
