@@ -250,7 +250,12 @@ export default function AuthSheet({
           </div>
         )}
         {oauthOn && (
-          <div style={{ maxWidth: 360, margin: '0 auto' }}>
+          // The sign-in sheet has no consent block to push the providers below
+          // the absolute close button, so it takes the same clearance itself.
+          <div
+            data-testid="auth-providers"
+            style={{ maxWidth: 360, margin: `${creating ? 0 : SPACE[6]}px auto 0` }}
+          >
             {/* Focus lands on whichever provider is first, and only one of
                 them: two autoFocus props would leave it on the last. */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[3] }}>

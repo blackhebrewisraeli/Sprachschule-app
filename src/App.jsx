@@ -1424,58 +1424,64 @@ export default function App() {
     );
   }
 
+  // `authOverlay` is the SECOND child of a root fragment in every branch above
+  // and here, so React keeps the one instance when signing in swaps the gate
+  // for the app. Rendered inside this tree it remounted on that swap: the
+  // landing forgot a native sign-in was in flight, never called onSignedIn,
+  // and left the "Sign in" sheet open over the signed-in app.
   return (
-    // Practice tabs register their in-flight state here; the header's status
-    // control reads it before restarting anything. Wraps the whole tree so
-    // the reader (header) and the writers (tabs) share one registry.
-    <SessionGuardContext.Provider value={sessionGuard}>
-      <div
-        style={{
-          minHeight: '100vh',
-          position: 'relative',
-          background: COLORS.paper,
-          color: COLORS.ink,
-          fontFamily: FONT_BODY,
-          backgroundImage: `radial-gradient(circle at 1px 1px, ${COLORS.inkSoftA08} 1px, transparent 0)`,
-          backgroundSize: '24px 24px',
-        }}
-      >
-        {streakBurst && (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 60, pointerEvents: 'none' }}>
-            <Confetti count={40} />
-          </div>
-        )}
-        <ToastStack toasts={toasts} onDismiss={dismissToast} />
-
-        {/* ── Header ───────────────────────────────────────────── */}
-        <header
+    <>
+      {/* Practice tabs register their in-flight state here; the header's status
+      control reads it before restarting anything. Wraps the whole tree so
+      the reader (header) and the writers (tabs) share one registry. */}
+      <SessionGuardContext.Provider value={sessionGuard}>
+        <div
           style={{
-            borderBottom: `1px solid ${COLORS.border}`,
-            boxShadow: SHADOW.bar,
-            // Inset-top is added to the existing padding so the charcoal bar
-            // paints under the status bar / Dynamic Island and the chips stay
-            // below it. Nav's sticky `top` below includes the same inset, or
-            // it would slide under a taller header.
-            paddingTop: `calc(${mobile ? 8 : 20}px + env(safe-area-inset-top, 0px))`,
-            paddingBottom: mobile ? 8 : 20,
-            paddingLeft: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-left, 0px))`,
-            paddingRight: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-right, 0px))`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            // The masthead is the flag's black stripe carried into the app frame,
-            // so it holds its charcoal in both modes rather than following the
-            // page ground. `color` is set here and inherited: everything on this
-            // bar is either brand text on the charcoal, or a control carrying its
-            // own surface (StatusChip, ThemeChip, AccountChip).
-            background: COLORS.accentBlack,
-            color: COLORS.accentBlackOn,
-            position: 'sticky',
-            top: 0,
-            zIndex: 50,
+            minHeight: '100vh',
+            position: 'relative',
+            background: COLORS.paper,
+            color: COLORS.ink,
+            fontFamily: FONT_BODY,
+            backgroundImage: `radial-gradient(circle at 1px 1px, ${COLORS.inkSoftA08} 1px, transparent 0)`,
+            backgroundSize: '24px 24px',
           }}
         >
-          {/* Dropped below 360px: a real year-long streak renders level 30 + "365"
+          {streakBurst && (
+            <div style={{ position: 'fixed', inset: 0, zIndex: 60, pointerEvents: 'none' }}>
+              <Confetti count={40} />
+            </div>
+          )}
+          <ToastStack toasts={toasts} onDismiss={dismissToast} />
+
+          {/* ── Header ───────────────────────────────────────────── */}
+          <header
+            style={{
+              borderBottom: `1px solid ${COLORS.border}`,
+              boxShadow: SHADOW.bar,
+              // Inset-top is added to the existing padding so the charcoal bar
+              // paints under the status bar / Dynamic Island and the chips stay
+              // below it. Nav's sticky `top` below includes the same inset, or
+              // it would slide under a taller header.
+              paddingTop: `calc(${mobile ? 8 : 20}px + env(safe-area-inset-top, 0px))`,
+              paddingBottom: mobile ? 8 : 20,
+              paddingLeft: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-left, 0px))`,
+              paddingRight: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-right, 0px))`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              // The masthead is the flag's black stripe carried into the app frame,
+              // so it holds its charcoal in both modes rather than following the
+              // page ground. `color` is set here and inherited: everything on this
+              // bar is either brand text on the charcoal, or a control carrying its
+              // own surface (StatusChip, ThemeChip, AccountChip).
+              background: COLORS.accentBlack,
+              color: COLORS.accentBlackOn,
+              position: 'sticky',
+              top: 0,
+              zIndex: 50,
+            }}
+          >
+            {/* Dropped below 360px: a real year-long streak renders level 30 + "365"
             + a freeze chip + SIGN IN, which ran 34px past a 320px viewport, and
             each of those is the only surface for its signal (the freeze count
             appears nowhere else in the app). The wordmark is the one decorative
@@ -1485,398 +1491,399 @@ export default function App() {
             content made the nowrap wordmark spill over the level badge instead
             of pushing width: "over: 0" by overlap, which reads as a rendering
             bug. It scales via font-size instead. */}
-          {!tiny && (
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <div
-                style={{
-                  fontFamily: FONT_DISPLAY,
-                  // Scales with the viewport between 360px and 640px.
-                  fontSize: mobile ? 'min(26px, 6.5vw)' : 36,
-                  whiteSpace: 'nowrap',
-                  fontWeight: 900,
-                  letterSpacing: '-0.04em',
-                  lineHeight: 1,
-                }}
-              >
-                {/* Same dot the splash paints, and the same token: brand red,
-                  not the error token. Large text, so 3:1 applies. */}
-                Deutsch<span style={{ color: COLORS.flagRed }}>.</span>
-              </div>
-              {/* Tagline waits for bp.wide alongside the chat's
-                third column: appearing at 640 it left the header 2px wider than
-                the viewport, which is small but is still sideways scroll. */}
-              {width >= bp.wide && (
+            {!tiny && (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
                 <div
                   style={{
-                    fontFamily: FONT_MONO,
-                    fontSize: 10,
-                    letterSpacing: '0.2em',
-                    color: COLORS.accentBlackOnMuted,
-                    textTransform: 'uppercase',
+                    fontFamily: FONT_DISPLAY,
+                    // Scales with the viewport between 360px and 640px.
+                    fontSize: mobile ? 'min(26px, 6.5vw)' : 36,
+                    whiteSpace: 'nowrap',
+                    fontWeight: 900,
+                    letterSpacing: '-0.04em',
+                    lineHeight: 1,
                   }}
                 >
-                  Sprachschule × Est. {new Date().getFullYear()}
+                  {/* Same dot the splash paints, and the same token: brand red,
+                  not the error token. Large text, so 3:1 applies. */}
+                  Deutsch<span style={{ color: COLORS.flagRed }}>.</span>
                 </div>
-              )}
-            </div>
-          )}
+                {/* Tagline waits for bp.wide alongside the chat's
+                third column: appearing at 640 it left the header 2px wider than
+                the viewport, which is small but is still sideways scroll. */}
+                {width >= bp.wide && (
+                  <div
+                    style={{
+                      fontFamily: FONT_MONO,
+                      fontSize: 10,
+                      letterSpacing: '0.2em',
+                      color: COLORS.accentBlackOnMuted,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Sprachschule × Est. {new Date().getFullYear()}
+                  </div>
+                )}
+              </div>
+            )}
 
-          {/* marginLeft auto: once the wordmark drops, this cluster is the only
+            {/* marginLeft auto: once the wordmark drops, this cluster is the only
             flex child and space-between would start-align it. AccountChip's
             sheet is `right: 0` and 200px wide — it assumes the chip is at the
             trailing edge. Hiding the Home streak shortened the cluster enough
             that a signed-in Account sheet measured left: -34 at 390px. */}
-          <div
-            style={{
-              display: 'flex',
-              gap: mobile ? 6 : 16,
-              alignItems: 'center',
-              flexShrink: 0,
-              marginLeft: 'auto',
-            }}
-          >
-            {/* One control for both "levels": the earned XP one and the chosen
+            <div
+              style={{
+                display: 'flex',
+                gap: mobile ? 6 : 16,
+                alignItems: 'center',
+                flexShrink: 0,
+                marginLeft: 'auto',
+              }}
+            >
+              {/* One control for both "levels": the earned XP one and the chosen
               CEFR one. They stay distinct inside the sheet, under their own
               headings — see StatusChip. */}
-            {/* A wrapper, not a ref forwarded into StatusChip: the chip is one
+              {/* A wrapper, not a ref forwarded into StatusChip: the chip is one
               of three non-modal header popovers under a guard test, and giving
               the walkthrough a handle on it is not worth reopening that. */}
-            <span ref={statusAnchorRef} data-tutorial-anchor="status" style={{ display: 'flex' }}>
-              <StatusChip
-                level={level}
-                onRetakePlacement={openPlacement}
-                xpLevel={game.lvl.level}
-                progress={game.lvl.progress}
-                rank={game.lvl.rankName}
-                xpIntoLevel={game.lvl.xpIntoLevel}
-                xpToNext={game.lvl.xpToNext}
-                size={mobile ? 42 : 52}
-              />
-            </span>
-            {game.freezes > 0 && (
-              <span
-                role="img"
-                aria-label={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
-                title={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 2,
-                  fontFamily: FONT_MONO,
-                  fontSize: mobile ? 12 : 14,
-                  fontWeight: 700,
-                  lineHeight: 1,
-                }}
-              >
-                <Snowflake size={mobile ? 14 : 16} aria-hidden="true" />
-                {game.freezes}
+              <span ref={statusAnchorRef} data-tutorial-anchor="status" style={{ display: 'flex' }}>
+                <StatusChip
+                  level={level}
+                  onRetakePlacement={openPlacement}
+                  xpLevel={game.lvl.level}
+                  progress={game.lvl.progress}
+                  rank={game.lvl.rankName}
+                  xpIntoLevel={game.lvl.xpIntoLevel}
+                  xpToNext={game.lvl.xpToNext}
+                  size={mobile ? 42 : 52}
+                />
               </span>
-            )}
-            {/* Both social endpoints require auth (see socialEndpoints.js), so
+              {game.freezes > 0 && (
+                <span
+                  role="img"
+                  aria-label={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
+                  title={`${game.freezes} streak freeze${game.freezes > 1 ? 's' : ''} held`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    fontFamily: FONT_MONO,
+                    fontSize: mobile ? 12 : 14,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                  }}
+                >
+                  <Snowflake size={mobile ? 14 : 16} aria-hidden="true" />
+                  {game.freezes}
+                </span>
+              )}
+              {/* Both social endpoints require auth (see socialEndpoints.js), so
                 a signed-out box could only ever produce an error — same gate
                 UserSearch used when it lived inline in the Profile tab. */}
-            {user && (
-              <Button
-                variant="icon"
-                aria-label="Search people"
-                aria-haspopup="dialog"
-                aria-expanded={searchOpen}
-                onClick={() => setSearchOpen(true)}
-              >
-                <Search size={16} aria-hidden="true" />
-              </Button>
-            )}
-            <ThemeChip />
-            <AccountChip
-              user={user}
-              profile={profile}
-              onSignIn={requestSignIn}
-              onSignOut={handleSignOut}
-              onOpenSettings={openSettings}
-              onOpenProfile={openProfile}
-              pending={syncStatus.pending}
-            />
-          </div>
-        </header>
+              {user && (
+                <Button
+                  variant="icon"
+                  aria-label="Search people"
+                  aria-haspopup="dialog"
+                  aria-expanded={searchOpen}
+                  onClick={() => setSearchOpen(true)}
+                >
+                  <Search size={16} aria-hidden="true" />
+                </Button>
+              )}
+              <ThemeChip />
+              <AccountChip
+                user={user}
+                profile={profile}
+                onSignIn={requestSignIn}
+                onSignOut={handleSignOut}
+                onOpenSettings={openSettings}
+                onOpenProfile={openProfile}
+                pending={syncStatus.pending}
+              />
+            </div>
+          </header>
 
-        {/* ── Nav ──────────────────────────────────────────────── */}
-        <nav
-          style={{
-            display: 'flex',
-            gap: mobile ? 6 : 8,
-            paddingTop: mobile ? 6 : 12,
-            paddingBottom: mobile ? 6 : 12,
-            paddingLeft: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-left, 0px))`,
-            paddingRight: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-right, 0px))`,
-            background: COLORS.paper,
-            borderBottom: `1px solid ${COLORS.border}`,
-            position: 'sticky',
-            top: `calc(${mobile ? 53 : 81}px + env(safe-area-inset-top, 0px))`,
-            zIndex: 49,
-            boxShadow: SHADOW.bar,
-          }}
-        >
-          {tabs.map((t) => {
-            const active = tab === t.id;
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                ref={
-                  t.id === 'chat' ? chatAnchorRef : t.id === 'stats' ? statsAnchorRef : undefined
-                }
-                onClick={() => {
-                  setTab(t.id);
-                  if (t.id === 'stats') {
-                    if (profileView === 'settings') setSettingsHash();
-                  } else {
-                    clearSettingsHash();
+          {/* ── Nav ──────────────────────────────────────────────── */}
+          <nav
+            style={{
+              display: 'flex',
+              gap: mobile ? 6 : 8,
+              paddingTop: mobile ? 6 : 12,
+              paddingBottom: mobile ? 6 : 12,
+              paddingLeft: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-left, 0px))`,
+              paddingRight: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-right, 0px))`,
+              background: COLORS.paper,
+              borderBottom: `1px solid ${COLORS.border}`,
+              position: 'sticky',
+              top: `calc(${mobile ? 53 : 81}px + env(safe-area-inset-top, 0px))`,
+              zIndex: 49,
+              boxShadow: SHADOW.bar,
+            }}
+          >
+            {tabs.map((t) => {
+              const active = tab === t.id;
+              const Icon = t.icon;
+              return (
+                <button
+                  key={t.id}
+                  ref={
+                    t.id === 'chat' ? chatAnchorRef : t.id === 'stats' ? statsAnchorRef : undefined
                   }
-                }}
-                aria-label={t.label}
-                aria-current={active ? 'page' : undefined}
-                style={{
-                  flex: 1,
-                  // minWidth: 0 is the flex counterpart of the minmax(0, 1fr) rule
-                  // in AGENTS.md — `flex: 1` leaves min-width at auto, so these
-                  // buttons refused to shrink below their label and pushed the nav
-                  // 28px past a 640px viewport, on every tab.
-                  minWidth: 0,
-                  // 10 + 24px icon + 10 keeps the 44px touch target.
-                  padding: navIconOnly ? '10px 6px' : '14px 18px',
-                  background: active ? COLORS.ink : 'transparent',
-                  color: active ? COLORS.paper : COLORS.ink,
-                  border: 'none',
-                  borderRadius: RADIUS.md,
-                  boxShadow: active ? SHADOW.press(COLORS.press) : 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: navIconOnly ? 'center' : 'flex-start',
-                  gap: 10,
-                  position: 'relative',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  if (!active) e.currentTarget.style.background = COLORS.paperDeep;
-                }}
-                onMouseLeave={(e) => {
-                  if (!active) e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                {navIconOnly ? (
-                  // Icon only, until the labels have room — see navIconOnly.
-                  <Icon size={20} />
-                ) : (
-                  <>
+                  onClick={() => {
+                    setTab(t.id);
+                    if (t.id === 'stats') {
+                      if (profileView === 'settings') setSettingsHash();
+                    } else {
+                      clearSettingsHash();
+                    }
+                  }}
+                  aria-label={t.label}
+                  aria-current={active ? 'page' : undefined}
+                  style={{
+                    flex: 1,
+                    // minWidth: 0 is the flex counterpart of the minmax(0, 1fr) rule
+                    // in AGENTS.md — `flex: 1` leaves min-width at auto, so these
+                    // buttons refused to shrink below their label and pushed the nav
+                    // 28px past a 640px viewport, on every tab.
+                    minWidth: 0,
+                    // 10 + 24px icon + 10 keeps the 44px touch target.
+                    padding: navIconOnly ? '10px 6px' : '14px 18px',
+                    background: active ? COLORS.ink : 'transparent',
+                    color: active ? COLORS.paper : COLORS.ink,
+                    border: 'none',
+                    borderRadius: RADIUS.md,
+                    boxShadow: active ? SHADOW.press(COLORS.press) : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: navIconOnly ? 'center' : 'flex-start',
+                    gap: 10,
+                    position: 'relative',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) e.currentTarget.style.background = COLORS.paperDeep;
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  {navIconOnly ? (
+                    // Icon only, until the labels have room — see navIconOnly.
+                    <Icon size={20} />
+                  ) : (
+                    <>
+                      <span
+                        style={{
+                          fontFamily: FONT_MONO,
+                          fontSize: 10,
+                          opacity: 0.6,
+                          letterSpacing: '0.1em',
+                        }}
+                      >
+                        {t.num}
+                      </span>
+                      <span
+                        style={{
+                          fontFamily: FONT_DISPLAY,
+                          fontSize: 20,
+                          fontWeight: 600,
+                          letterSpacing: '-0.02em',
+                        }}
+                      >
+                        {t.label}
+                      </span>
+                    </>
+                  )}
+                  {t.id === 'stats' && !active && attentionCount > 0 && (
                     <span
                       style={{
+                        position: 'absolute',
+                        top: navIconOnly ? 4 : 8,
+                        right: navIconOnly ? 4 : 8,
+                        minWidth: 18,
+                        height: 18,
+                        padding: '0 5px',
+                        background: COLORS.red,
+                        color: COLORS.paper,
                         fontFamily: FONT_MONO,
                         fontSize: 10,
-                        opacity: 0.6,
-                        letterSpacing: '0.1em',
+                        fontWeight: 700,
+                        lineHeight: 1,
+                        borderRadius: 9,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                       }}
                     >
-                      {t.num}
+                      {attentionCount > 9 ? '9+' : attentionCount}
                     </span>
-                    <span
-                      style={{
-                        fontFamily: FONT_DISPLAY,
-                        fontSize: 20,
-                        fontWeight: 600,
-                        letterSpacing: '-0.02em',
-                      }}
-                    >
-                      {t.label}
-                    </span>
-                  </>
-                )}
-                {t.id === 'stats' && !active && attentionCount > 0 && (
-                  <span
-                    style={{
-                      position: 'absolute',
-                      top: navIconOnly ? 4 : 8,
-                      right: navIconOnly ? 4 : 8,
-                      minWidth: 18,
-                      height: 18,
-                      padding: '0 5px',
-                      background: COLORS.red,
-                      color: COLORS.paper,
-                      fontFamily: FONT_MONO,
-                      fontSize: 10,
-                      fontWeight: 700,
-                      lineHeight: 1,
-                      borderRadius: 9,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    {attentionCount > 9 ? '9+' : attentionCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+                  )}
+                </button>
+              );
+            })}
+          </nav>
 
-        {/* ── Main ─────────────────────────────────────────────── */}
-        {/* The measure, both gutters and the inline/bottom safe-area insets
+          {/* ── Main ─────────────────────────────────────────────── */}
+          {/* The measure, both gutters and the inline/bottom safe-area insets
             live in PageFrame. `gutter` covers the inline edges and the top
             (inset-top is owned by the sticky masthead above). The 32px
             bottom is PageFrame's bottomGutter default, composed with
             inset-bottom so home-indicator clearance cannot replace it. */}
-        <PageFrame as="main" gutter={mobile ? 4 : 8}>
-          {/* Home owns its daily-goal ring in PersonalHub. Every other tab uses
+          <PageFrame as="main" gutter={mobile ? 4 : 8}>
+            {/* Home owns its daily-goal ring in PersonalHub. Every other tab uses
             the strip as its single daily-goal surface, at every viewport. */}
-          {tab !== 'home' && (
-            <GoalStrip
-              streak={game.streak}
-              current={game.goal.current}
-              target={game.goal.target}
-              mult={game.mult}
-            />
-          )}
-          {tab === 'home' && (
-            <HomeTab
-              score={score(liveState.daily ?? {})}
-              learnedCount={stats.learnedCount ?? 0}
-              goalPct={game.goal.pct}
-              goalMet={game.goal.met}
-              streak={game.streak}
-              user={user}
-              profile={profile}
-              cefrLevel={level}
-              missions={missions}
-              quests={quests}
-              league={leagueStanding}
-              onGoToTab={goToTab}
-              showPlacementOffer={placementOfferVisible}
-              onRetakePlacement={acceptPlacementOffer}
-              onDismissPlacementOffer={dismissPlacementOffer}
-            />
-          )}
-          {tab === 'home' && <AdSlot placement="home" tier={tier} />}
-          {/* The four practice tabs share one positioned wrapper so the trial
+            {tab !== 'home' && (
+              <GoalStrip
+                streak={game.streak}
+                current={game.goal.current}
+                target={game.goal.target}
+                mult={game.mult}
+              />
+            )}
+            {tab === 'home' && (
+              <HomeTab
+                score={score(liveState.daily ?? {})}
+                learnedCount={stats.learnedCount ?? 0}
+                goalPct={game.goal.pct}
+                goalMet={game.goal.met}
+                streak={game.streak}
+                user={user}
+                profile={profile}
+                cefrLevel={level}
+                missions={missions}
+                quests={quests}
+                league={leagueStanding}
+                onGoToTab={goToTab}
+                showPlacementOffer={placementOfferVisible}
+                onRetakePlacement={acceptPlacementOffer}
+                onDismissPlacementOffer={dismissPlacementOffer}
+              />
+            )}
+            {tab === 'home' && <AdSlot placement="home" tier={tier} />}
+            {/* The four practice tabs share one positioned wrapper so the trial
             wall can scrim THEM and nothing else. A position: fixed modal would
             take the header and nav with it, and the wall is explicitly not
             allowed to: Stats and settings stay reachable while it is up. */}
-          {TABS.includes(tab) && (
-            <div style={{ position: 'relative' }}>
-              {/* Server-driven units, additive over the bundled pack. With no
+            {TABS.includes(tab) && (
+              <div style={{ position: 'relative' }}>
+                {/* Server-driven units, additive over the bundled pack. With no
                 units for this (level, tab) the lane renders its children and
                 NOTHING else, so with an unseeded `lessons` table every tab
                 below is byte-identical to what it was. With units, the tab's
                 own content moves into the lane's collapsible. */}
-              <PracticeLane level={level} tab={tab}>
-                {tab === 'chat' && (
-                  <ChatTab
-                    level={level}
+                <PracticeLane level={level} tab={tab}>
+                  {tab === 'chat' && (
+                    <ChatTab
+                      level={level}
+                      mobile={mobile}
+                      wide={width >= bp.wide}
+                      learnedWords={learnedWords}
+                      learnedByDeck={learnedByDeck}
+                      enabledInterests={enabledInterests}
+                      preferredModel={preferredModel}
+                      onPreferredModelChange={handlePreferredModelChange}
+                      user={user}
+                      onSignIn={requestSignIn}
+                    />
+                  )}
+                  {tab === 'alphabet' && (
+                    <AlphabetTab
+                      level={level}
+                      mobile={mobile}
+                      reviewTarget={reviewTarget?.tab === 'alphabet' ? reviewTarget : null}
+                      onReviewConsumed={clearReviewTarget}
+                    />
+                  )}
+                  {tab === 'vocab' && (
+                    <VocabTab
+                      learnedWords={learnedWords}
+                      learnedByDeck={learnedByDeck}
+                      markLearned={markLearned}
+                      level={level}
+                      mobile={mobile}
+                      reviewTarget={reviewTarget?.tab === 'vocab' ? reviewTarget : null}
+                      onReviewConsumed={clearReviewTarget}
+                      customDecks={liveDecks(decks)}
+                      onDeckGenerated={handleDeckGenerated}
+                      onDeckDeleted={handleDeckDeleted}
+                      enabledInterests={enabledInterests}
+                    />
+                  )}
+                  {tab === 'translate' && (
+                    <TranslateTab
+                      // Keyed by level so a switch REMOUNTS rather than mutating a
+                      // live session. The exercise banks are differently shaped per
+                      // level (A1 rows carry `words`, A2 `template`), so any scheme
+                      // that keeps the old state for even one commit hands the wrong
+                      // row to the wrong exercise component and throws. Remounting
+                      // is also what already happens on every tab switch — this tab
+                      // is conditionally rendered — so the level switch now matches
+                      // the lifecycle the component was always written against.
+                      // Removing this key resurrects the A1 -> A2 crash; the
+                      // "restarts the exercise set" test in App.test.jsx is the guard.
+                      key={level}
+                      level={level}
+                      mobile={mobile}
+                      reviewTarget={reviewTarget?.tab === 'translate' ? reviewTarget : null}
+                      onReviewConsumed={clearReviewTarget}
+                    />
+                  )}
+                </PracticeLane>
+                {trialWallUp && (
+                  <TrialWall
+                    roundsUsed={game.trial.roundsUsed}
                     mobile={mobile}
-                    wide={width >= bp.wide}
-                    learnedWords={learnedWords}
-                    learnedByDeck={learnedByDeck}
-                    enabledInterests={enabledInterests}
-                    preferredModel={preferredModel}
-                    onPreferredModelChange={handlePreferredModelChange}
-                    user={user}
+                    onCreateAccount={() => setAuthModal('create')}
                     onSignIn={requestSignIn}
+                    onGoogle={handleGoogleCreate}
+                    googleBusy={googleBusy}
+                    onGitHub={handleGitHubCreate}
+                    gitHubBusy={gitHubBusy}
+                    // Both halves, always: with either missing the wall falls
+                    // back to its pre-consent one-tap provider path.
+                    accepted={authDraft.accepted}
+                    onAcceptedChange={setDraftAccepted}
+                    onNavigateLegal={openLegalFromConsent}
+                    focusConsent={focusConsent}
                   />
                 )}
-                {tab === 'alphabet' && (
-                  <AlphabetTab
-                    level={level}
-                    mobile={mobile}
-                    reviewTarget={reviewTarget?.tab === 'alphabet' ? reviewTarget : null}
-                    onReviewConsumed={clearReviewTarget}
-                  />
-                )}
-                {tab === 'vocab' && (
-                  <VocabTab
-                    learnedWords={learnedWords}
-                    learnedByDeck={learnedByDeck}
-                    markLearned={markLearned}
-                    level={level}
-                    mobile={mobile}
-                    reviewTarget={reviewTarget?.tab === 'vocab' ? reviewTarget : null}
-                    onReviewConsumed={clearReviewTarget}
-                    customDecks={liveDecks(decks)}
-                    onDeckGenerated={handleDeckGenerated}
-                    onDeckDeleted={handleDeckDeleted}
-                    enabledInterests={enabledInterests}
-                  />
-                )}
-                {tab === 'translate' && (
-                  <TranslateTab
-                    // Keyed by level so a switch REMOUNTS rather than mutating a
-                    // live session. The exercise banks are differently shaped per
-                    // level (A1 rows carry `words`, A2 `template`), so any scheme
-                    // that keeps the old state for even one commit hands the wrong
-                    // row to the wrong exercise component and throws. Remounting
-                    // is also what already happens on every tab switch — this tab
-                    // is conditionally rendered — so the level switch now matches
-                    // the lifecycle the component was always written against.
-                    // Removing this key resurrects the A1 -> A2 crash; the
-                    // "restarts the exercise set" test in App.test.jsx is the guard.
-                    key={level}
-                    level={level}
-                    mobile={mobile}
-                    reviewTarget={reviewTarget?.tab === 'translate' ? reviewTarget : null}
-                    onReviewConsumed={clearReviewTarget}
-                  />
-                )}
-              </PracticeLane>
-              {trialWallUp && (
-                <TrialWall
-                  roundsUsed={game.trial.roundsUsed}
-                  mobile={mobile}
-                  onCreateAccount={() => setAuthModal('create')}
-                  onSignIn={requestSignIn}
-                  onGoogle={handleGoogleCreate}
-                  googleBusy={googleBusy}
-                  onGitHub={handleGitHubCreate}
-                  gitHubBusy={gitHubBusy}
-                  // Both halves, always: with either missing the wall falls
-                  // back to its pre-consent one-tap provider path.
-                  accepted={authDraft.accepted}
-                  onAcceptedChange={setDraftAccepted}
-                  onNavigateLegal={openLegalFromConsent}
-                  focusConsent={focusConsent}
-                />
-              )}
-            </div>
-          )}
-          {tab === 'stats' && (
-            <StatsTab
-              mobile={mobile}
-              onReview={handleReview}
-              user={user}
-              profile={profile}
-              tokens={tokens}
-              onSignIn={requestSignIn}
-              view={profileView}
-              onViewChange={handleProfileView}
-              settingsPanel={settingsPanel}
-            />
-          )}
-          {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
-          {tab === 'admin' && isAdmin && <AdminTab me={adminSession.me} />}
-        </PageFrame>
+              </div>
+            )}
+            {tab === 'stats' && (
+              <StatsTab
+                mobile={mobile}
+                onReview={handleReview}
+                user={user}
+                profile={profile}
+                tokens={tokens}
+                onSignIn={requestSignIn}
+                view={profileView}
+                onViewChange={handleProfileView}
+                settingsPanel={settingsPanel}
+              />
+            )}
+            {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
+            {tab === 'admin' && isAdmin && <AdminTab me={adminSession.me} />}
+          </PageFrame>
 
-        {/* ── Footer ────────────────────────────────────────────────
+          {/* ── Footer ────────────────────────────────────────────────
             Strap, legal links and credit are one row, and AppFooter owns both
             the row and the <footer> element itself — see the note there for
             why the row needs a single owner. */}
-        <AppFooter mobile={mobile} onNavigate={openLegal} />
+          <AppFooter mobile={mobile} onNavigate={openLegal} />
 
-        {/* Only reachable past the entry gate, which early-returns above — so a
+          {/* Only reachable past the entry gate, which early-returns above — so a
           brand-new account meets the gate first and the tour on the frame after
           it, never both at once. */}
-        <TutorialOverlay anchors={tutorialAnchors} />
+          <TutorialOverlay anchors={tutorialAnchors} />
 
-        {!isNativeApp() && <Analytics />}
-        {authOverlay}
-        {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
-      </div>
-    </SessionGuardContext.Provider>
+          {!isNativeApp() && <Analytics />}
+          {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
+        </div>
+      </SessionGuardContext.Provider>
+      {authOverlay}
+    </>
   );
 }
