@@ -14,11 +14,11 @@ describe('build:mobile', () => {
     expect(script).toMatch(/(^|\s)VITE_PUSH_ENABLED=false(\s|$)/);
   });
 
-  // Dark until docs/AUTH_APPLE_OAUTH_RUNBOOK.md is done: a live button over an
-  // unconfigured Supabase provider is a sign-in that cannot work, on the
-  // platform that rejects apps for exactly that. Flip in the release commit.
-  it('pins Sign in with Apple off', () => {
-    expect(script).toMatch(/(^|\s)VITE_APPLE_AUTH_ENABLED=false(\s|$)/);
+  // The owner completed docs/AUTH_APPLE_OAUTH_RUNBOOK.md: Apple Developer,
+  // Supabase and the server-side deletion credentials are configured. Keep the
+  // native release flag explicit so a local .env cannot hide the review login.
+  it('pins Sign in with Apple on', () => {
+    expect(script).toMatch(/(^|\s)VITE_APPLE_AUTH_ENABLED=true(\s|$)/);
   });
 
   it('pins saved tutor conversations off', () => {
