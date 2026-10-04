@@ -6,7 +6,7 @@ import { todayKey } from './lib/stats';
 import { isLevelBoostEnabled, setLevelBoostEnabled } from './lib/xpEntitlement';
 import { TUTORIAL_KEY } from './lib/tutorialPref';
 import { THEME_MODE_KEY } from './lib/themeMode';
-import { loadState, thawPersist } from './lib/storage';
+import { loadState, saveState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
 import { MAX_CUSTOM_DECKS } from './lib/customDecks';
 import { locationReset } from './lib/clearUserState';
@@ -1849,6 +1849,68 @@ describe('sync engine wiring', () => {
       window.dispatchEvent(new CustomEvent('deutsch:progress'));
     });
     expect(syncMock.markDirty).not.toHaveBeenCalled();
+  });
+
+  // A reconcile writes the merged account to storage, and nothing re-read it:
+  // a native webview never fires window focus, so after signing in the app
+  // kept showing the pre-sign-in numbers (0 XP for an account with thousands
+  // of answers on the server), and its next save wrote that stale in-memory
+  // copy back over the merged learned words and decks.
+  describe('when a reconcile lands', () => {
+    const landReconcile = (patch) =>
+      act(() => {
+        saveState({ ...(loadState() ?? {}), ...patch });
+        syncMock.setStatus({ pending: false, lastSyncedAt: Date.now(), settled: true });
+      });
+    const day = (correct) => ({
+      total: correct,
+      bonusXp: 0,
+      byTab: { chat: 0, alphabet: 0, vocab: correct, translate: 0 },
+      byLevel: {
+        a1: { correct, almost: 0, wrong: 0 },
+        a2: { correct: 0, almost: 0, wrong: 0 },
+        b1: { correct: 0, almost: 0, wrong: 0 },
+      },
+    });
+
+    beforeEach(() => {
+      syncMock.enabled = true;
+      authMock.status = 'authenticated';
+    });
+
+    it("shows the account's level without waiting for a focus or an answer", () => {
+      renderPastEntry(<App />);
+      const chip = () =>
+        within(screen.getByRole('banner')).getByRole('button', { name: /^XP level/ });
+      expect(chip()).toHaveAccessibleName(/^XP level 1,/);
+
+      landReconcile({ daily: { '2026-09-01': day(300) } });
+      expect(chip()).not.toHaveAccessibleName(/^XP level 1,/);
+    });
+
+    it('keeps the learned words it brought down when the app next saves', () => {
+      saveState({ learnedWords: { 'guest-word': true } });
+      renderPastEntry(<App />);
+
+      landReconcile({ learnedWords: { 'guest-word': true, 'account-word': true } });
+      // The next answer re-saves App's in-memory copy through the persist effect.
+      act(() => {
+        window.dispatchEvent(new CustomEvent('deutsch:progress'));
+      });
+      expect(loadState().learnedWords).toEqual({ 'guest-word': true, 'account-word': true });
+    });
+
+    it('does not celebrate progress that was made on another device', () => {
+      renderPastEntry(<App />);
+      landReconcile({ daily: { '2026-09-01': day(300) } });
+      // The next answer must not toast the jump from 0 to the account's level,
+      // or the badges the account already holds.
+      act(() => {
+        window.dispatchEvent(new CustomEvent('deutsch:progress'));
+      });
+      expect(screen.queryByText(/^Level \d+$/)).toBeNull();
+      expect(screen.queryByText('Achievement freigeschaltet')).toBeNull();
+    });
   });
 
   // The disabled side of the same guard, asserted rather than assumed: with a

@@ -74,6 +74,8 @@ const SETTINGS_HASH = '#/settings';
 // The create-account draft App holds so it survives a trip to /terms or
 // /privacy (spec §6.6). The six-digit code is not part of it.
 const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
+// State-setter updater that keeps the current value when the next one is equal.
+const sameOr = (next) => (prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);
 // Longest the splash waits on a stored session before showing the app anyway.
 // A stale token took 1–3 s to resolve on device and in a production build.
 export const SESSION_SPLASH_MAX_MS = 3500;
@@ -166,6 +168,8 @@ export default function App() {
   // Derived from storage, refreshed on every `deutsch:progress` event.
   const prevLevelRef = useRef(null);
   const prevStreakRef = useRef(null);
+  // applyProgress lives inside its effect; the post-reconcile refresh calls it.
+  const applyProgressRef = useRef(null);
   // `userId` is a PARAMETER, not a closure read: this runs as the useState
   // initializer during the first render, before useAuth() and userIdRef exist
   // further down the component. Reading either from here is a TDZ crash.
@@ -395,6 +399,7 @@ export default function App() {
       }
     }
 
+    applyProgressRef.current = applyProgress;
     applyProgress();
     window.addEventListener('deutsch:progress', applyProgress);
     window.addEventListener('focus', applyProgress);
@@ -971,22 +976,27 @@ export default function App() {
     return () => window.removeEventListener(LEVEL_CHANGE_EVENT, onLevelChange);
   }, []);
 
-  useEffect(() => {
+  // Reads the persisted blob into App's in-memory copies: on mount, and again
+  // whenever a reconcile lands (below). An unchanged value keeps its identity,
+  // so the reconcile that follows every answer does not re-render the tabs.
+  const hydrateFromStorage = useCallback(() => {
     const s = loadState();
     if (s) {
-      setLearnedWords(s.learnedWords || {});
-      setDecks(readDecks(s));
+      setLearnedWords(sameOr(s.learnedWords || {}));
+      setDecks(sameOr(readDecks(s)));
       // Attribute existing flat keys to the decks their SRS rows name. Additive
       // and idempotent, so running it on every load is safe and picks up keys
       // that arrived from an older device since the last one.
       setLearnedByDeck(
-        backfillFromSrs({
-          learnedWords: s.learnedWords,
-          srs: s.srs,
-          learnedByDeck: readLearnedByDeck(s),
-        }).learnedByDeck
+        sameOr(
+          backfillFromSrs({
+            learnedWords: s.learnedWords,
+            srs: s.srs,
+            learnedByDeck: readLearnedByDeck(s),
+          }).learnedByDeck
+        )
       );
-      setEnabledInterests(sanitizeEnabledInterests(s.enabledInterests, interestTopics));
+      setEnabledInterests(sameOr(sanitizeEnabledInterests(s.enabledInterests, interestTopics)));
       setPreferredModel(sanitizePreferredModel(s.preferredModel));
       const today = todayKey();
       const goal = s.gamification?.goal ?? DEFAULT_GOAL;
@@ -1003,11 +1013,26 @@ export default function App() {
         }).learnedByDeck,
         s.learnedWords
       );
-      setStats({ streak, learnedCount, lastVisit: today });
+      setStats(sameOr({ streak, learnedCount, lastVisit: today }));
     } else {
-      setStats({ streak: 0, learnedCount: 0, lastVisit: todayKey() });
+      setStats(sameOr({ streak: 0, learnedCount: 0, lastVisit: todayKey() }));
     }
   }, []);
+  useEffect(() => {
+    hydrateFromStorage();
+  }, [hydrateFromStorage]);
+
+  // A reconcile writes the merged account straight to storage, so re-read it.
+  // Nothing else would on native, where a webview never fires window focus:
+  // after signing in, the app kept the pre-sign-in numbers, and the persist
+  // effect below wrote that stale copy back over the merged words and decks.
+  // Re-baselined silently: progress made on another device is not a new win.
+  useEffect(() => {
+    if (!syncStatus.lastSyncedAt) return;
+    hydrateFromStorage();
+    prevLevelRef.current = null;
+    applyProgressRef.current?.();
+  }, [syncStatus.lastSyncedAt, hydrateFromStorage]);
 
   // The learned count is DERIVED, not incremented. During the transition the
   // same word can sit in the flat map and under one or more decks, so counting

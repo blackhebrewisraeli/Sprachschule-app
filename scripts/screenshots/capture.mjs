@@ -320,7 +320,9 @@ async function iosTarget(key, target, appPath) {
       return file;
     },
     cleanup: async () => {
-      await exec('xcrun', ['simctl', 'terminate', udid, APP_ID]).catch(() => {});
+      // Uninstalled, not just stopped: the app is left holding the seed's fake
+      // guest history, and signing in there would merge it into a real account.
+      await exec('xcrun', ['simctl', 'uninstall', udid, APP_ID]).catch(() => {});
       await exec('xcrun', ['simctl', 'status_bar', udid, 'clear']).catch(() => {});
     },
   };
@@ -485,7 +487,8 @@ async function androidTarget(serial, apkPath) {
     },
     cleanup: async () => {
       detach?.();
-      await a('shell', 'am', 'force-stop', APP_ID).catch(() => {});
+      // See iosTarget: never leave the seeded app installed.
+      await a('uninstall', APP_ID).catch(() => {});
       await demo('exit').catch(() => {});
       await a('forward', '--remove', `tcp:${CDP_PORT}`).catch(() => {});
     },
