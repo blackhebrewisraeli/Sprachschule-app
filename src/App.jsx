@@ -74,6 +74,9 @@ const SETTINGS_HASH = '#/settings';
 // The create-account draft App holds so it survives a trip to /terms or
 // /privacy (spec §6.6). The six-digit code is not part of it.
 const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
+// Longest the splash waits on a stored session before showing the app anyway.
+// A stale token took 1–3 s to resolve on device and in a production build.
+export const SESSION_SPLASH_MAX_MS = 3500;
 import { fetchMyProfile } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
 import { useEntitlement } from './lib/useEntitlement';
@@ -148,15 +151,6 @@ export default function App() {
   const [preferredModel, setPreferredModel] = useState(AUTO_MODEL);
   const [reviewTarget, setReviewTarget] = useState(null);
   const [streakBurst, setStreakBurst] = useState(false);
-
-  // Lift the native launch screen once the first commit is in the DOM. An
-  // effect rather than main.jsx's double-rAF: Android keeps the whole content
-  // view from drawing while its launch screen is up, and rAF is not promised
-  // to tick in a webview that is not being drawn — a rAF-gated hide could end
-  // up waiting on itself. A no-op on the web; see hideLaunchScreen.
-  useEffect(() => {
-    void hideLaunchScreen();
-  }, []);
 
   // ── First-run walkthrough anchors ─────────────────────────────
   // The overlay measures these three nodes to place its bubbles. They are refs
@@ -1242,6 +1236,28 @@ export default function App() {
   const showGate =
     !gateDismissed && isAuthConfigured() && (authStatus === 'anonymous' || sessionUnresolved);
 
+  // The other half: a device holding a token is only PROBABLY signed in. A
+  // revoked or expired token resolves to anonymous, and rendering the app
+  // while it did showed a guest the full Home for 1–3 s before the gate
+  // replaced it. Hold the splash until the session settles, capped so a slow
+  // refresh never strands a signed-in learner on it.
+  const [sessionWaitOver, setSessionWaitOver] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSessionWaitOver(true), SESSION_SPLASH_MAX_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const holdSplash = rawAuth.status === 'loading' && mayHaveSession() && !sessionWaitOver;
+
+  // Lift the native launch screen once the first real screen is in the DOM.
+  // While holdSplash is up the launch screen IS the splash. An effect rather
+  // than main.jsx's double-rAF: Android keeps the whole content view from
+  // drawing while its launch screen is up, and rAF is not promised to tick in
+  // a webview that is not being drawn — a rAF-gated hide could end up waiting
+  // on itself. A no-op on the web; see hideLaunchScreen.
+  useEffect(() => {
+    if (!holdSplash) void hideLaunchScreen();
+  }, [holdSplash]);
+
   // Default-classify at the moment the optional test first PAINTS — not when
   // the gate decides. Waiting for the paint matters: a guest on the welcome
   // gate who picks "Sign in" instead must not be stamped A1 before their own
@@ -1308,6 +1324,33 @@ export default function App() {
   if (legalRoute === 'privacy') return <PrivacyPolicy onBack={closeLegal} />;
   if (legalRoute === 'terms') return <TermsOfService onBack={closeLegal} />;
   if (legalRoute === 'delete-account') return <DeleteAccountPage onBack={closeLegal} />;
+
+  if (holdSplash) {
+    // Same wordmark as index.html's pre-JS shell, so the hand-off is invisible.
+    return (
+      <>
+        <div
+          data-testid="session-splash"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: COLORS.paper,
+            color: COLORS.ink,
+            fontFamily: FONT_DISPLAY,
+            fontWeight: 900,
+            fontSize: 'clamp(40px, 12vw, 72px)',
+            letterSpacing: '-0.04em',
+          }}
+        >
+          Deutsch<span style={{ color: COLORS.red }}>.</span>
+        </div>
+        {authOverlay}
+      </>
+    );
+  }
 
   if (showGate) {
     return (
