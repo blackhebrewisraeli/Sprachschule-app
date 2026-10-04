@@ -28,6 +28,8 @@ import ScenarioPicker from './chat/ScenarioPicker';
 import TaskPanel from './chat/TaskPanel';
 import MessageList from './chat/MessageList';
 import QuotaNote from './chat/QuotaNote';
+import { adsAllowed, showRewardedAd } from '../lib/ads.js';
+import { getAccessTier } from '../lib/accessTier.js';
 import Composer from './chat/Composer';
 import HistoryPanel from './chat/HistoryPanel';
 
@@ -443,7 +445,14 @@ export default function ChatTab({
               {saveNote === 'unsaved' && 'Not saved — this turn is not in your history.'}
             </div>
           )}
-          {quotaError && <QuotaNote error={quotaError} onSignIn={onSignIn} />}
+          {quotaError && (
+            <QuotaNote
+              error={quotaError}
+              onSignIn={onSignIn}
+              // Shown only when the server marks the learner eligible, too.
+              onRewarded={adsAllowed({ tier: getAccessTier() }) ? showRewardedAd : undefined}
+            />
+          )}
           {openerFailed && !thinking && (
             <div style={{ padding: `0 ${SPACE[4]}px ${SPACE[3]}px`, background: COLORS.surface }}>
               <Button variant="secondary" size="sm" onClick={openScene}>

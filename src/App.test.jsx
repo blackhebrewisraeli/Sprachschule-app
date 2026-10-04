@@ -592,7 +592,7 @@ describe('header and daily-goal surfaces', () => {
     setViewportWidth(480);
     renderPastEntry(<App />);
     const header = screen.getByRole('banner');
-    expect(header.style.paddingTop).toContain('12px');
+    expect(header.style.paddingTop).toContain('8px');
     expect(header.style.paddingTop).toContain('safe-area-inset-top');
     expect(header.style.paddingLeft).toContain('10px');
     const wordmark = within(header)

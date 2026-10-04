@@ -32,20 +32,22 @@ const EMPTY_SCORE = {
 
 // SPACE[16] is the original hub chip (64). #268 doubled it to 128, which still
 // reads as ~10–15% of the card. Desktop grows to 4× the chip so the mark is a
-// column, not a header button. Narrow layouts give it an equal track so it
-// remains a natural identity anchor instead of collapsing to a thumbnail. A
-// long greeting gives way through a two-line clamp below bp.tiny; avatar size
-// does not. Never a bare `1fr` — minmax(0, 1fr) is what lets both columns shrink
-// below their content instead of pushing the page wide.
+// column, not a header button. Narrow layouts used to give it an equal track,
+// which made it ~180px tall on a phone and pushed every task below the fold;
+// it is now a fixed 80px mark beside the greeting. A long greeting gives way
+// through a two-line clamp below bp.tiny. Never a bare `1fr` — minmax(0, 1fr)
+// is what lets the text column shrink instead of pushing the page wide.
 const AVATAR_DESKTOP = SPACE[16] * 4;
+const AVATAR_NARROW = SPACE[16] + SPACE[4];
 const IDENTITY_COLUMNS_WIDE = `${AVATAR_DESKTOP}px minmax(0, 1fr)`;
-const IDENTITY_COLUMNS_NARROW = 'minmax(0, 1fr) minmax(0, 1fr)';
+const IDENTITY_COLUMNS_NARROW = `${AVATAR_NARROW}px minmax(0, 1fr)`;
+// Below this the XP and level tiles get a row each; above it they share one.
+const TILE_ROW_MIN_WIDTH = 360;
 
 // Every below-bp.tiny adjustment, looked up once per render rather than
-// branched on at each use. Stat tiles take the full row; the level chip stacks
-// under the greeting; the greeting clamps to two lines.
+// branched on at each use. The level chip stacks under the greeting; the
+// greeting clamps to two lines.
 const FIT_TINY = {
-  tileSpan: '1 / -1',
   headingRowGap: 1,
   headingRowDirection: 'column',
   greetingClamp: {
@@ -57,7 +59,6 @@ const FIT_TINY = {
   identityGap: SPACE[3],
 };
 const FIT_REGULAR = {
-  tileSpan: undefined,
   headingRowGap: 2,
   headingRowDirection: 'row',
   greetingClamp: {},
@@ -412,8 +413,8 @@ function RecommendedWell({ recommended }) {
 // Identity is the visual anchor: a large avatar plus a compact greeting column
 // that also holds today's Missionen / Tagesaufgaben (`today`) on wide viewports
 // and, below the top row, the emphasized recommended actions (`recommended`).
-// On a narrow viewport the avatar column is half the identity band, so `today`
-// drops under that band instead of squeezing into the remaining half. HomeTab
+// On a narrow viewport `today` drops under the identity band instead of
+// squeezing into the text column beside the avatar. HomeTab
 // composes those boards into these slots so they are not three competing page
 // sections.
 //
@@ -461,7 +462,7 @@ export default function PersonalHub({
       goalMet={goalMet}
       user={user}
       league={league}
-      tileSpan={fit.tileSpan}
+      tileSpan={viewportWidth < TILE_ROW_MIN_WIDTH ? '1 / -1' : undefined}
     />
   );
   const identityFacts = (
@@ -487,7 +488,12 @@ export default function PersonalHub({
   ) : null;
 
   return (
-    <Surface as="section" elevation={1} padding={4} aria-labelledby={IDENTITY_HEADING_ID}>
+    <Surface
+      as="section"
+      elevation={1}
+      padding={wide ? 4 : 3}
+      aria-labelledby={IDENTITY_HEADING_ID}
+    >
       <div
         data-testid="home-identity-row"
         style={{

@@ -84,6 +84,7 @@ import TranslateTab from './components/TranslateTab';
 import StatsTab from './components/StatsTab';
 import PracticeLane from './components/PracticeLane';
 import WelcomeGate from './components/WelcomeGate';
+import AdSlot from './components/ads/AdSlot';
 import PlacementTest from './components/PlacementTest';
 import TrialWall from './components/TrialWall';
 import AuthSheet from './components/auth/AuthSheet';
@@ -1175,7 +1176,7 @@ export default function App() {
   const tokens = useTokenBalance({ userId: user?.id, quests, todayKey: todayKey() });
   // The server's tier, a hint for the model picker. Re-read when the app comes
   // back to the foreground: a purchase or grant lands while it is backgrounded.
-  const { refresh: refreshEntitlement } = useEntitlement({ userId: user?.id });
+  const { tier, refresh: refreshEntitlement } = useEntitlement({ userId: user?.id });
   useEffect(() => {
     const onVisible = () => {
       if (document.visibilityState === 'visible') void refreshEntitlement();
@@ -1372,8 +1373,8 @@ export default function App() {
             // paints under the status bar / Dynamic Island and the chips stay
             // below it. Nav's sticky `top` below includes the same inset, or
             // it would slide under a taller header.
-            paddingTop: `calc(${mobile ? 12 : 20}px + env(safe-area-inset-top, 0px))`,
-            paddingBottom: mobile ? 12 : 20,
+            paddingTop: `calc(${mobile ? 8 : 20}px + env(safe-area-inset-top, 0px))`,
+            paddingBottom: mobile ? 8 : 20,
             paddingLeft: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-left, 0px))`,
             paddingRight: `calc(${mobile ? 10 : 32}px + env(safe-area-inset-right, 0px))`,
             display: 'flex',
@@ -1520,8 +1521,8 @@ export default function App() {
           style={{
             display: 'flex',
             gap: mobile ? 6 : 8,
-            paddingTop: mobile ? 8 : 12,
-            paddingBottom: mobile ? 8 : 12,
+            paddingTop: mobile ? 6 : 12,
+            paddingBottom: mobile ? 6 : 12,
             paddingLeft: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-left, 0px))`,
             paddingRight: `calc(${mobile ? 10 : 16}px + env(safe-area-inset-right, 0px))`,
             background: COLORS.paper,
@@ -1558,7 +1559,8 @@ export default function App() {
                   // buttons refused to shrink below their label and pushed the nav
                   // 28px past a 640px viewport, on every tab.
                   minWidth: 0,
-                  padding: navIconOnly ? '12px 6px' : '14px 18px',
+                  // 10 + 24px icon + 10 keeps the 44px touch target.
+                  padding: navIconOnly ? '10px 6px' : '14px 18px',
                   background: active ? COLORS.ink : 'transparent',
                   color: active ? COLORS.paper : COLORS.ink,
                   border: 'none',
@@ -1670,6 +1672,7 @@ export default function App() {
               onDismissPlacementOffer={dismissPlacementOffer}
             />
           )}
+          {tab === 'home' && <AdSlot placement="home" tier={tier} />}
           {/* The four practice tabs share one positioned wrapper so the trial
             wall can scrim THEM and nothing else. A position: fixed modal would
             take the header and nav with it, and the wall is explicitly not
@@ -1772,6 +1775,7 @@ export default function App() {
               settingsPanel={settingsPanel}
             />
           )}
+          {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
           {tab === 'admin' && isAdmin && <AdminTab me={adminSession.me} />}
         </PageFrame>
 

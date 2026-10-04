@@ -139,6 +139,7 @@ export default function AlphabetTab({
         kicker="Section 03"
         title="Das Alphabet"
         sub="Browse all letters or test your ear — can you identify what you heard?"
+        srOnly={mobile}
       />
 
       {/* Mode toggle */}
@@ -153,9 +154,10 @@ export default function AlphabetTab({
           marginRight: 'auto',
           // The rhythm rule: the gap between a tab's Hero and its first
           // content block is SPACE[8]. Alphabet was the only tab that
-          // disagreed (spec §3.5, §4.3).
-          marginTop: SPACE[8],
-          marginBottom: SPACE[6],
+          // disagreed (spec §3.5, §4.3). On phones the Hero is clipped, so
+          // the toggle sits straight under the goal strip.
+          marginTop: mobile ? 0 : SPACE[8],
+          marginBottom: mobile ? SPACE[4] : SPACE[6],
         }}
       >
         <button

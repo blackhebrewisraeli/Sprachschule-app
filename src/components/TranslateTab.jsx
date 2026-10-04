@@ -145,8 +145,9 @@ export default function TranslateTab({
         kicker="Section 05"
         title="Übersetzen"
         sub="The app gives you a sentence. You translate it — from word tiles up to free typing. Your level picks the start; switch any time."
+        srOnly={mobile}
       />
-      <div style={{ marginTop: SPACE[8], marginInline: 'auto', maxWidth: 720 }}>
+      <div style={{ marginTop: mobile ? 0 : SPACE[8], marginInline: 'auto', maxWidth: 720 }}>
         <ExerciseHeader
           level={practiceLevel}
           idx={setIdx_}
