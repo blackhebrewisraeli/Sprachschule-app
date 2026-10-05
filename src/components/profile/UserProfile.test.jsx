@@ -304,6 +304,29 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(screen.getAllByRole('button', { name: /edit profile/i })).toHaveLength(1);
   });
 
+  it.each([320, 375, 1280])(
+    'offers one labelled Sign out beside Edit profile at %ipx',
+    async (width) => {
+      window.innerWidth = width;
+      const onSignOut = vi.fn();
+      render(
+        <UserProfile user={USER} local={local} onOpenSettings={vi.fn()} onSignOut={onSignOut} />
+      );
+      await screen.findByRole('heading', { name: 'Sam Vimes' });
+      const actions = screen.getByTestId('profile-account-actions');
+      const signOut = within(actions).getByRole('button', { name: /^sign out$/i });
+      expect(within(actions).getByRole('button', { name: /edit profile/i })).toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: /sign out/i })).toHaveLength(1);
+      signOut.click();
+      expect(onSignOut).toHaveBeenCalledTimes(1);
+    }
+  );
+
+  it('offers no Sign out to a guest — there is nothing to sign out of', () => {
+    render(<UserProfile user={null} local={local} onSignIn={vi.fn()} onSignOut={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull();
+  });
+
   it('never fabricates profile data for a guest', async () => {
     // Spec §9. A signed-out visitor gets an explanation and a way in, not a
     // profile full of zeroes that looks like a real but empty account.

@@ -5,6 +5,7 @@ import App, { SESSION_SPLASH_MAX_MS } from './App';
 import { todayKey } from './lib/stats';
 import { isLevelBoostEnabled, setLevelBoostEnabled } from './lib/xpEntitlement';
 import { TUTORIAL_KEY } from './lib/tutorialPref';
+import { WELCOME_BACK_KEY } from './lib/welcomeBack';
 import { THEME_MODE_KEY } from './lib/themeMode';
 import { loadState, saveState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
@@ -44,6 +45,10 @@ const asReturningLearner = () => {
   // Returning learners already have a CEFR code. Without this, the placement
   // screen sits in front of the shell the way the tutorial used to.
   if (!localStorage.getItem('deutsch-level')) localStorage.setItem('deutsch-level', 'a1');
+  // ...and have already been greeted this session. The welcome-back overlay is
+  // once per sessionStorage, which this file never clears, so without this the
+  // first signed-in test to run would get it and every later one would not.
+  sessionStorage.setItem(WELCOME_BACK_KEY, '1');
 };
 
 const profileMock = vi.hoisted(() => ({ fetchMyProfile: vi.fn() }));
@@ -1448,6 +1453,45 @@ describe('entry gate', () => {
   // Hard navigation is stubbed: jsdom cannot leave the document. Production
   // sets window.location.href = '/' then window.location.reload() in a
   // finally after signOut, so a server error cannot skip the reset.
+  // The Profile tab's own Sign out is the visible door; it must be the SAME
+  // door as the account sheet's — signOutAndReset, full wipe, hard reload —
+  // not a lighter sign-out that leaves this device holding the account's data.
+  it('signs out from the Profile tab with the same full reset', async () => {
+    localStorage.setItem('deutsch-level', 'b1');
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ stats: { streak: 4 } }));
+    const reload = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { href: '/', reload },
+    });
+    const user = userEvent.setup();
+    const { rerender, unmount } = render(<App />);
+    try {
+      await user.click(gate());
+      authMock.status = 'authenticated';
+      authMock.mayHaveSession = true;
+      rerender(<App />);
+
+      await user.click(
+        within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
+      );
+      const actions = await screen.findByTestId('profile-account-actions');
+      await user.click(within(actions).getByRole('button', { name: 'Sign out' }));
+      await waitFor(() => expect(authSignOutMock).toHaveBeenCalled());
+      await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+      expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
+      expect(localStorage.getItem('deutsch-level')).toBeNull();
+    } finally {
+      thawPersist();
+      unmount();
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
   it('re-gates, wipes user storage, and hard-resets on Sign out', async () => {
     localStorage.setItem('deutsch-level', 'b1');
     localStorage.setItem(
@@ -3755,5 +3799,87 @@ describe('league join waits for the terms', () => {
     fireEvent.click(profileTab());
     await waitFor(() => expect(league.joinLeague).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(league.refreshLeague).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('welcome back', () => {
+  const PRACTISED = {
+    daily: {
+      [todayKey()]: { total: 4, byTab: { chat: 4 }, byLevel: { a1: { correct: 4 } } },
+    },
+  };
+  const welcome = () => screen.queryByRole('dialog', { name: /welcome back/i });
+
+  beforeEach(() => {
+    sessionStorage.removeItem(WELCOME_BACK_KEY);
+    saveState(PRACTISED);
+  });
+
+  it('greets a signed-in returning learner once per session', async () => {
+    authMock.status = 'authenticated';
+    const { unmount } = render(<App />);
+    expect(await screen.findByRole('dialog', { name: /welcome back/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /let's go/i }));
+    expect(welcome()).not.toBeInTheDocument();
+
+    // A reload in the same tab: same sessionStorage, no second greeting.
+    unmount();
+    render(<App />);
+    await screen.findByRole('navigation');
+    expect(welcome()).not.toBeInTheDocument();
+  });
+
+  // TutorialOverlay marks itself done the moment it PAINTS, not on dismissal.
+  // A returning account on a new device (the tutorial flag is device-local)
+  // gets the tour; when the first reconcile then settles, a check of the live
+  // flag reads "done" and stacks the greeting on top of the tour.
+  it('never stacks on the tour a session opened with', async () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    syncMock.enabled = true;
+    syncMock.reset();
+    authMock.status = 'authenticated';
+    try {
+      render(<App />);
+      expect(await screen.findByRole('dialog', { name: /tutorial/i })).toBeInTheDocument();
+      expect(localStorage.getItem(TUTORIAL_KEY)).not.toBeNull();
+
+      act(() => {
+        syncMock.setStatus({ pending: false, lastSyncedAt: Date.now(), settled: true });
+      });
+      await act(async () => {});
+      expect(welcome()).not.toBeInTheDocument();
+    } finally {
+      syncMock.enabled = false;
+      syncMock.reset();
+    }
+  });
+
+  it('leaves a guest to the entry gate rather than greeting twice', async () => {
+    renderPastEntry(<App />);
+    await screen.findByRole('navigation');
+    expect(welcome()).not.toBeInTheDocument();
+  });
+});
+
+describe('unknown hash route', () => {
+  afterEach(() => {
+    window.location.hash = '';
+  });
+
+  it('shows the 404 page for a dead #/ link, then goes home without it in history', async () => {
+    window.location.hash = '#/no-such-page';
+    render(<App />);
+    expect(screen.getByRole('heading', { name: /this page doesn't exist/i })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /back to home/i }));
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByRole('heading', { name: /this page doesn't exist/i })).toBeNull();
+  });
+
+  it('still opens a real route rather than calling it missing', () => {
+    window.location.hash = '#/settings';
+    renderPastEntry(<App />);
+    expect(screen.queryByRole('heading', { name: /this page doesn't exist/i })).toBeNull();
   });
 });

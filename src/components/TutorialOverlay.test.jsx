@@ -311,6 +311,7 @@ describe('TutorialOverlay', () => {
       const width = Number.parseFloat(bubble.style.width);
       expect(left, `step ${i + 1} left edge`).toBeGreaterThanOrEqual(0);
       expect(left + width, `step ${i + 1} right edge`).toBeLessThanOrEqual(320);
+      expect(left, `step ${i + 1} centred`).toBe(320 - left - width);
       if (i < TUTORIAL_STEPS.length - 1) {
         await user.click(screen.getByRole('button', { name: /next/i }));
       }

@@ -98,10 +98,16 @@ describe('RecommendedActions', () => {
     }
   });
 
-  it('keeps recommended cards shorter than a tile inset', () => {
+  it('sets the icon beside the copy, centred on it, not stacked above it', () => {
+    // Stacked, each card opened with a lone glyph pinned to its top-left corner.
     render(<RecommendedActions missions={[]} />);
-    for (const card of screen.getAllByRole('button')) {
-      expect(card).toHaveStyle({ padding: `${SPACE[3]}px ${SPACE[4]}px` });
+    const cards = screen.getAllByRole('button');
+    for (const card of cards) {
+      const row = card.querySelector('[data-recommended-row]');
+      expect(row).toHaveStyle({ flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap' });
+      expect(row.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+      expect(row.firstElementChild.querySelector('svg')).not.toBeNull();
+      expect(card).toHaveStyle({ padding: `${SPACE[4]}px` });
     }
   });
 

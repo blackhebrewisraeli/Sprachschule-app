@@ -1,5 +1,5 @@
-import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, SPACE } from '../lib/theme';
-import { Grid, Stack } from './ui/Layout';
+import { BORDER, COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, RADIUS, SPACE } from '../lib/theme';
+import { Grid, Row, Stack } from './ui/Layout';
 import InteractiveCard from './ui/InteractiveCard';
 import Heading from './ui/Heading';
 import TaskIcon from './ui/TaskIcon';
@@ -14,8 +14,13 @@ import { resolveRecommended } from './resolveRecommended';
 // hop a returning learner should take now. Pack fallbacks keep the layout
 // from collapsing on a quiet day.
 //
-// Padding is one SPACE stop under the original tile inset (SPACE[5]/SPACE[4]
-// → SPACE[3]/SPACE[4]) so the cards stay the loudest hop, just shorter.
+// The icon sits in a medallion BESIDE the copy, centred on it, not on a line
+// of its own above it. Stacked, every card opened with a lone glyph pinned to
+// its top-left corner — two of them side by side on desktop read as clutter
+// along the top edge rather than as part of each card. Beside the copy the
+// card is also a line shorter, which buys back an even SPACE[4] inset.
+const MEDALLION = 40;
+
 export default function RecommendedActions({ missions = [], classifiedLevel, onGo }) {
   const chrome = activePack.content.homeChrome ?? {};
   const tabNames = activePack.content.missionsChrome?.tabNames ?? {};
@@ -36,39 +41,55 @@ export default function RecommendedActions({ missions = [], classifiedLevel, onG
               elevation={2}
               onClick={() => onGo?.(card.tab, card.mission)}
               aria-label={card.text}
-              style={{ padding: `${SPACE[3]}px ${SPACE[4]}px` }}
+              style={{ padding: SPACE[4] }}
             >
-              <Stack gap={1} style={{ minWidth: 0 }}>
-                <span aria-hidden="true" style={{ color: COLORS.ink }}>
-                  <TaskIcon name={card.icon} size={24} />
-                </span>
+              <Row gap={3} wrap={false} data-recommended-row="">
                 <span
-                  data-recommended-title=""
+                  aria-hidden="true"
                   style={{
-                    fontFamily: FONTS.body,
-                    fontSize: FONT_SIZE.lg,
-                    fontWeight: FONT_WEIGHT.bold,
+                    flexShrink: 0,
+                    width: MEDALLION,
+                    height: MEDALLION,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: RADIUS.md,
+                    background: COLORS.paper,
+                    border: BORDER.panel,
                     color: COLORS.ink,
-                    overflowWrap: 'anywhere',
-                    minWidth: 0,
-                    lineHeight: 1.3,
                   }}
                 >
-                  {card.text}
+                  <TaskIcon name={card.icon} size={22} />
                 </span>
-                {destination && (
+                <Stack gap={1} style={{ flex: 1 }}>
                   <span
+                    data-recommended-title=""
                     style={{
                       fontFamily: FONTS.body,
-                      fontSize: FONT_SIZE.sm,
-                      color: COLORS.inkSoft,
+                      fontSize: FONT_SIZE.lg,
+                      fontWeight: FONT_WEIGHT.bold,
+                      color: COLORS.ink,
                       overflowWrap: 'anywhere',
+                      minWidth: 0,
+                      lineHeight: 1.3,
                     }}
                   >
-                    {destination}
+                    {card.text}
                   </span>
-                )}
-              </Stack>
+                  {destination && (
+                    <span
+                      style={{
+                        fontFamily: FONTS.body,
+                        fontSize: FONT_SIZE.sm,
+                        color: COLORS.inkSoft,
+                        overflowWrap: 'anywhere',
+                      }}
+                    >
+                      {destination} →
+                    </span>
+                  )}
+                </Stack>
+              </Row>
             </InteractiveCard>
           );
         })}

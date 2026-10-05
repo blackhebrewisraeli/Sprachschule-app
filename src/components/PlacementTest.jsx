@@ -22,7 +22,7 @@ import {
 import { activePack } from '../packs';
 import Button from './ui/Button';
 import Heading from './ui/Heading';
-import { Body } from './ui/Text';
+import { Body, Meta } from './ui/Text';
 import ThemeChip from './ThemeChip';
 import { Stack } from './ui/Layout';
 
@@ -356,9 +356,19 @@ export default function PlacementTest({ onComplete, onCancel, firstRun = false }
       >
         {phase === 'intro' && (
           <Stack gap={5} align="stretch">
-            <Heading level={1} style={{ margin: 0, textAlign: 'center' }}>
-              Find your level
-            </Heading>
+            {/* First run is the learner's first screen past the gate, so the
+                welcome and the test invite are one prompt here rather than a
+                greeting overlay stacked on top of the test. */}
+            <Stack gap={2} align="center">
+              {firstRun && activePack.content.identity?.welcomeKicker ? (
+                <Meta as="div" tone="soft">
+                  {activePack.content.identity.welcomeKicker}
+                </Meta>
+              ) : null}
+              <Heading level={1} style={{ margin: 0, textAlign: 'center' }}>
+                Find your level
+              </Heading>
+            </Stack>
             <Body style={{ textAlign: 'center' }}>
               Nine short questions from the course itself. No account, no AI. We place you at A1,
               A2, or B1 — that decides how Translate works.

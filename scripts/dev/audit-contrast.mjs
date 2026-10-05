@@ -1184,6 +1184,12 @@ async function auditSignedIn(page, mode) {
     ({ m, key }) => {
       localStorage.setItem('deutsch-theme-mode', m);
       localStorage.setItem('deutsch-level', 'a1');
+      // Already greeted this session (src/lib/welcomeBack.js WELCOME_BACK_KEY).
+      // This seed IS a returning signed-in learner, so the welcome-back modal
+      // would otherwise open over the sweep — in some passes and not others,
+      // depending on whether the tour had already marked itself done — and
+      // measureOpenSheet would take it for the AccountChip sheet.
+      sessionStorage.setItem('deutsch-welcome-back-shown', '1');
       return key;
     },
     { m: mode, key: SESSION_KEY }
@@ -1200,6 +1206,17 @@ async function auditSignedIn(page, mode) {
     throw new Error(
       `audit-contrast: signed-in pass never reached the app shell (${mode}). ` +
         'The session seed no longer satisfies useAuth — check SESSION_KEY and expires_at.'
+    );
+  }
+
+  // Fail rather than audit around it: an open modal here means the sweep below
+  // is measuring the wrong surface and would still come back green.
+  if (
+    await page.evaluate(() => Boolean(document.querySelector('dialog[aria-label="Welcome back"]')))
+  ) {
+    throw new Error(
+      `audit-contrast: the welcome-back modal is open over the signed-in pass (${mode}). ` +
+        'Its session flag no longer suppresses it — check WELCOME_BACK_KEY.'
     );
   }
 

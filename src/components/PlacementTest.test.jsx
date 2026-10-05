@@ -83,6 +83,16 @@ describe('PlacementTest', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
+  // The first run is the learner's first screen past the gate: the welcome and
+  // the test invite are one prompt. A retake is not a welcome.
+  it('welcomes on the first run only', () => {
+    const { unmount } = render(<PlacementTest onComplete={() => {}} firstRun />);
+    expect(screen.getByText('Willkommen')).toBeInTheDocument();
+    unmount();
+    render(<PlacementTest onComplete={() => {}} />);
+    expect(screen.queryByText('Willkommen')).not.toBeInTheDocument();
+  });
+
   it('lets a retake cancel without writing a level', async () => {
     const onCancel = vi.fn();
     render(<PlacementTest onComplete={() => {}} onCancel={onCancel} />);

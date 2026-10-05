@@ -13,6 +13,8 @@ import Surface from './ui/Surface';
 import { Row, Stack } from './ui/Layout';
 import Heading from './ui/Heading';
 import { Body, Meta } from './ui/Text';
+import { useSeeMore } from '../lib/useSeeMore';
+import SeeMoreToggle from './ui/SeeMoreToggle';
 import { activePack } from '../packs';
 import Avatar from './ui/Avatar';
 import GoalRing from './gamification/GoalRing';
@@ -45,31 +47,27 @@ const IDENTITY_COLUMNS_NARROW = `${AVATAR_NARROW}px minmax(0, 1fr)`;
 const TILE_ROW_MIN_WIDTH = 360;
 
 // Every below-bp.tiny adjustment, looked up once per render rather than
-// branched on at each use. The level chip stacks under the greeting; the
-// greeting clamps to two lines.
+// branched on at each use. The level chip stacks under the greeting.
 const FIT_TINY = {
   headingRowGap: 1,
   headingRowDirection: 'column',
-  greetingClamp: {
-    display: '-webkit-box',
-    WebkitBoxOrient: 'vertical',
-    WebkitLineClamp: 2,
-    overflow: 'hidden',
-  },
   identityGap: SPACE[3],
 };
 const FIT_REGULAR = {
   headingRowGap: 2,
   headingRowDirection: 'row',
-  greetingClamp: {},
   identityGap: SPACE[4],
 };
 
-const TRUNCATE = {
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-};
+// The greeting and the account line carry text the learner chose — a display
+// name, a handle — so their length is unbounded. Both clamp at every width
+// (unclamped, a long name at the 36px desktop face ran four lines and stretched
+// the right column far past the avatar beside it) and offer "See more" only
+// when the clamp actually cut something. `title` alone was the old escape
+// hatch, and a touch screen has no hover to reveal it.
+const GREETING_LINES = 2;
+const GREETING_TEXT_ID = 'home-identity-greeting';
+const ACCOUNT_LINE_ID = 'home-identity-account-line';
 
 // Every layer in the right-hand grid track declares the same boundary. This is
 // intentionally stronger than minWidth: 0 alone: width/maxWidth plus border-box
@@ -251,6 +249,9 @@ function StandingTiles({ lvl, streak, goalPct, goalMet, user, league, tileSpan }
 
 function IdentityFacts({ greeting, cefrLevel, copy, fit, wide, user, profile }) {
   const band = String(cefrLevel ?? '').toUpperCase();
+  const account = user ? accountLine(profile, copy) : '';
+  const greetingMore = useSeeMore(GREETING_LINES, greeting);
+  const accountMore = useSeeMore(1, account);
   return (
     <Stack gap={1} style={BOUNDED_COLUMN}>
       <Row
@@ -265,36 +266,45 @@ function IdentityFacts({ greeting, cefrLevel, copy, fit, wide, user, profile }) 
           flexDirection: fit.headingRowDirection,
         }}
       >
-        <Heading
-          id={IDENTITY_HEADING_ID}
-          level={2}
-          title={greeting}
-          style={{
-            margin: 0,
-            overflowWrap: 'anywhere',
-            maxWidth: '100%',
-            lineHeight: 1.15,
-            flex: 1,
-            minWidth: 0,
-            // Heading level 2 is 24px — same as a section title, smaller
-            // than the wordmark. This card's greeting is the identity
-            // display line; 4xl matches the masthead without touching
-            // Heading's global scale.
-            //
-            // Narrow steps down to 2xl, and that is not taste. At 320px the
-            // half-band avatar plus level chip left the greeting 77px —
-            // "Guten Tag" broke as "Gut / en / Tag". Stacking the chip and
-            // clamping the smaller display face lets the avatar keep its
-            // natural share without letting a long name grow the header.
-            fontSize: wide ? FONT_SIZE['4xl'] : FONT_SIZE['2xl'],
-            // Two lines preserve the welcome and as much of a long display
-            // name as the phone can carry. The full greeting remains the
-            // heading's accessible text and is also exposed by `title`.
-            ...fit.greetingClamp,
-          }}
-        >
-          {greeting}
-        </Heading>
+        <Stack gap={1} style={{ flex: 1, minWidth: 0, maxWidth: '100%' }}>
+          <Heading
+            id={IDENTITY_HEADING_ID}
+            level={2}
+            title={greeting}
+            style={{
+              margin: 0,
+              overflowWrap: 'anywhere',
+              maxWidth: '100%',
+              lineHeight: 1.15,
+              flex: 1,
+              minWidth: 0,
+              // Heading level 2 is 24px — same as a section title, smaller
+              // than the wordmark. This card's greeting is the identity
+              // display line; 4xl matches the masthead without touching
+              // Heading's global scale.
+              //
+              // Narrow steps down to 2xl, and that is not taste. At 320px the
+              // half-band avatar plus level chip left the greeting 77px —
+              // "Guten Tag" broke as "Gut / en / Tag". Stacking the chip and
+              // clamping the smaller display face lets the avatar keep its
+              // natural share without letting a long name grow the header.
+              fontSize: wide ? FONT_SIZE['4xl'] : FONT_SIZE['2xl'],
+            }}
+          >
+            {/* Two lines preserve the welcome and as much of a long display
+                name as fits. The clamp sits on this span because Heading
+                does not forward a ref; the full greeting stays the heading's
+                accessible text, and "See more" shows it to everyone else. */}
+            <span
+              id={GREETING_TEXT_ID}
+              ref={greetingMore.ref}
+              style={{ display: 'block', ...greetingMore.clamp }}
+            >
+              {greeting}
+            </span>
+          </Heading>
+          <SeeMoreToggle state={greetingMore} controls={GREETING_TEXT_ID} />
+        </Stack>
         {/* The band chip beside a 36px greeting. It sat at 10px with the
               widest tracking, which is the recipe for a label you SCAN past —
               this is a fact about the learner and reads as one at 11px. The
@@ -322,9 +332,18 @@ function IdentityFacts({ greeting, cefrLevel, copy, fit, wide, user, profile }) 
             and the level — the two facts this card exists to state — were set
             in the quietest ink on the page. */}
       {user ? (
-        <Body size="sm" tone="soft" as="div" style={TRUNCATE}>
-          {accountLine(profile, copy)}
-        </Body>
+        <>
+          <Body size="sm" tone="soft" as="div">
+            <span
+              id={ACCOUNT_LINE_ID}
+              ref={accountMore.ref}
+              style={{ display: 'block', overflowWrap: 'anywhere', ...accountMore.clamp }}
+            >
+              {account}
+            </span>
+          </Body>
+          <SeeMoreToggle state={accountMore} controls={ACCOUNT_LINE_ID} />
+        </>
       ) : null}
     </Stack>
   );

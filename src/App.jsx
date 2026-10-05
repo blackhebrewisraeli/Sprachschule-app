@@ -68,9 +68,6 @@ import {
 import { useLeagueStanding } from './lib/useLeagueStanding';
 import { useAdminSession } from './lib/useAdminSession.js';
 
-// Settings lives inside the Profile tab. The hash keeps that view deep-linkable
-// and reload-safe; the separate seventh nav slot is reserved for verified admins.
-const SETTINGS_HASH = '#/settings';
 // The create-account draft App holds so it survives a trip to /terms or
 // /privacy (spec §6.6). The six-digit code is not part of it.
 const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
@@ -79,7 +76,7 @@ const sameOr = (next) => (prev) => (JSON.stringify(prev) === JSON.stringify(next
 // Longest the splash waits on a stored session before showing the app anyway.
 // A stale token took 1–3 s to resolve on device and in a production build.
 export const SESSION_SPLASH_MAX_MS = 3500;
-import { fetchMyProfile } from './lib/profile';
+import { fetchMyProfile, profileName, ANONYMOUS_NAME } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
 import { useEntitlement } from './lib/useEntitlement';
 import ChatTab from './components/ChatTab';
@@ -128,11 +125,16 @@ import { PageFrame } from './components/ui/Layout';
 import StatusChip from './components/StatusChip';
 import GoalStrip from './components/gamification/GoalStrip';
 import TutorialOverlay from './components/TutorialOverlay';
+import WelcomeBackOverlay from './components/WelcomeBackOverlay';
+import { isTutorialDone } from './lib/tutorialPref';
+import { shouldWelcomeBack, welcomedThisSession, markWelcomed } from './lib/welcomeBack';
 import { Analytics } from '@vercel/analytics/react';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import TermsOfService from './components/legal/TermsOfService';
 import DeleteAccountPage from './components/legal/DeleteAccountPage';
 import { currentLegalRoute } from './lib/legalRoute';
+import { SETTINGS_HASH, isUnknownHashRoute } from './lib/hashRoute';
+import NotFoundPage from './components/NotFoundPage';
 import { useWindowWidth, isMobile, isTiny, isTablet, bp } from './lib/useWindowWidth';
 import { apiUrl } from './lib/apiUrl';
 
@@ -867,8 +869,17 @@ export default function App() {
   // deciding whether to, and the terms are part of that decision. Gating them
   // behind the gate would hide them from exactly the right reader.
   const [legalRoute, setLegalRoute] = useState(currentLegalRoute);
+  // A `#/…` route nothing answers to. Read on the same navigation events as the
+  // legal routes, and like them it renders ahead of the gate: a dead link
+  // should say so to anyone, signed in or not.
+  const [notFound, setNotFound] = useState(
+    () => typeof window !== 'undefined' && isUnknownHashRoute(window.location.hash)
+  );
   useEffect(() => {
-    const onNav = () => setLegalRoute(currentLegalRoute());
+    const onNav = () => {
+      setLegalRoute(currentLegalRoute());
+      setNotFound(isUnknownHashRoute(window.location.hash));
+    };
     // popstate covers Back/Forward; hashchange covers the #/privacy fallback
     // form, which does not fire popstate in every browser.
     window.addEventListener('popstate', onNav);
@@ -893,6 +904,13 @@ export default function App() {
     else window.history.pushState(null, '', '/');
     setLegalRoute(null);
   }, []);
+  // replaceState, not a hash write: the dead route should not stay in history
+  // for Back to land on again.
+  const leaveNotFound = useCallback(() => {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    setNotFound(false);
+    setTab('home');
+  }, []);
   // A consent link opens the page through here, so the checkbox it came from
   // takes focus again when the reader comes back (spec §6.6).
   const [focusConsent, setFocusConsent] = useState(false);
@@ -905,6 +923,32 @@ export default function App() {
   useEffect(() => {
     if (!legalRoute && focusConsent) setFocusConsent(false);
   }, [legalRoute, focusConsent]);
+
+  // Once per app session, a signed-in learner coming back is greeted — see
+  // src/lib/welcomeBack.js for who and when. Declared after the placement
+  // offer because it can carry that invite: when both are due on one open,
+  // the overlay asks and the Home banner stands down until it is answered.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  // Read ONCE, at mount. TutorialOverlay marks itself done the moment it
+  // paints, so the live flag reads "done" while the tour is still on screen —
+  // and a reconcile settling after that would stack the greeting on top of it.
+  // A session that opened with the tour pending is a first look on this
+  // device, not a return, so it gets no greeting at all.
+  const [tutorialDoneAtOpen] = useState(isTutorialDone);
+  useEffect(() => {
+    const ready = shouldWelcomeBack({
+      authStatus,
+      syncSettled: !SYNC_ENABLED || syncStatus.settled,
+      blocked: showPlacement || Boolean(legalRoute),
+      hasLevel: hasStoredLevel(),
+      xp: totalXp(loadState()?.daily ?? {}),
+      tutorialDone: tutorialDoneAtOpen,
+      shown: welcomedThisSession(),
+    });
+    if (!ready) return;
+    markWelcomed();
+    setWelcomeOpen(true);
+  }, [authStatus, syncStatus.settled, showPlacement, legalRoute, tutorialDoneAtOpen]);
 
   // Settings lives inside the Profile tab (id still `stats`). The hash keeps
   // the deep link; it is not a seventh nav tab. The WelcomeGate still wins
@@ -1365,6 +1409,7 @@ export default function App() {
   if (legalRoute === 'privacy') return <PrivacyPolicy onBack={closeLegal} />;
   if (legalRoute === 'terms') return <TermsOfService onBack={closeLegal} />;
   if (legalRoute === 'delete-account') return <DeleteAccountPage onBack={closeLegal} />;
+  if (notFound) return <NotFoundPage onHome={leaveNotFound} />;
 
   if (holdSplash) {
     // Same wordmark as index.html's pre-JS shell, so the hand-off is invisible.
@@ -1756,7 +1801,7 @@ export default function App() {
                 quests={quests}
                 league={leagueStanding}
                 onGoToTab={goToTab}
-                showPlacementOffer={placementOfferVisible}
+                showPlacementOffer={placementOfferVisible && !welcomeOpen}
                 onRetakePlacement={acceptPlacementOffer}
                 onDismissPlacementOffer={dismissPlacementOffer}
               />
@@ -1859,6 +1904,7 @@ export default function App() {
                 profile={profile}
                 tokens={tokens}
                 onSignIn={requestSignIn}
+                onSignOut={handleSignOut}
                 view={profileView}
                 onViewChange={handleProfileView}
                 settingsPanel={settingsPanel}
@@ -1878,6 +1924,25 @@ export default function App() {
           brand-new account meets the gate first and the tour on the frame after
           it, never both at once. */}
           <TutorialOverlay anchors={tutorialAnchors} />
+
+          {welcomeOpen && (
+            <WelcomeBackOverlay
+              name={profileName(profile) === ANONYMOUS_NAME ? null : profileName(profile)}
+              streak={game.streak}
+              goalMet={game.goal.met}
+              goalRemaining={Math.max(0, game.goal.target - game.goal.current)}
+              offer={placementOfferVisible}
+              onTakeTest={() => {
+                setWelcomeOpen(false);
+                acceptPlacementOffer();
+              }}
+              onNotNow={() => {
+                setWelcomeOpen(false);
+                dismissPlacementOffer();
+              }}
+              onClose={() => setWelcomeOpen(false)}
+            />
+          )}
 
           {!isNativeApp() && <Analytics />}
           {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
