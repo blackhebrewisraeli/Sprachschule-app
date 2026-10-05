@@ -354,6 +354,38 @@ async function dismissEntryScreens(page) {
 }
 
 /**
+ * The welcome-back overlay (#444): once per app session, a signed-in learner
+ * who has practised is greeted in a modal whose scrim eats every click — the
+ * same trap as the tutorial. This seed IS that learner, and each viewport is a
+ * fresh context (fresh sessionStorage), so the overlay is REQUIRED here rather
+ * than skipped-if-present: it arrives only after the first reconcile settles,
+ * so an isVisible() probe straight after the gate could miss it and let it
+ * land on a later click instead.
+ */
+const welcomeBack = (page) => page.getByRole('dialog', { name: 'Welcome back' });
+
+async function stepWelcomeBack(page) {
+  const dialog = welcomeBack(page);
+  try {
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+  } catch {
+    throw new Error(
+      'smoke-auth-learning-path: no welcome-back overlay for a signed-in learner with XP.'
+    );
+  }
+  await dialog.getByRole('button', { name: "Let's go" }).click();
+  await dialog.waitFor({ state: 'hidden', timeout: 5000 });
+}
+
+/** Once per session: a reload in the same tab must not greet again. */
+async function assertNoSecondWelcome(page) {
+  await page.waitForTimeout(500);
+  if (await welcomeBack(page).isVisible()) {
+    throw new Error('smoke-auth-learning-path: welcome-back reappeared after a same-tab reload.');
+  }
+}
+
+/**
  * The masthead's AccountChip trigger, scoped to the banner landmark.
  *
  * `aria-label="Account"` is NOT unique in the document: #311 gave the
@@ -1511,6 +1543,7 @@ async function walkViewport(context, page, vp, seed) {
 
   await stepRestoreSession(context, page, seed);
   await dismissEntryScreens(page);
+  await stepWelcomeBack(page);
   await stepViewportChecks(page, `${label} home`);
 
   await openSeededDeck(page);
@@ -1518,6 +1551,7 @@ async function walkViewport(context, page, vp, seed) {
   await stepCompleteExerciseAndSync(page, seed, posts);
 
   await stepRefreshAndVerifyPersistence(page, seed);
+  await assertNoSecondWelcome(page);
   await stepViewportChecks(page, `${label} after-reload`);
 
   await stepOpenLeagues(page);

@@ -8,7 +8,9 @@
 // device level and XP come down with the first reconcile, and deciding before
 // it lands would skip a returning learner or greet a new one. A brand-new
 // learner (no XP yet) gets the first-run placement intro, which carries its
-// own welcome, and the tutorial — never this on top of them.
+// own welcome, and the tutorial — never this on top of them. `tutorialDone`
+// must be the flag as it stood when the app OPENED: the tour marks itself
+// done on paint, so the live flag cannot tell "finished" from "on screen".
 
 export const WELCOME_BACK_KEY = 'deutsch-welcome-back-shown';
 

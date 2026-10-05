@@ -3829,6 +3829,31 @@ describe('welcome back', () => {
     expect(welcome()).not.toBeInTheDocument();
   });
 
+  // TutorialOverlay marks itself done the moment it PAINTS, not on dismissal.
+  // A returning account on a new device (the tutorial flag is device-local)
+  // gets the tour; when the first reconcile then settles, a check of the live
+  // flag reads "done" and stacks the greeting on top of the tour.
+  it('never stacks on the tour a session opened with', async () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    syncMock.enabled = true;
+    syncMock.reset();
+    authMock.status = 'authenticated';
+    try {
+      render(<App />);
+      expect(await screen.findByRole('dialog', { name: /tutorial/i })).toBeInTheDocument();
+      expect(localStorage.getItem(TUTORIAL_KEY)).not.toBeNull();
+
+      act(() => {
+        syncMock.setStatus({ pending: false, lastSyncedAt: Date.now(), settled: true });
+      });
+      await act(async () => {});
+      expect(welcome()).not.toBeInTheDocument();
+    } finally {
+      syncMock.enabled = false;
+      syncMock.reset();
+    }
+  });
+
   it('leaves a guest to the entry gate rather than greeting twice', async () => {
     renderPastEntry(<App />);
     await screen.findByRole('navigation');

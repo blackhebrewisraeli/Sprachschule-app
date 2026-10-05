@@ -929,6 +929,12 @@ export default function App() {
   // offer because it can carry that invite: when both are due on one open,
   // the overlay asks and the Home banner stands down until it is answered.
   const [welcomeOpen, setWelcomeOpen] = useState(false);
+  // Read ONCE, at mount. TutorialOverlay marks itself done the moment it
+  // paints, so the live flag reads "done" while the tour is still on screen —
+  // and a reconcile settling after that would stack the greeting on top of it.
+  // A session that opened with the tour pending is a first look on this
+  // device, not a return, so it gets no greeting at all.
+  const [tutorialDoneAtOpen] = useState(isTutorialDone);
   useEffect(() => {
     const ready = shouldWelcomeBack({
       authStatus,
@@ -936,13 +942,13 @@ export default function App() {
       blocked: showPlacement || Boolean(legalRoute),
       hasLevel: hasStoredLevel(),
       xp: totalXp(loadState()?.daily ?? {}),
-      tutorialDone: isTutorialDone(),
+      tutorialDone: tutorialDoneAtOpen,
       shown: welcomedThisSession(),
     });
     if (!ready) return;
     markWelcomed();
     setWelcomeOpen(true);
-  }, [authStatus, syncStatus.settled, showPlacement, legalRoute]);
+  }, [authStatus, syncStatus.settled, showPlacement, legalRoute, tutorialDoneAtOpen]);
 
   // Settings lives inside the Profile tab (id still `stats`). The hash keeps
   // the deep link; it is not a seventh nav tab. The WelcomeGate still wins
