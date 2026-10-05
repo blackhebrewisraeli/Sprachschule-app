@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import PersonalHub from './PersonalHub';
 import { FONT_SIZE, SPACE } from '../lib/theme';
 
@@ -325,7 +326,7 @@ describe('PersonalHub', () => {
     });
   });
 
-  it.each([320, 375])('clamps a long mobile greeting to two lines at %spx', (width) => {
+  it.each([320, 375, 1280])('clamps a long greeting to two lines at %spx', (width) => {
     setViewportWidth(width);
     const longDisplayName = 'blackhebrewisraeli';
     render(
@@ -341,12 +342,48 @@ describe('PersonalHub', () => {
       name: new RegExp(`guten tag, ${longDisplayName}`, 'i'),
     });
     expect(greeting).toHaveAttribute('title', `Guten Tag, ${longDisplayName}`);
-    expect(greeting).toHaveStyle({ display: '-webkit-box', overflow: 'hidden' });
-    expect(greeting.style.WebkitBoxOrient).toBe('vertical');
-    expect(greeting.style.WebkitLineClamp).toBe('2');
-    expect(screen.getByLabelText(/level a2/i).parentElement).toHaveStyle({
-      flexDirection: 'column',
+    // On the span inside the heading: Heading does not forward a ref, and the
+    // clamp has to be on the element whose overflow See more measures.
+    const text = greeting.firstElementChild;
+    expect(text).toHaveStyle({ display: '-webkit-box', overflow: 'hidden' });
+    expect(text.style.WebkitBoxOrient).toBe('vertical');
+    expect(text.style.WebkitLineClamp).toBe('2');
+    if (width < 414) {
+      expect(screen.getByLabelText(/level a2/i).parentElement).toHaveStyle({
+        flexDirection: 'column',
+      });
+    }
+  });
+
+  it('offers See more only for a greeting the clamp actually cut', async () => {
+    // jsdom has no layout, so "cut" is stubbed: the greeting's content is
+    // taller than its clamped box, the account line's is not.
+    Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
+      configurable: true,
+      get() {
+        return this.id === 'home-identity-greeting' ? 120 : 0;
+      },
     });
+    try {
+      render(
+        <PersonalHub
+          user={user}
+          profile={{ ...profile, display_name: 'Maximiliane Schwarzenberger von Hohenfels' }}
+          cefrLevel="a2"
+          score={score}
+        />
+      );
+      const toggle = screen.getByRole('button', { name: /see more/i });
+      expect(toggle).toHaveAttribute('aria-controls', 'home-identity-greeting');
+      await userEvent.click(toggle);
+      expect(screen.getByRole('button', { name: /see less/i })).toHaveAttribute(
+        'aria-expanded',
+        'true'
+      );
+      expect(document.getElementById('home-identity-greeting').style.WebkitLineClamp).toBe('');
+    } finally {
+      delete HTMLElement.prototype.scrollHeight;
+    }
   });
 
   // From 360px the two tiles share a row (density), and still wrap inside
