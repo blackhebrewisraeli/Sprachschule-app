@@ -9,11 +9,28 @@
 // an overflowing fixed element grows `window.innerWidth` and the probe then
 // reads its own bug back as a pass.
 
+import { bp } from '../../lib/useWindowWidth';
+
 /** Minimum breathing room between the bubble and any viewport edge, px. */
 export const GUTTER = 8;
 
-/** Preferred bubble width; shrinks on narrow viewports, never grows past this. */
+/** Bubble width from bp.tiny up, where it follows its anchor. */
 export const BUBBLE_MAX_WIDTH = 280;
+
+/**
+ * On a phone the bubble spans the page column instead of chasing its anchor.
+ * Centred-then-clamped put every step hard against one edge — 8px from the
+ * right under the status chip, 8px from the left under Chat — which read as
+ * misplaced rather than as pointing. 16px is PageFrame's mobile gutter
+ * (SPACE[4]), so the bubble lines up with the cards beneath it; the spotlight
+ * cut-out still says which control the step is about.
+ */
+export const NARROW_GUTTER = 16;
+
+/** Narrow: the page column. Wide: the preferred width, which always fits from bp.tiny up. */
+export function bubbleWidth(viewportWidth) {
+  return viewportWidth < bp.tiny ? viewportWidth - NARROW_GUTTER * 2 : BUBBLE_MAX_WIDTH;
+}
 
 /** Space left between the anchor and the bubble, px. */
 export const ANCHOR_GAP = 12;
@@ -37,14 +54,14 @@ export const SPOTLIGHT_PAD = 6;
  * @returns {{left:number,top:number,width:number,placement:'above'|'below'}}
  */
 export function bubbleBox(anchor, viewportWidth, viewportHeight) {
-  const width = Math.min(BUBBLE_MAX_WIDTH, viewportWidth - GUTTER * 2);
+  const width = bubbleWidth(viewportWidth);
 
-  // Centre on the anchor, then clamp both edges. `maxLeft` can fall below
-  // GUTTER only when the bubble already fills the viewport, in which case both
-  // bounds collapse to GUTTER and the clamp still lands inside.
+  // Wide: centre on the anchor, then clamp both edges into the viewport.
   const centred = anchor.left + anchor.width / 2 - width / 2;
-  const maxLeft = Math.max(GUTTER, viewportWidth - width - GUTTER);
-  const left = Math.min(Math.max(centred, GUTTER), maxLeft);
+  const left =
+    viewportWidth < bp.tiny
+      ? NARROW_GUTTER
+      : Math.min(Math.max(centred, GUTTER), viewportWidth - width - GUTTER);
 
   const belowTop = anchor.bottom + ANCHOR_GAP;
   const placement = belowTop + BUBBLE_HEIGHT_ESTIMATE <= viewportHeight ? 'below' : 'above';

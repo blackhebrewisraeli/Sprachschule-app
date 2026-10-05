@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { GUTTER, BUBBLE_MAX_WIDTH, bubbleBox, scrimRects } from './geometry';
+import { GUTTER, NARROW_GUTTER, BUBBLE_MAX_WIDTH, bubbleBox, scrimRects } from './geometry';
 
 // A DOMRect-alike; jsdom gives every element a zero rect, so the real ones are
 // stubbed in the component test and constructed literally here.
@@ -57,29 +57,35 @@ describe('bubbleBox', () => {
       });
     }
 
-    it('still uses the full preferred width, which 320px has room for', () => {
-      // Documents where the 320px budget actually sits: 280 + 2×8 = 296 < 320,
-      // so nothing is squeezed here and the clamp alone does the work. An
-      // assertion that the bubble "shrinks to fit" at this width would be
-      // vacuously true and would not notice the shrink branch breaking.
+    for (const [name, anchorRect] of Object.entries(anchors)) {
+      it(`centres the bubble on the viewport for the ${name}`, () => {
+        // Equal margins both sides, whichever edge the anchor hugs. Clamping
+        // alone kept it inside but pinned it 8px from one edge.
+        const box = bubbleBox(anchorRect, VW, 568);
+        expect(box.left).toBe(VW - box.left - box.width);
+      });
+    }
+
+    it('spans the page column, so it lines up with the cards beneath it', () => {
       const box = bubbleBox(anchors['chat nav button (second of six)'], VW, 568);
-      expect(box.width).toBe(BUBBLE_MAX_WIDTH);
+      expect(box.left).toBe(NARROW_GUTTER);
+      expect(box.width).toBe(VW - NARROW_GUTTER * 2);
     });
   });
 
-  describe('below the preferred width', () => {
-    it('shrinks the bubble so it cannot outgrow the viewport', () => {
-      // 264 = 280 preferred, capped at 280 - 2×8. This is the branch that makes
-      // the component's `maxWidth: calc(100vw - 16px)` guarantee real.
-      const box = bubbleBox(rect({ left: 10, top: 40, width: 40, height: 40 }), 280, 568);
-      expect(box.width).toBe(280 - GUTTER * 2);
-      expect(box.left).toBe(GUTTER);
-      expect(box.left + box.width).toBeLessThanOrEqual(280);
+  describe('at a 375px viewport', () => {
+    it('centres the bubble even under the right-most header control', () => {
+      const box = bubbleBox(rect({ left: 300, top: 8, width: 42, height: 42 }), 375, 812);
+      expect(box.left).toBe(NARROW_GUTTER);
+      expect(box.left + box.width).toBe(375 - NARROW_GUTTER);
     });
+  });
 
-    it('keeps a readable width rather than collapsing to the anchor', () => {
-      const box = bubbleBox(rect({ left: 10, top: 40, width: 20, height: 20 }), 280, 568);
-      expect(box.width).toBeGreaterThan(200);
+  describe('from bp.tiny up', () => {
+    it('goes back to following the anchor at the preferred width', () => {
+      const box = bubbleBox(rect({ left: 40, top: 60, width: 45, height: 44 }), 414, 800);
+      expect(box.width).toBe(BUBBLE_MAX_WIDTH);
+      expect(box.left).toBe(GUTTER);
     });
   });
 });

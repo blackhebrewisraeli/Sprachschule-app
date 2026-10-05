@@ -15,7 +15,7 @@ import {
 import { isTutorialDone, completeTutorial, TUTORIAL_REPLAY_EVENT } from '../lib/tutorialPref';
 import useFocusTrap from '../lib/useFocusTrap';
 import Button from './ui/Button';
-import { GUTTER, BUBBLE_MAX_WIDTH, bubbleBox, scrimRects } from './tutorial/geometry';
+import { GUTTER, bubbleWidth, bubbleBox, scrimRects } from './tutorial/geometry';
 import { TUTORIAL_STEPS } from './tutorial/steps';
 
 /**
@@ -62,9 +62,9 @@ export default function TutorialOverlay({ anchors = {}, onDismiss }) {
       const node = anchors[TUTORIAL_STEPS[stepIndex].id]?.current ?? null;
 
       if (!node) {
-        const width = Math.min(BUBBLE_MAX_WIDTH, vw - GUTTER * 2);
+        const width = bubbleWidth(vw);
         setBox({
-          left: Math.max(GUTTER, (vw - width) / 2),
+          left: (vw - width) / 2,
           top: Math.max(GUTTER, Math.round(vh * 0.25)),
           width,
           placement: 'below',
