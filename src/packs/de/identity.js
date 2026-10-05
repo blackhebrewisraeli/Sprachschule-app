@@ -35,4 +35,11 @@ export const IDENTITY = {
   leaderboardShowMembers: 'Teilnehmer anzeigen',
   leaderboardHideMembers: 'Teilnehmer ausblenden',
   anonymousHandle: '@anonym',
+
+  /**
+   * Kickers over the two welcomes: the first-run placement intro, and the
+   * once-per-session overlay a signed-in learner meets on coming back.
+   */
+  welcomeKicker: 'Willkommen',
+  welcomeBackKicker: 'Willkommen zurück',
 };

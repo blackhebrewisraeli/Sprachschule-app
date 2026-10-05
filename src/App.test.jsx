@@ -5,6 +5,7 @@ import App, { SESSION_SPLASH_MAX_MS } from './App';
 import { todayKey } from './lib/stats';
 import { isLevelBoostEnabled, setLevelBoostEnabled } from './lib/xpEntitlement';
 import { TUTORIAL_KEY } from './lib/tutorialPref';
+import { WELCOME_BACK_KEY } from './lib/welcomeBack';
 import { THEME_MODE_KEY } from './lib/themeMode';
 import { loadState, saveState, thawPersist } from './lib/storage';
 import { activePack } from './packs';
@@ -44,6 +45,10 @@ const asReturningLearner = () => {
   // Returning learners already have a CEFR code. Without this, the placement
   // screen sits in front of the shell the way the tutorial used to.
   if (!localStorage.getItem('deutsch-level')) localStorage.setItem('deutsch-level', 'a1');
+  // ...and have already been greeted this session. The welcome-back overlay is
+  // once per sessionStorage, which this file never clears, so without this the
+  // first signed-in test to run would get it and every later one would not.
+  sessionStorage.setItem(WELCOME_BACK_KEY, '1');
 };
 
 const profileMock = vi.hoisted(() => ({ fetchMyProfile: vi.fn() }));
@@ -3755,5 +3760,39 @@ describe('league join waits for the terms', () => {
     fireEvent.click(profileTab());
     await waitFor(() => expect(league.joinLeague).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(league.refreshLeague).toHaveBeenCalledTimes(1));
+  });
+});
+
+describe('welcome back', () => {
+  const PRACTISED = {
+    daily: {
+      [todayKey()]: { total: 4, byTab: { chat: 4 }, byLevel: { a1: { correct: 4 } } },
+    },
+  };
+  const welcome = () => screen.queryByRole('dialog', { name: /welcome back/i });
+
+  beforeEach(() => {
+    sessionStorage.removeItem(WELCOME_BACK_KEY);
+    saveState(PRACTISED);
+  });
+
+  it('greets a signed-in returning learner once per session', async () => {
+    authMock.status = 'authenticated';
+    const { unmount } = render(<App />);
+    expect(await screen.findByRole('dialog', { name: /welcome back/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /let's go/i }));
+    expect(welcome()).not.toBeInTheDocument();
+
+    // A reload in the same tab: same sessionStorage, no second greeting.
+    unmount();
+    render(<App />);
+    await screen.findByRole('navigation');
+    expect(welcome()).not.toBeInTheDocument();
+  });
+
+  it('leaves a guest to the entry gate rather than greeting twice', async () => {
+    renderPastEntry(<App />);
+    await screen.findByRole('navigation');
+    expect(welcome()).not.toBeInTheDocument();
   });
 });

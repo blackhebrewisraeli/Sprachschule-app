@@ -79,7 +79,7 @@ const sameOr = (next) => (prev) => (JSON.stringify(prev) === JSON.stringify(next
 // Longest the splash waits on a stored session before showing the app anyway.
 // A stale token took 1–3 s to resolve on device and in a production build.
 export const SESSION_SPLASH_MAX_MS = 3500;
-import { fetchMyProfile } from './lib/profile';
+import { fetchMyProfile, profileName, ANONYMOUS_NAME } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
 import { useEntitlement } from './lib/useEntitlement';
 import ChatTab from './components/ChatTab';
@@ -128,6 +128,9 @@ import { PageFrame } from './components/ui/Layout';
 import StatusChip from './components/StatusChip';
 import GoalStrip from './components/gamification/GoalStrip';
 import TutorialOverlay from './components/TutorialOverlay';
+import WelcomeBackOverlay from './components/WelcomeBackOverlay';
+import { isTutorialDone } from './lib/tutorialPref';
+import { shouldWelcomeBack, welcomedThisSession, markWelcomed } from './lib/welcomeBack';
 import { Analytics } from '@vercel/analytics/react';
 import PrivacyPolicy from './components/legal/PrivacyPolicy';
 import TermsOfService from './components/legal/TermsOfService';
@@ -905,6 +908,26 @@ export default function App() {
   useEffect(() => {
     if (!legalRoute && focusConsent) setFocusConsent(false);
   }, [legalRoute, focusConsent]);
+
+  // Once per app session, a signed-in learner coming back is greeted — see
+  // src/lib/welcomeBack.js for who and when. Declared after the placement
+  // offer because it can carry that invite: when both are due on one open,
+  // the overlay asks and the Home banner stands down until it is answered.
+  const [welcomeOpen, setWelcomeOpen] = useState(false);
+  useEffect(() => {
+    const ready = shouldWelcomeBack({
+      authStatus,
+      syncSettled: !SYNC_ENABLED || syncStatus.settled,
+      blocked: showPlacement || Boolean(legalRoute),
+      hasLevel: hasStoredLevel(),
+      xp: totalXp(loadState()?.daily ?? {}),
+      tutorialDone: isTutorialDone(),
+      shown: welcomedThisSession(),
+    });
+    if (!ready) return;
+    markWelcomed();
+    setWelcomeOpen(true);
+  }, [authStatus, syncStatus.settled, showPlacement, legalRoute]);
 
   // Settings lives inside the Profile tab (id still `stats`). The hash keeps
   // the deep link; it is not a seventh nav tab. The WelcomeGate still wins
@@ -1756,7 +1779,7 @@ export default function App() {
                 quests={quests}
                 league={leagueStanding}
                 onGoToTab={goToTab}
-                showPlacementOffer={placementOfferVisible}
+                showPlacementOffer={placementOfferVisible && !welcomeOpen}
                 onRetakePlacement={acceptPlacementOffer}
                 onDismissPlacementOffer={dismissPlacementOffer}
               />
@@ -1878,6 +1901,25 @@ export default function App() {
           brand-new account meets the gate first and the tour on the frame after
           it, never both at once. */}
           <TutorialOverlay anchors={tutorialAnchors} />
+
+          {welcomeOpen && (
+            <WelcomeBackOverlay
+              name={profileName(profile) === ANONYMOUS_NAME ? null : profileName(profile)}
+              streak={game.streak}
+              goalMet={game.goal.met}
+              goalRemaining={Math.max(0, game.goal.target - game.goal.current)}
+              offer={placementOfferVisible}
+              onTakeTest={() => {
+                setWelcomeOpen(false);
+                acceptPlacementOffer();
+              }}
+              onNotNow={() => {
+                setWelcomeOpen(false);
+                dismissPlacementOffer();
+              }}
+              onClose={() => setWelcomeOpen(false)}
+            />
+          )}
 
           {!isNativeApp() && <Analytics />}
           {searchOpen && <SearchModal onClose={() => setSearchOpen(false)} mobile={mobile} />}
