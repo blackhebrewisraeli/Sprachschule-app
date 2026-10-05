@@ -3835,3 +3835,26 @@ describe('welcome back', () => {
     expect(welcome()).not.toBeInTheDocument();
   });
 });
+
+describe('unknown hash route', () => {
+  afterEach(() => {
+    window.location.hash = '';
+  });
+
+  it('shows the 404 page for a dead #/ link, then goes home without it in history', async () => {
+    window.location.hash = '#/no-such-page';
+    render(<App />);
+    expect(screen.getByRole('heading', { name: /this page doesn't exist/i })).toBeInTheDocument();
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: /back to home/i }));
+    expect(window.location.hash).toBe('');
+    expect(screen.queryByRole('heading', { name: /this page doesn't exist/i })).toBeNull();
+  });
+
+  it('still opens a real route rather than calling it missing', () => {
+    window.location.hash = '#/settings';
+    renderPastEntry(<App />);
+    expect(screen.queryByRole('heading', { name: /this page doesn't exist/i })).toBeNull();
+  });
+});
