@@ -1453,6 +1453,45 @@ describe('entry gate', () => {
   // Hard navigation is stubbed: jsdom cannot leave the document. Production
   // sets window.location.href = '/' then window.location.reload() in a
   // finally after signOut, so a server error cannot skip the reset.
+  // The Profile tab's own Sign out is the visible door; it must be the SAME
+  // door as the account sheet's — signOutAndReset, full wipe, hard reload —
+  // not a lighter sign-out that leaves this device holding the account's data.
+  it('signs out from the Profile tab with the same full reset', async () => {
+    localStorage.setItem('deutsch-level', 'b1');
+    localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ stats: { streak: 4 } }));
+    const reload = vi.fn();
+    const originalLocation = window.location;
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { href: '/', reload },
+    });
+    const user = userEvent.setup();
+    const { rerender, unmount } = render(<App />);
+    try {
+      await user.click(gate());
+      authMock.status = 'authenticated';
+      authMock.mayHaveSession = true;
+      rerender(<App />);
+
+      await user.click(
+        within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
+      );
+      const actions = await screen.findByTestId('profile-account-actions');
+      await user.click(within(actions).getByRole('button', { name: 'Sign out' }));
+      await waitFor(() => expect(authSignOutMock).toHaveBeenCalled());
+      await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+      expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
+      expect(localStorage.getItem('deutsch-level')).toBeNull();
+    } finally {
+      thawPersist();
+      unmount();
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+    }
+  });
+
   it('re-gates, wipes user storage, and hard-resets on Sign out', async () => {
     localStorage.setItem('deutsch-level', 'b1');
     localStorage.setItem(

@@ -1882,6 +1882,7 @@ export default function App() {
                 profile={profile}
                 tokens={tokens}
                 onSignIn={requestSignIn}
+                onSignOut={handleSignOut}
                 view={profileView}
                 onViewChange={handleProfileView}
                 settingsPanel={settingsPanel}

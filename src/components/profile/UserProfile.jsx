@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins, Flame, Sparkles, GraduationCap, UserRound } from 'lucide-react';
+import { Coins, Flame, Sparkles, GraduationCap, LogOut, UserRound } from 'lucide-react';
 import {
   BORDER,
   COLORS,
@@ -173,6 +173,7 @@ export default function UserProfile({
   onSelectUser,
   onOpenSettings,
   onOpenFollowList,
+  onSignOut,
   mobile = false,
   children = null,
 }) {
@@ -262,6 +263,36 @@ export default function UserProfile({
   const name = profileName(profile);
   const handle = profile?.handle ?? null;
   const showHandle = Boolean(handle) && name !== handle;
+
+  // The learner's account doors, together wherever they render. Sign out used
+  // to live only in the header account sheet and at the foot of Settings →
+  // Account — an action this consequential gets a labelled, visible button on
+  // the learner's own profile. Same handler as both of those
+  // (signOutAndReset): sign out, wipe this device's copy, hard reload.
+  const accountActions =
+    onOpenSettings || onSignOut ? (
+      <div
+        data-testid="profile-account-actions"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: SPACE[2],
+          justifyContent: wide ? 'flex-end' : 'center',
+        }}
+      >
+        {onOpenSettings && (
+          <Button variant="secondary" onClick={onOpenSettings}>
+            Edit profile
+          </Button>
+        )}
+        {onSignOut && (
+          <Button variant="secondary" onClick={onSignOut}>
+            <LogOut size={16} aria-hidden="true" />
+            Sign out
+          </Button>
+        )}
+      </div>
+    ) : null;
   // The portrait is the subject of this page, so it is sized against the card
   // rather than against the text beside it. 112/144 read as an oversized list
   // bullet; these read as a portrait rather than a list bullet.
@@ -428,13 +459,7 @@ export default function UserProfile({
                 also, since the segmented control went, the signed-in route into
                 Settings from this page — the same destination the account sheet
                 opens. */}
-            {wide && onOpenSettings && (
-              <div style={{ flexShrink: 0 }}>
-                <Button variant="secondary" onClick={onOpenSettings}>
-                  Edit profile
-                </Button>
-              </div>
-            )}
+            {wide && accountActions ? <div style={{ flexShrink: 0 }}>{accountActions}</div> : null}
           </div>
 
           {/* ── Followers / Following ──────────────────────────────
@@ -480,11 +505,7 @@ export default function UserProfile({
               is no room beside a centred name for it. Exactly one of the two
               renders — a second would be a duplicate control with the same
               accessible name. */}
-          {!wide && onOpenSettings && (
-            <Button variant="secondary" onClick={onOpenSettings}>
-              Edit profile
-            </Button>
-          )}
+          {!wide ? accountActions : null}
         </div>
       </Surface>
 
