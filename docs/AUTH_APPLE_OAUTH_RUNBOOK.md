@@ -1,8 +1,17 @@
 # Sign in with Apple — owner runbook
 
 **Owner-only.** Every step is a dashboard action in Apple Developer, Supabase or
-Vercel. The code is merged dark behind `VITE_APPLE_AUTH_ENABLED`; `build:mobile`
-pins it `false`, and nothing in the repo can verify these steps.
+Vercel, and nothing in the repo can verify them.
+
+**Status 2026-10-05.** #442 did step 5: `build:mobile` pins
+`VITE_APPLE_AUTH_ENABLED=true`, on the owner's statement that steps 1–4 are
+done. Read-only checks agree as far as they reach: Supabase lists the Apple
+provider as enabled, and the four `APPLE_*` variables exist in Vercel
+Production (names only; values not read). Apple Developer state and the
+client-secret renewal date need **owner confirmation**. No uploaded build has
+it yet: builds 2–6 were archived with the flag off, so §Verify runs on 1.0.1
+(7) or later (`docs/STORE_SUBMISSION_CHECKLIST.md` P0-2, P1-4). The privacy
+copy below is still open.
 
 Why this exists: the iOS app offers Google and GitHub sign-in, so App Review
 Guideline 4.8 asks for an equivalent privacy-preserving login (this is P1-4 in
@@ -53,7 +62,7 @@ provider slot (unchanged).
      missing or Apple rejecting our key, the server logs `Apple token NOT
 revoked` (search Vercel logs) and still deletes. Check the logs after the
      first Apple deletion.
-5. **Flip the flag.** In one release commit change the `build:mobile` pin to
+5. ✅ **Flip the flag** (done in #442). In one release commit change the `build:mobile` pin to
    `VITE_APPLE_AUTH_ENABLED=true`, update `src/lib/buildMobileScript.test.js` in
    the same commit, and rebuild. Leave `VITE_APPLE_AUTH_ENABLED` **unset in
    Vercel** unless you also want the button on the website.
@@ -76,6 +85,9 @@ revoked` (search Vercel logs) and still deletes. Check the logs after the
    the sheet; with the flag off it appears nowhere.
 2. On an iPhone: Continue with Apple opens the system browser, completes, and
    returns to the app signed in ("Signed in"), including with **Hide My Email**.
+   While the sign-up allowlist is on, a relay address is never on it, so the
+   server refuses that account's calls: settle the posture first
+   (`docs/STORE_SUBMISSION_CHECKLIST.md` P1-8).
 3. Delete that account in the app: it asks for a fresh Apple sign-in first. Then
    confirm in Apple ID settings that the app no longer appears under Sign in
    with Apple (this proves step 4), and that the Vercel logs show no `Apple token

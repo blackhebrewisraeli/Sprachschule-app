@@ -85,7 +85,8 @@ After the change, the Redirect URLs list should read:
 
 1. Build and sync: `npm run build:mobile`. The script pins the cloud
    `VITE_SUPABASE_*` values, `VITE_API_BASE_URL`,
-   `VITE_GOOGLE_AUTH_ENABLED=true` and `VITE_GITHUB_AUTH_ENABLED=true` inline,
+   `VITE_GOOGLE_AUTH_ENABLED=true`, `VITE_GITHUB_AUTH_ENABLED=true` and
+   `VITE_APPLE_AUTH_ENABLED=true` (since #442) inline,
    because Vite inlines them at build time and `.env` points at the local
    stack by design. Don't move them into `.env`. Without a provider's flag the
    app hides that provider's button, and `signInWithGoogle()` /
@@ -109,6 +110,6 @@ character.
   other app from claiming the scheme. PKCE already makes an intercepted
   callback useless, so this is hardening, not a blocker. It needs an
   `apple-app-site-association` / `assetlinks.json` hosted on the domain.
-- **App Store Review Guideline 4.8** (login services). Sign in with Apple is
-  built and dark; setup, the account-deletion token revocation it still needs,
-  and the flag flip are in `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`.
+- **App Store Review Guideline 4.8** (login services). Sign in with Apple is on
+  in `build:mobile` since #442; its device checks and the privacy copy it still
+  needs are in `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` and checklist P1-4.
