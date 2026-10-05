@@ -28,7 +28,7 @@ clone with no `.env` at all (Xcode Cloud, CI, a second Mac) builds the same app.
 | sync, leagues                         | on          | as production web ships them                             |
 | Google, GitHub sign-in                | on          | the buttons; providers are configured in Supabase        |
 | push                                  | off         | until `docs/MOBILE_PUSH_SETUP.md` is done                |
-| Apple sign-in                         | off         | until `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` is done         |
+| Apple sign-in                         | on          | since #442; `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` steps 1–4 |
 | saved tutor conversations, Sentry DSN | off / empty | the store privacy answers describe a build without them  |
 | ads                                   | off         | spec §8: needs Vercel Pro, Track C and new store answers |
 

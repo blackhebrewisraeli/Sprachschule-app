@@ -10,6 +10,9 @@ Companion runbooks:
 - Magic Link template + redirect URLs → `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`
 - Google OAuth provider → `docs/AUTH_GOOGLE_OAUTH_RUNBOOK.md`
 - GitHub OAuth provider (not yet enabled) → `docs/AUTH_GITHUB_OAUTH_RUNBOOK.md`
+- Sign in with Apple (on in native builds since #442) → `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`
+- Native deep-link callback → `docs/MOBILE_AUTH_SETUP.md`
+- Store release blockers, ranked → `docs/STORE_SUBMISSION_CHECKLIST.md`
 - Recurring owner actions that stay queued → `docs/BACKLOG.md`
 
 Do **not** paste secret values into chat, tickets, or commit messages. Confirm
@@ -88,15 +91,23 @@ Do **not** disable the Google provider while doing this. The live flag
 
 ## 5. Registration policy (optional email allowlist)
 
+> **Status 2026-10-05: enabled.** Both variables are set on Production and
+> Preview (Vercel names-only check; the client list was read from the live
+> bundle on 2026-10-04). The native apps do not carry
+> `VITE_SIGNUP_EMAIL_ALLOWLIST`, but they call this server, so an unlisted
+> account that signs in on a phone (an App Reviewer, any Apple Hide My Email
+> address) has every account, progress, league and AI call refused, Delete
+> account included. Choose open or invite-only before store review:
+> `docs/STORE_SUBMISSION_CHECKLIST.md` P1-8.
+
 **After #294.** The gate is in the repo; enabling it is Vercel env, not
-another PR. Google signup is currently **open**. That is how
+another PR. Google signup was **open** before the list was set, which is how
 `fateevvl@gmail.com` got an account. The optional allowlist locks signup
 for beta **without a code change and without touching the Google provider**.
 
-**Default (do nothing):** `SIGNUP_EMAIL_ALLOWLIST` and
-`VITE_SIGNUP_EMAIL_ALLOWLIST` unset or empty → current behaviour. Anyone
-who completes Google or magic-link can keep a session. Production stays
-open until you set these.
+**Unset:** `SIGNUP_EMAIL_ALLOWLIST` and `VITE_SIGNUP_EMAIL_ALLOWLIST` unset
+or empty means open signup: anyone who completes Google, Apple or
+magic-link can keep a session.
 
 **To close signup for beta:**
 

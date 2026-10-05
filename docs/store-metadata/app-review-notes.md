@@ -13,11 +13,14 @@ Each line is a known rejection or a broken review if skipped.
       Guideline 4.8: an app that offers a third-party login (we offer Google)
       must also offer an equivalent login that limits data to name and email,
       lets the user hide their email, and does not track. The app's own email
-      code is not a login _service_ and does not count. The code is built and
-      dark (`VITE_APPLE_AUTH_ENABLED`); turning it on is the five steps in
-      `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`, now possible because the Apple
-      Developer Program membership is active. Submitting without it is very
+      code is not a login _service_ and does not count. `build:mobile` turns
+      it on since #442, but builds 1.0.1 (2)–(6) were archived before that and
+      have it off: submit 1.0.1 (7) or later, after the device check in
+      `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` §Verify. Submitting without it is very
       likely a 4.8 rejection.
+- [ ] **A reviewer's own account works (P1-8).** While the sign-up allowlist is
+      on, any account not on it (a reviewer's, any Hide My Email address)
+      signs in but has every server call refused, Delete account included.
 - [ ] **Google sign-in is published, not in Testing (P1-8).** While the OAuth
       consent screen is in Testing, only listed test users can sign in, so a
       reviewer who taps Continue with Google is blocked.
