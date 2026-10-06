@@ -8,6 +8,20 @@
 Code alone does not make the app compliant. Each item below needs an account or
 a judgement only the owner has. Tick them in order: several gate the next.
 
+## Play Console — ON HOLD (2026-10-06)
+
+The Google Play lane is paused at the owner's request while Play Console
+developer-account verification is incomplete. The hold covers the Play app and
+Play App Signing setup, build 7 `.aab` upload, Internal/Closed Testing, Play
+Data Safety and listing forms, screenshots, content rating, and production
+access (P0-3, the Play portions of P1-2/P1-6/P1-7, and P1-9).
+
+Resume only after Play Console reports the developer account and any required
+physical-device verification as complete. Do **not** bump or rebuild solely
+because verification is pending: the signed build 7 `.aab` remains the release
+candidate. TestFlight/iOS work, keystore backup, local Android builds, legal
+review, and checks that do not require Play Console are not paused.
+
 ## Blocker matrix — audited 2026-10-05 (main `0223fde3`)
 
 The ranked view of everything below and in the companion docs. **Evidence**
@@ -107,8 +121,9 @@ either endpoint (P1-8).
    build with Apple sign-in, and App Store Connect already holds 6.
 2. **Owner:** `npm run ios:upload` from that `main`, TestFlight → Internal
    Testing, install on the iPhone (P0-2).
-3. **Owner, in parallel:** back up the keystore, create the Play Console app,
-   upload the `.aab` to Internal Testing (P0-3).
+3. ⏸ **Play on hold:** back up the keystore now if needed, but wait for account
+   verification before creating/configuring the Play app, Play App Signing or
+   uploading build 7's `.aab` (P0-3).
 4. **Owner, with an agent's checklist:** the P0-4 device pass on those builds.
 
 **Public beta and store review**
@@ -120,12 +135,12 @@ either endpoint (P1-8).
 7. **Owner and counsel, start today:** P1-1, including the Apple wording. It is
    the longest wait nobody here controls; an agent lands the supplied text with
    a `PRIVACY_VERSION` bump.
-8. **Owner, in the consoles:** P1-2 and P1-7 forms once step 7 settles the
-   copy; P1-6 screenshot review and scene 5; and, if it applies, P1-9's
-   12-tester, 14-day closed test as soon as step 5 is decided.
-9. **Submit:** iOS with `store-metadata/app-review-notes.md`, Android after the
-   P1-9 clock. Keep push, Premium, ads and saved conversations out of the
-   submitted build so the forms stay true.
+8. **Owner, in the consoles:** App Store forms and screenshot review may
+   continue. The Play portions of P1-2, P1-6 and P1-7, plus P1-9's 12-tester,
+   14-day closed test, stay on hold until verification completes.
+9. **Submit:** iOS may continue with `store-metadata/app-review-notes.md`;
+   Android stays on hold, then follows the P1-9 clock. Keep push, Premium, ads
+   and saved conversations out of the submitted build so the forms stay true.
 
 **Post-launch:** the P2 rows; AI history after the shadow-week review (P2-2);
 Premium and ads after decisions D1 and D3–D5 and Vercel Pro (`BACKLOG.md` owner
