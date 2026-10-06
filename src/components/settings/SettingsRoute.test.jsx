@@ -33,22 +33,22 @@ vi.mock('../../lib/pushNotifications', () => ({
 const user = { id: 'u1', email: 'sam@example.com' };
 const profile = { handle: 'sam' };
 
-const renderRoute = (props = {}) =>
-  render(
-    <SettingsRoute
-      user={user}
-      profile={profile}
-      level="a2"
-      goal={50}
-      onSignIn={() => {}}
-      onSignOut={() => {}}
-      onExport={() => {}}
-      onDelete={() => {}}
-      interestTopics={INTEREST_TOPICS}
-      enabledInterests={[]}
-      {...props}
-    />
-  );
+const routeElement = (props = {}) => (
+  <SettingsRoute
+    user={user}
+    profile={profile}
+    level="a2"
+    goal={50}
+    onSignIn={() => {}}
+    onSignOut={() => {}}
+    onExport={() => {}}
+    onDelete={() => {}}
+    interestTopics={INTEREST_TOPICS}
+    enabledInterests={[]}
+    {...props}
+  />
+);
+const renderRoute = (props = {}) => render(routeElement(props));
 
 const selectSection = async (userDriver, name) => {
   const picker = screen.getByRole('group', { name: 'Settings section' });
@@ -82,6 +82,23 @@ describe('SettingsRoute', () => {
     expect(screen.getByText(/danger zone/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /retake placement/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Chat model' })).not.toBeInTheDocument();
+  });
+
+  // The account menu's "Edit Profile" row opens Settings; when Settings is
+  // already open on another section it must still land on the editor.
+  it('returns to Account when accountRequest changes, from any section', async () => {
+    const u = userEvent.setup();
+    const { rerender } = renderRoute({ accountRequest: 0 });
+    await selectSection(u, 'Learning');
+    expect(screen.queryByRole('textbox', { name: /handle/i })).not.toBeInTheDocument();
+
+    rerender(routeElement({ accountRequest: 1 }));
+    expect(screen.getByRole('textbox', { name: /handle/i })).toBeInTheDocument();
+
+    // A re-render with the SAME request leaves the learner where they went.
+    await selectSection(u, 'System');
+    rerender(routeElement({ accountRequest: 1 }));
+    expect(screen.queryByRole('textbox', { name: /handle/i })).not.toBeInTheDocument();
   });
 
   it('switches between one Learning panel and one System panel', async () => {

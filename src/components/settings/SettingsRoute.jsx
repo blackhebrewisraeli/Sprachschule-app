@@ -126,8 +126,17 @@ export default function SettingsRoute({
   onExport,
   onDelete,
   lastSyncedAt,
+  accountRequest = 0,
 }) {
   const [activeSection, setActiveSection] = useState('account');
+  // The account menu's "Edit Profile" bumps accountRequest, which must land on
+  // the editor even when Settings is already open on another section. Adjusted
+  // during render rather than in an effect, so the old section never paints.
+  const [seenAccountRequest, setSeenAccountRequest] = useState(accountRequest);
+  if (accountRequest !== seenAccountRequest) {
+    setSeenAccountRequest(accountRequest);
+    setActiveSection('account');
+  }
   const [themeMode, setThemeMode] = useState(() => getThemeModeForUI());
   const [showLevelOverride, setShowLevelOverride] = useState(false);
   const [reporting, setReporting] = useState(false);

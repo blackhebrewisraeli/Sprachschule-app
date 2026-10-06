@@ -126,7 +126,8 @@ export default function ProfileSection({
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (!saving) onSave();
+        // onSave reports its own failures through setError.
+        if (!saving) void onSave();
       }}
       style={{ width: '100%', maxWidth: 640, marginInline: 'auto' }}
     >
