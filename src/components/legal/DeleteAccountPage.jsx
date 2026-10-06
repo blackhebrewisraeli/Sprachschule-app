@@ -11,19 +11,20 @@ import { lastUpdatedLine } from '../../lib/legalAcceptance';
  * Not a versioned legal document: nobody accepts it, so editing it re-asks no
  * one. Bump the date below when the copy changes.
  */
-const UPDATED = '2026-10-03';
+const UPDATED = '2026-10-06';
 
 const SECTIONS = [
   {
     heading: 'Delete it in the app',
     paragraphs: [
-      'Sign in, go to Profile → Settings → Account controls, choose Delete account and confirm. Your account is deleted immediately and this cannot be undone.',
+      "Sign in, go to Profile → Settings → Account controls, choose Delete account and confirm. Your account is deleted immediately and this cannot be undone. If you signed in with Apple, the app first asks you to sign in with Apple once more, then also revokes our app's access to your Apple ID.",
     ],
   },
   {
     heading: 'Ask us by email',
     paragraphs: [
-      'Email sprachschule.support@gmail.com from the address you sign in with, with the subject "Account Deletion Request - Deutsch Sprachschule". If you sign in with Google or GitHub, use that account\'s email address.',
+      'Email sprachschule.support@gmail.com from the address you sign in with, with the subject "Account Deletion Request - Deutsch Sprachschule". If you sign in with Apple, Google or GitHub, use that account\'s email address.',
+      "If you chose to hide your email when signing in with Apple, write from any address and include your private relay address (it ends in @privaterelay.appleid.com). We will confirm the request by writing to that relay address, which Apple forwards to you. Deleting by email cannot revoke our app's access to your Apple ID; you can remove it yourself in your Apple Account settings, under Sign in with Apple.",
       'We may reply to confirm the request came from you. We will delete your account within 30 days and tell you when it is done.',
     ],
   },

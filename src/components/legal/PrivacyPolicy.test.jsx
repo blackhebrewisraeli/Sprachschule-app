@@ -64,7 +64,7 @@ describe('PrivacyPolicy', () => {
       'a private relay address that forwards to you',
       'If we introduce paid subscriptions or advertising in the future, we will update this policy',
       'You can ask us at any time for a copy of your data, to correct it, or to delete your account',
-      "deleting your account also asks Apple to revoke our app's access to your Apple ID",
+      "deleting your account in the app also asks Apple to revoke our app's access to your Apple ID",
       'as described at www.sprachschule-app.com/delete-account',
       'We will delete your account within 30 days',
       'not intended for children under 13',

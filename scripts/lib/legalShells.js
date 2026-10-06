@@ -46,6 +46,7 @@ export const LEGAL_SHELLS = {
       'Deutsch Sprachschule is operated by Shimon Esterkin. You can delete your account and its data at any time — in the app, or by email without needing the app.',
       'In the app: sign in, go to Profile → Settings → Account controls, choose Delete account and confirm.',
       `By email: write to ${CONTACT} from the address you sign in with, with the subject "Account Deletion Request - Deutsch Sprachschule". We will delete your account within 30 days and tell you when it is done.`,
+      'If you hid your email when signing in with Apple, write from any address and include your private relay address (it ends in @privaterelay.appleid.com); we will confirm by writing to it.',
       'This page needs JavaScript to show what is deleted and what is kept, and for how long.',
     ],
   },
