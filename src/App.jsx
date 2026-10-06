@@ -1645,6 +1645,7 @@ export default function App() {
                 onSignOut={handleSignOut}
                 onOpenSettings={openSettings}
                 onOpenProfile={openProfile}
+                onEditProfile={openSettings}
                 pending={syncStatus.pending}
               />
             </div>
@@ -1904,7 +1905,6 @@ export default function App() {
                 profile={profile}
                 tokens={tokens}
                 onSignIn={requestSignIn}
-                onSignOut={handleSignOut}
                 view={profileView}
                 onViewChange={handleProfileView}
                 settingsPanel={settingsPanel}

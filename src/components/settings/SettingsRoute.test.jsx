@@ -65,6 +65,11 @@ describe('SettingsRoute', () => {
 
   it('opens on Account and keeps the other settings panels out of the document', () => {
     renderRoute();
+    expect(screen.getByTestId('settings-account-panel')).toHaveStyle({
+      width: '100%',
+      maxWidth: '900px',
+      marginInline: 'auto',
+    });
     const picker = screen.getByRole('group', { name: 'Settings section' });
     expect(within(picker).getByRole('button', { name: 'Account' })).toHaveAttribute(
       'aria-pressed',

@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { COLORS, FONTS, FONT_SIZE, LINE_HEIGHT, RADIUS, SPACE, TEXT } from '../../lib/theme';
+import {
+  BORDER,
+  COLORS,
+  FIELD,
+  FONTS,
+  FONT_SIZE,
+  LINE_HEIGHT,
+  RADIUS,
+  SHADOW,
+  SPACE,
+  TEXT,
+} from '../../lib/theme';
 import { Stack } from '../ui/Layout';
 import Button from '../ui/Button';
 import StatusNote from '../ui/StatusNote';
@@ -43,34 +54,21 @@ const VISIBILITY = [
   { key: 'private', label: 'Private' },
 ];
 
-const labelStyle = { ...TEXT.fieldLabel, marginBottom: SPACE[1] };
+const labelStyle = { ...TEXT.fieldLabel, marginBottom: SPACE[2] };
 
-// Both fields are the SAME box: a bordered wrapper holding a borderless input.
-// They used to differ — display name was a bare bordered input, handle a
-// bordered wrapper around a second, borderless one — so the two rendered at
-// different heights with the handle's text inset behind its "@". For a learner
-// whose name and handle match, that read as one name field drawn twice, out of
-// line. One recipe for both keeps them identical except for the prefix.
-const fieldBox = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: SPACE[1],
-  padding: `${SPACE[1]}px ${SPACE[2]}px`,
-  borderRadius: RADIUS.sm,
-  border: `1px solid ${COLORS.mute}`,
+// Every text control is the native FIELD recipe with a more generous profile-
+// editor inset and a recessed surface. The actual input owns the border and
+// focus ring; a decorative wrapper around a borderless input made keyboard
+// focus almost invisible and left the form feeling unfinished.
+const fieldInput = {
+  ...FIELD,
   width: '100%',
   boxSizing: 'border-box',
-};
-
-const fieldInput = {
-  flex: 1,
   minWidth: 0,
-  padding: 0,
-  border: 'none',
-  background: 'transparent',
-  color: COLORS.ink,
-  fontSize: FONT_SIZE.base,
-  // Pinned so the body-font and mono-font fields come out the same height.
+  padding: `${SPACE[3]}px ${SPACE[4]}px`,
+  background: COLORS.surface1,
+  border: `1px solid ${COLORS.borderStrong}`,
+  boxShadow: SHADOW.inset,
   lineHeight: LINE_HEIGHT.normal,
 };
 
@@ -121,7 +119,17 @@ export default function ProfileSection({
   };
 
   return (
-    <Stack gap={2}>
+    <Stack
+      as="form"
+      gap={5}
+      data-testid="profile-editor"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!saving) onSave();
+      }}
+      style={{ width: '100%', maxWidth: 640, marginInline: 'auto' }}
+    >
       {/* The picker writes avatar_path on its own — it does not share this
           form's dirty-tracking, because an upload is a completed act rather
           than an edit waiting on Save. */}
@@ -133,15 +141,16 @@ export default function ProfileSection({
         save={save}
       />
 
-      {[
-        ['first_name', 'First name', true],
-        ['middle_name', 'Middle name (optional)', false],
-        ['last_name', 'Last name', true],
-      ].map(([field, label, required]) => (
-        <label key={field} style={{ display: 'block' }}>
-          <span style={labelStyle}>{label}</span>
-          <div style={fieldBox}>
+      <Stack gap={3}>
+        {[
+          ['first_name', 'First name', true],
+          ['middle_name', 'Middle name (optional)', false],
+          ['last_name', 'Last name', true],
+        ].map(([field, label, required]) => (
+          <label key={field} style={{ display: 'block' }}>
+            <span style={labelStyle}>{label}</span>
             <input
+              data-ui="field"
               value={form[field]}
               onChange={onField(field)}
               required={required}
@@ -155,35 +164,49 @@ export default function ProfileSection({
               }
               style={{ ...fieldInput, fontFamily: FONTS.body }}
             />
+          </label>
+        ))}
+
+        <label style={{ display: 'block' }}>
+          <span style={labelStyle}>Handle</span>
+          <div style={{ position: 'relative' }}>
+            <span
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: SPACE[4],
+                top: '50%',
+                transform: 'translateY(-50%)',
+                fontFamily: FONTS.mono,
+                fontSize: FONT_SIZE.lg,
+                lineHeight: LINE_HEIGHT.normal,
+                color: COLORS.mute,
+                pointerEvents: 'none',
+              }}
+            >
+              @
+            </span>
+            <input
+              data-ui="field"
+              value={form.handle}
+              onChange={onField('handle')}
+              placeholder="semion"
+              maxLength={24}
+              style={{ ...fieldInput, paddingLeft: SPACE[8], fontFamily: FONTS.mono }}
+            />
           </div>
         </label>
-      ))}
+      </Stack>
 
-      <label style={{ display: 'block' }}>
-        <span style={labelStyle}>Handle</span>
-        <div style={fieldBox}>
-          <span
-            aria-hidden="true"
-            style={{
-              fontFamily: FONTS.mono,
-              fontSize: FONT_SIZE.base,
-              lineHeight: LINE_HEIGHT.normal,
-              color: COLORS.mute,
-            }}
-          >
-            @
-          </span>
-          <input
-            value={form.handle}
-            onChange={onField('handle')}
-            placeholder="semion"
-            maxLength={24}
-            style={{ ...fieldInput, fontFamily: FONTS.mono }}
-          />
-        </div>
-      </label>
-
-      <div>
+      <div
+        style={{
+          background: COLORS.surface1,
+          border: BORDER.panel,
+          borderRadius: RADIUS.lg,
+          boxShadow: SHADOW.inset,
+          padding: SPACE[4],
+        }}
+      >
         <span style={labelStyle}>Profile visibility</span>
         <SegmentedPicker
           ariaLabel="Profile visibility"
@@ -210,7 +233,7 @@ export default function ProfileSection({
       )}
 
       <div>
-        <Button onClick={onSave} disabled={!dirty || saving} busy={saving}>
+        <Button type="submit" disabled={!dirty || saving} busy={saving} style={{ width: '100%' }}>
           Save profile
         </Button>
       </div>

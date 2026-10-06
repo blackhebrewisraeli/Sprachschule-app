@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { COLORS, FONTS, FONT_SIZE, RADIUS, SPACE } from '../../lib/theme';
+import { BORDER, COLORS, RADIUS, SHADOW, SPACE, TEXT } from '../../lib/theme';
 import Button from '../ui/Button';
 import StatusNote from '../ui/StatusNote';
 import { avatarFor } from '../../lib/avatar.js';
@@ -98,30 +98,51 @@ export default function AvatarPicker({
   };
 
   return (
-    <div>
-      <span
+    <div
+      data-testid="avatar-picker"
+      style={{
+        background: COLORS.surface1,
+        border: BORDER.panel,
+        borderRadius: RADIUS.lg,
+        boxShadow: SHADOW.inset,
+        padding: SPACE[4],
+      }}
+    >
+      <span style={{ ...TEXT.fieldLabel, marginBottom: SPACE[3] }}>Avatar</span>
+
+      <div
         style={{
-          display: 'block',
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          color: COLORS.mute,
-          marginBottom: SPACE[1],
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: SPACE[4],
         }}
       >
-        Avatar
-      </span>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: SPACE[3] }}>
         <img
           data-avatar={current.kind}
           src={current.src}
           alt=""
           width={PREVIEW}
           height={PREVIEW}
-          style={{ borderRadius: RADIUS.md, display: 'block' }}
+          style={{
+            borderRadius: RADIUS.pill,
+            display: 'block',
+            outline: `2px solid ${COLORS.borderStrong}`,
+            outlineOffset: 3,
+            margin: 3,
+          }}
         />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[2] }}>
+        <div
+          style={{
+            display: 'flex',
+            flex: '1 1 220px',
+            justifyContent: 'flex-end',
+            flexWrap: 'wrap',
+            gap: SPACE[2],
+          }}
+        >
           <input
             ref={inputRef}
             type="file"
@@ -130,11 +151,21 @@ export default function AvatarPicker({
             aria-label="Choose an avatar image"
             style={{ display: 'none' }}
           />
-          <Button variant="secondary" onClick={() => inputRef.current?.click()} disabled={busy}>
+          <Button
+            variant="secondary"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            style={{ flex: '1 1 180px', maxWidth: 240, whiteSpace: 'nowrap' }}
+          >
             {busy ? 'Working…' : 'Upload a picture'}
           </Button>
           {profile?.avatar_path && (
-            <Button variant="secondary" onClick={onClear} disabled={busy}>
+            <Button
+              variant="secondary"
+              onClick={onClear}
+              disabled={busy}
+              style={{ flex: '1 1 180px', maxWidth: 240, whiteSpace: 'nowrap' }}
+            >
               Remove picture
             </Button>
           )}

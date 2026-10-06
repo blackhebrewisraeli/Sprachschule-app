@@ -1453,10 +1453,10 @@ describe('entry gate', () => {
   // Hard navigation is stubbed: jsdom cannot leave the document. Production
   // sets window.location.href = '/' then window.location.reload() in a
   // finally after signOut, so a server error cannot skip the reset.
-  // The Profile tab's own Sign out is the visible door; it must be the SAME
-  // door as the account sheet's — signOutAndReset, full wipe, hard reload —
-  // not a lighter sign-out that leaves this device holding the account's data.
-  it('signs out from the Profile tab with the same full reset', async () => {
+  // Sign out lives only in account-management surfaces, not in the profile
+  // identity card. The dropdown door still has to use signOutAndReset: full
+  // wipe and hard reload, never a lighter sign-out that leaves account data.
+  it('signs out from the account dropdown with the same full reset', async () => {
     localStorage.setItem('deutsch-level', 'b1');
     localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ stats: { streak: 4 } }));
     const reload = vi.fn();
@@ -1473,11 +1473,8 @@ describe('entry gate', () => {
       authMock.mayHaveSession = true;
       rerender(<App />);
 
-      await user.click(
-        within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
-      );
-      const actions = await screen.findByTestId('profile-account-actions');
-      await user.click(within(actions).getByRole('button', { name: 'Sign out' }));
+      await user.click(screen.getByRole('button', { name: /account/i }));
+      await user.click(screen.getByRole('button', { name: 'Sign out' }));
       await waitFor(() => expect(authSignOutMock).toHaveBeenCalled());
       await waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
       expect(localStorage.getItem('deutsch-app-state-v1')).toBeNull();
@@ -1596,7 +1593,8 @@ describe('entry gate', () => {
     const nav = within(screen.getByRole('navigation'));
 
     await userEvent.click(nav.getByRole('button', { name: 'Profile' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Edit profile' }));
+    await userEvent.click(screen.getByRole('button', { name: /account/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Profile' }));
     await userEvent.click(screen.getByRole('button', { name: 'Learning' }));
     await userEvent.click(screen.getByText(/override classification/i));
     await userEvent.click(screen.getByRole('radio', { name: /A1/ }));
@@ -3393,6 +3391,7 @@ describe('placement gate while a signed-in level is still in flight', () => {
     });
 
     await user.click(screen.getByRole('button', { name: /profile/i }));
+    await user.click(screen.getByRole('button', { name: /account/i }));
     await user.click(screen.getByRole('button', { name: /^edit profile$/i }));
     await user.click(screen.getByRole('button', { name: 'Learning' }));
     await user.click(screen.getByRole('button', { name: /retake placement/i }));

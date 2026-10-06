@@ -68,9 +68,9 @@ function Field({ label, hint, children }) {
   );
 }
 
-function Subsection({ title, children }) {
+function Subsection({ title, children, centered = false }) {
   return (
-    <section>
+    <section style={centered ? { width: '100%', maxWidth: 680, marginInline: 'auto' } : undefined}>
       <Heading level={3} size="sm" style={{ ...subsectionTitleStyle, marginBottom: SPACE[3] }}>
         {title}
       </Heading>
@@ -79,10 +79,14 @@ function Subsection({ title, children }) {
   );
 }
 
-function SettingsPanel({ title, children }) {
+function SettingsPanel({ title, children, maxWidth, ...rest }) {
   const titleId = `settings-${title.toLowerCase()}-title`;
   return (
-    <section aria-labelledby={titleId}>
+    <section
+      aria-labelledby={titleId}
+      style={{ width: '100%', maxWidth, marginInline: maxWidth ? 'auto' : undefined }}
+      {...rest}
+    >
       <Heading
         id={titleId}
         level={2}
@@ -143,7 +147,7 @@ export default function SettingsRoute({
 
       <div style={{ marginTop: SPACE[6] }}>
         {activeSection === 'account' && (
-          <SettingsPanel title="Account">
+          <SettingsPanel title="Account" maxWidth={900} data-testid="settings-account-panel">
             <Stack gap={6}>
               {adminMe?.blocked ? (
                 <Body size="sm" style={{ overflowWrap: 'anywhere' }}>
@@ -153,7 +157,7 @@ export default function SettingsRoute({
 
               {user ? (
                 <>
-                  <Subsection title="Profile">
+                  <Subsection title="Profile" centered>
                     <ProfileSection
                       profile={profile}
                       userId={user.id}

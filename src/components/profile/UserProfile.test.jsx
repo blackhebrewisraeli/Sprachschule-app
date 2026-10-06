@@ -99,10 +99,8 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(screen.getByTestId('profile-identity')).toHaveStyle({ padding: `${SPACE[6]}px` });
   });
 
-  // auto-fit collapses the unused tracks to 0 and splits the whole row between
-  // the three that remain, so on a wide profile these three small stats were
-  // measured at 317px EACH inside a 976px column (424px at 1600px). The cap is
-  // what stops a "9d" streak occupying a 424px card.
+  // The capped, wrapping band keeps each stat compact on a wide profile and
+  // centres the final item when a narrow viewport wraps an odd count.
   it('shows the token balance only once the server has answered', async () => {
     const { rerender } = render(<UserProfile user={USER} local={local} tokens={null} />);
     await screen.findByRole('heading', { name: 'Sam Vimes' });
@@ -118,13 +116,16 @@ describe('UserProfile — the consolidated profile page', () => {
     render(<UserProfile user={USER} local={local} />);
     await screen.findByRole('heading', { name: 'Sam Vimes' });
     const metrics = screen.getByTestId('profile-metrics');
-    expect(metrics.style.maxWidth).toBe('480px');
-    // The floor and the shrinkable track are what fixed a 222px overflow at
-    // 375px — the cap must not have replaced them.
-    expect(metrics.style.gridTemplateColumns).toContain('minmax(96px, 1fr)');
+    expect(metrics).toHaveStyle({
+      display: 'flex',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      maxWidth: '480px',
+    });
+    expect([...metrics.children].every((metric) => metric.style.maxWidth === '160px')).toBe(true);
   });
 
-  it('uses the portrait height for metrics on wide screens and keeps them below on mobile', async () => {
+  it('keeps metrics centred inside the identity card at wide and mobile widths', async () => {
     window.innerWidth = 1280;
     const { rerender } = render(<UserProfile user={USER} local={local} />);
     await screen.findByRole('heading', { name: 'Sam Vimes' });
@@ -137,7 +138,7 @@ describe('UserProfile — the consolidated profile page', () => {
       window.dispatchEvent(new Event('resize'));
     });
     rerender(<UserProfile user={USER} local={local} />);
-    expect(screen.getByTestId('profile-identity')).not.toContainElement(
+    expect(screen.getByTestId('profile-identity')).toContainElement(
       screen.getByTestId('profile-metrics')
     );
   });
@@ -293,37 +294,31 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(screen.getByTestId('league-badge-tier')).toHaveTextContent('Bronze');
   });
 
-  it.each([320, 375, 1280])('offers exactly one Edit profile control at %ipx', async (width) => {
-    // The wide layout puts the action beside the name and the narrow one puts
-    // it under the counts. Rendering both would be two controls with the same
-    // accessible name pointing at the same destination — which is what a
-    // reader of the JSX would expect, since both branches are written out.
-    window.innerWidth = width;
-    render(<UserProfile user={USER} local={local} onOpenSettings={vi.fn()} />);
-    await screen.findByRole('heading', { name: 'Sam Vimes' });
-    expect(screen.getAllByRole('button', { name: /edit profile/i })).toHaveLength(1);
-  });
-
   it.each([320, 375, 1280])(
-    'offers one labelled Sign out beside Edit profile at %ipx',
+    'keeps the complete identity centred and free of account actions at %ipx',
     async (width) => {
       window.innerWidth = width;
-      const onSignOut = vi.fn();
       render(
-        <UserProfile user={USER} local={local} onOpenSettings={vi.fn()} onSignOut={onSignOut} />
+        <UserProfile
+          user={USER}
+          local={local}
+          tokens={240}
+          onOpenSettings={vi.fn()}
+          onSignOut={vi.fn()}
+        />
       );
       await screen.findByRole('heading', { name: 'Sam Vimes' });
-      const actions = screen.getByTestId('profile-account-actions');
-      const signOut = within(actions).getByRole('button', { name: /^sign out$/i });
-      expect(within(actions).getByRole('button', { name: /edit profile/i })).toBeInTheDocument();
-      expect(screen.getAllByRole('button', { name: /sign out/i })).toHaveLength(1);
-      signOut.click();
-      expect(onSignOut).toHaveBeenCalledTimes(1);
+      const card = screen.getByTestId('profile-identity');
+      expect(card).toHaveStyle({ justifyItems: 'center', textAlign: 'center' });
+      expect(screen.getByTestId('profile-identity-details')).toHaveStyle({ alignItems: 'center' });
+      expect(card).toContainElement(screen.getByTestId('profile-metrics'));
+      expect(within(card).queryByRole('button', { name: /edit profile/i })).toBeNull();
+      expect(within(card).queryByRole('button', { name: /sign out/i })).toBeNull();
     }
   );
 
   it('offers no Sign out to a guest — there is nothing to sign out of', () => {
-    render(<UserProfile user={null} local={local} onSignIn={vi.fn()} onSignOut={vi.fn()} />);
+    render(<UserProfile user={null} local={local} onSignIn={vi.fn()} />);
     expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull();
   });
 

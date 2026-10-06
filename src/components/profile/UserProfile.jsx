@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Coins, Flame, Sparkles, GraduationCap, LogOut, UserRound } from 'lucide-react';
+import { Coins, Flame, Sparkles, GraduationCap, UserRound } from 'lucide-react';
 import {
   BORDER,
   COLORS,
@@ -45,7 +45,7 @@ import LeaderboardSection from '../stats/LeaderboardSection';
 // above the design rather than leading it — the portrait read as a bullet in a
 // list of facts instead of as the subject of the page. It now sits on its own
 // surface with the follower counts it belongs with, at a size that makes it the
-// focal point; XP / Level / Streak are a separate, quieter band below.
+// focal point; XP / Level / Streak form a separate, quieter band inside it.
 
 // The ring is drawn OUTSIDE the image (an outline, not a border) so the avatar
 // keeps every pixel of its size instead of losing 8 to its own frame — the
@@ -143,7 +143,16 @@ function Metric({ icon: Icon, label, value }) {
       // minWidth:0 is what lets the track actually shrink. Without it a long
       // value (a five-digit XP total) holds the column open and pushes the
       // grid past a 320px viewport.
-      style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: SPACE[1] }}
+      style={{
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        flex: '1 1 96px',
+        maxWidth: 160,
+        gap: SPACE[1],
+        textAlign: 'center',
+      }}
     >
       <div style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: SPACE[1] }}>
         <Icon size={12} aria-hidden="true" />
@@ -173,7 +182,6 @@ export default function UserProfile({
   onSelectUser,
   onOpenSettings,
   onOpenFollowList,
-  onSignOut,
   mobile = false,
   children = null,
 }) {
@@ -264,44 +272,13 @@ export default function UserProfile({
   const handle = profile?.handle ?? null;
   const showHandle = Boolean(handle) && name !== handle;
 
-  // The learner's account doors, together wherever they render. Sign out used
-  // to live only in the header account sheet and at the foot of Settings →
-  // Account — an action this consequential gets a labelled, visible button on
-  // the learner's own profile. Same handler as both of those
-  // (signOutAndReset): sign out, wipe this device's copy, hard reload.
-  const accountActions =
-    onOpenSettings || onSignOut ? (
-      <div
-        data-testid="profile-account-actions"
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: SPACE[2],
-          justifyContent: wide ? 'flex-end' : 'center',
-        }}
-      >
-        {onOpenSettings && (
-          <Button variant="secondary" onClick={onOpenSettings}>
-            Edit profile
-          </Button>
-        )}
-        {onSignOut && (
-          <Button variant="secondary" onClick={onSignOut}>
-            <LogOut size={16} aria-hidden="true" />
-            Sign out
-          </Button>
-        )}
-      </div>
-    ) : null;
   // The portrait is the subject of this page, so it is sized against the card
   // rather than against the text beside it. 112/144 read as an oversized list
   // bullet; these read as a portrait rather than a list bullet.
   //
-  // Wide gets the LARGER size AND a horizontal layout. Centred, 168px sat in a
-  // 1216px card with ~520px of empty gutter on each side — prominent, but the
-  // opposite of balanced, and the name and counts were stranded in a narrow
-  // ribbon down the middle of a very wide surface. Beside the text it anchors
-  // the row instead.
+  // Wide gets the larger portrait while the complete identity remains centred.
+  // The surrounding copy and metrics give it enough visual mass that it reads
+  // as a deliberate focal point rather than a small image in an empty card.
   const avatarSize = wide ? 200 : mobile ? 132 : 160;
 
   const practiceMetrics = (
@@ -310,23 +287,16 @@ export default function UserProfile({
       style={{
         minWidth: 0,
         width: '100%',
-        display: 'grid',
-        // auto-fit drops tracks as the viewport narrows; every remaining track
-        // can shrink below its contents without widening the page.
-        gridTemplateColumns: 'repeat(auto-fit, minmax(96px, 1fr))',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'center',
         gap: SPACE[3],
-        // The cap the `1fr` needs. auto-fit collapses the unused tracks to 0
-        // and splits the whole row between the three that remain, so on a wide
-        // profile these three small stats were measured at 317px EACH inside a
-        // 976px column — 424px at 1600px. A streak of "9d" does not need a
-        // 424px card, and stretching it there is what made the identity row
-        // read as sparse rather than generous.
-        //
-        // maxWidth rather than a smaller minmax max: the 96px floor and the
-        // shrinkable 1fr are what fixed a 222px overflow at 375px, and this
-        // cap never engages at those widths — the container is already
-        // narrower than it.
+        // Each Metric flexes from a 96px basis up to a 160px cap, so the band
+        // wraps instead of overflowing at 320px and never stretches a "9d"
+        // streak across a wide card. This cap keeps the row centred under the
+        // name rather than spanning the whole identity column.
         maxWidth: 480,
+        marginInline: 'auto',
       }}
     >
       <Metric icon={Sparkles} label="XP" value={local.xp ?? profile?.total_xp ?? 0} />
@@ -361,14 +331,14 @@ export default function UserProfile({
         data-testid="profile-identity"
         style={{
           display: 'grid',
-          // Narrow stacks and centres; wide puts the portrait beside the text.
-          // Never a bare 1fr — the text column has to be able to shrink below a
-          // 30-character display name rather than pushing the card wide.
-          gridTemplateColumns: wide ? `${avatarSize}px minmax(0, 1fr)` : 'minmax(0, 1fr)',
+          // The profile is one centred identity stack at every viewport. The
+          // old desktop split stranded the avatar on the left and pushed the
+          // name and actions into a second, competing alignment system.
+          gridTemplateColumns: 'minmax(0, 1fr)',
           alignItems: 'center',
-          justifyItems: wide ? 'start' : 'center',
-          textAlign: wide ? 'left' : 'center',
-          gap: wide ? SPACE[8] : SPACE[3],
+          justifyItems: 'center',
+          textAlign: 'center',
+          gap: SPACE[5],
           minWidth: 0,
         }}
       >
@@ -392,25 +362,22 @@ export default function UserProfile({
           style={{
             display: 'flex',
             flexDirection: 'column',
-            alignItems: wide ? 'flex-start' : 'center',
-            justifyContent: wide ? 'space-between' : 'flex-start',
-            gap: SPACE[3],
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: SPACE[4],
             minWidth: 0,
             width: '100%',
-            alignSelf: 'stretch',
+            maxWidth: 720,
           }}
         >
-          {/* Name and the edit action share a row on wide. Stacked, the button
-              sat under a 320px-capped counts row and left the right half of a
-              1216px card empty; beside the name it closes the header and
-              matches where every social profile puts it. */}
+          {/* Identity copy stays centred as one unit. Account actions belong in
+              the account dropdown, not beside the learner's name. */}
           <div
             style={{
               display: 'flex',
-              flexDirection: wide ? 'row' : 'column',
-              alignItems: wide ? 'flex-start' : 'center',
-              justifyContent: 'space-between',
-              gap: wide ? SPACE[4] : SPACE[1],
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: SPACE[1],
               width: '100%',
               minWidth: 0,
             }}
@@ -420,6 +387,7 @@ export default function UserProfile({
                 display: 'flex',
                 flexDirection: 'column',
                 gap: SPACE[1],
+                alignItems: 'center',
                 minWidth: 0,
                 maxWidth: '100%',
               }}
@@ -454,12 +422,6 @@ export default function UserProfile({
                 </div>
               )}
             </div>
-
-            {/* Spec §8: the self profile carries a SECONDARY edit action. It is
-                also, since the segmented control went, the signed-in route into
-                Settings from this page — the same destination the account sheet
-                opens. */}
-            {wide && accountActions ? <div style={{ flexShrink: 0 }}>{accountActions}</div> : null}
           </div>
 
           {/* ── Followers / Following ──────────────────────────────
@@ -482,6 +444,7 @@ export default function UserProfile({
               paddingTop: SPACE[3],
               borderTop: BORDER.panel,
               minWidth: 0,
+              marginInline: 'auto',
             }}
           >
             <SocialCount
@@ -496,23 +459,12 @@ export default function UserProfile({
             />
           </div>
 
-          {/* On desktop, the portrait creates a 200px-tall column. Keeping the
-              practice band here uses the lower half of that same visual row
-              instead of leaving an empty shelf under the identity copy. */}
-          {wide ? practiceMetrics : null}
-
-          {/* The narrow layout keeps the action last, under the counts: there
-              is no room beside a centred name for it. Exactly one of the two
-              renders — a second would be a duplicate control with the same
-              accessible name. */}
-          {!wide ? accountActions : null}
+          {/* Practice belongs to the same centred header card at every width.
+              flex wrapping above lets this become a balanced 2x2 composition
+              without moving the row out of the identity surface. */}
+          {practiceMetrics}
         </div>
       </Surface>
-
-      {/* On narrow viewports the metrics remain a full-width band below the
-          portrait card, where three tiles beside a centred avatar would be too
-          compressed to scan. */}
-      {!wide ? practiceMetrics : null}
 
       {LEAGUES_ENABLED && (
         // The league card and its standings are ONE unit — the tier, then who
