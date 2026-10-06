@@ -304,7 +304,9 @@ pass. The #290 then #293 migrations are **done** — applied and verified
 
 - **Store submission:** work through docs/STORE_SUBMISSION_CHECKLIST.md. Its
   blocker matrix (re-audited 2026-10-05) ranks what blocks internal testing,
-  public beta and review, and its "Shortest safe path" orders them.
+  public beta and review, and its "Shortest safe path" orders them. **The
+  Google Play lane is ON HOLD at the owner's request until Play Console
+  developer-account verification completes; iOS/TestFlight work continues.**
 
 ### Sentry source-map upload — ✅ done
 
