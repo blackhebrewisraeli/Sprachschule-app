@@ -277,6 +277,21 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
     });
   });
 
+  // Profile and Settings are one tab, so the tab switch's fade never covers
+  // moving between them. Each view fades in as it mounts.
+  it('fades the profile and settings views in as they swap', () => {
+    const props = { user: USER, onViewChange: () => {}, settingsPanel: <div>stub-settings</div> };
+    const { rerender } = render(<StatsTab {...props} view="settings" />);
+    const settingsView = screen.getByText('stub-settings').closest('.view-in');
+    expect(settingsView).not.toBeNull();
+
+    rerender(<StatsTab {...props} view="stats" />);
+    expect(screen.queryByText('stub-settings')).toBeNull();
+    const profileView = document.querySelector('.view-in');
+    expect(profileView).not.toBeNull();
+    expect(profileView).not.toBe(settingsView);
+  });
+
   it('does not show the standings on the settings route', () => {
     render(
       <StatsTab

@@ -122,6 +122,17 @@ export function injectGlobalStyles() {
     @keyframes rise-in  { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     .modal-scrim-in { animation: scrim-in 0.22s ease-out; }
     .modal-card-in  { animation: rise-in 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+    /* ── View entrance ─────────────────────────────────────────────────────
+       A tab or route that mounts fresh fades in, so a switch does not swap the
+       whole page in one frame. Opacity only, on the scrim ramp: a transform
+       would shift the tutorial's anchors while it measures them, and would
+       make the view a containing block for anything fixed inside it. Short,
+       because tabs switch tens of times a session, and on the card's expo-out
+       curve, so most of the change lands in the first frames and the rest is
+       settle. Applied to what is NEW on a switch, never to shared chrome: the
+       trial wall autofocuses on mount, and remounting it per tab would pull
+       focus off the nav. */
+    .view-in { animation: scrim-in 0.16s cubic-bezier(0.16, 1, 0.3, 1); }
     /* ── "This is you" ─────────────────────────────────────────────────────
        A glow that breathes rather than a pulse that blinks: the shadow never
        reaches zero, so at every frame the pill is lit and the animation only
@@ -143,6 +154,7 @@ export function injectGlobalStyles() {
       /* The card must still ARRIVE — the keyframes start at opacity 0, so
          cancelling the animation is what makes it simply be there. */
       .modal-scrim-in, .modal-card-in { animation: none !important; }
+      .view-in { animation: none !important; }
       /* Frozen at the low end of its own cycle instead of switched off. The
          pill's job is to stand out, and reduced motion is a request for less
          movement, not for less information. One line, like every other rule in

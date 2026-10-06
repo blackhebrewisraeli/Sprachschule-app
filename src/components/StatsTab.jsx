@@ -160,7 +160,14 @@ export default function StatsTab({
         // content and pinned left (`justifyItems: start`), it was narrow for a
         // guest and near full width once a long hint sat in it, so on a wide
         // screen every section came out a different width.
+        //
+        // Both views carry view-in: they share one tab, so the tab switch's
+        // fade never covers moving between them. Keyed, because both are a
+        // div in the same slot: without distinct keys React reuses the one
+        // element across the swap and the entrance never replays.
         <div
+          key="settings"
+          className="view-in"
           style={{
             display: 'grid',
             gridTemplateColumns: 'minmax(0, 1fr)',
@@ -187,72 +194,76 @@ export default function StatsTab({
           {settingsPanel}
         </div>
       ) : (
-        <UserProfile
-          user={user}
-          profile={profile}
-          tokens={tokens}
-          // Withheld with no backend: UserProfile leaves its sign-in button out
-          // rather than render one that can do nothing.
-          onSignIn={isAuthConfigured() ? onSignIn : undefined}
-          onSelectUser={setSelectedUser}
-          onOpenSettings={openSettings}
-          onOpenFollowList={setFollowListKind}
-          mobile={mobile}
-          local={{ xp: sc.totalXp, level: readLevel(), streak: stats.streak ?? 0 }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[5] }}>
-            <section>
-              <SectionLabel num="0" text="Fortschritt" />
-              <LevelCard lvl={sc} totalXp={sc.totalXp} learnedCount={stats.learnedCount ?? 0} />
-            </section>
+        <div key="profile" className="view-in">
+          <UserProfile
+            user={user}
+            profile={profile}
+            tokens={tokens}
+            // Withheld with no backend: UserProfile leaves its sign-in button out
+            // rather than render one that can do nothing.
+            onSignIn={isAuthConfigured() ? onSignIn : undefined}
+            onSelectUser={setSelectedUser}
+            onOpenSettings={openSettings}
+            onOpenFollowList={setFollowListKind}
+            mobile={mobile}
+            local={{ xp: sc.totalXp, level: readLevel(), streak: stats.streak ?? 0 }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: SPACE[5] }}>
+              <section>
+                <SectionLabel num="0" text="Fortschritt" />
+                <LevelCard lvl={sc} totalXp={sc.totalXp} learnedCount={stats.learnedCount ?? 0} />
+              </section>
 
-            <section>
-              <SectionLabel num="A" text="Today" />
-              <TodaySnapshot snap={snap} />
-            </section>
+              <section>
+                <SectionLabel num="A" text="Today" />
+                <TodaySnapshot snap={snap} />
+              </section>
 
-            {/* One card rhythm for everything below Today: same Surface, same
+              {/* One card rhythm for everything below Today: same Surface, same
                 12px gutter, and the page ENDS on the long view — badges, then
                 the 12-month heatmap as the last element. Both are full-width
                 rows so the medals and the year each get the whole measure
                 instead of sharing a half-width cell with a chart. */}
-            <div
-              data-testid="profile-analytics-grid"
-              style={{
-                display: 'grid',
-                gridTemplateColumns: dashboardWide ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)',
-                alignItems: 'stretch',
-                gap: SPACE[3],
-                minWidth: 0,
-              }}
-            >
-              <DashboardCard num="B" title="By section">
-                <PerTabBars breakdown={perTab} />
-              </DashboardCard>
+              <div
+                data-testid="profile-analytics-grid"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: dashboardWide
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : 'minmax(0, 1fr)',
+                  alignItems: 'stretch',
+                  gap: SPACE[3],
+                  minWidth: 0,
+                }}
+              >
+                <DashboardCard num="B" title="By section">
+                  <PerTabBars breakdown={perTab} />
+                </DashboardCard>
 
-              <DashboardCard num="C" title="Accuracy by level">
-                <AccuracyByLevel byLevel={accByLevel} />
-              </DashboardCard>
+                <DashboardCard num="C" title="Accuracy by level">
+                  <AccuracyByLevel byLevel={accByLevel} />
+                </DashboardCard>
 
-              <DashboardCard num="D" title="Vocab stats">
-                <VocabSrsWidget srs={srs} now={nowMs} />
-              </DashboardCard>
+                <DashboardCard num="D" title="Vocab stats">
+                  <VocabSrsWidget srs={srs} now={nowMs} />
+                </DashboardCard>
 
-              <DashboardCard num="E" title="Review — tap to re-attempt">
-                <ReviewFeed items={review} onReview={onReview ?? (() => {})} />
-              </DashboardCard>
+                <DashboardCard num="E" title="Review — tap to re-attempt">
+                  <ReviewFeed items={review} onReview={onReview ?? (() => {})} />
+                </DashboardCard>
 
-              <DashboardCard num="F" title="Badges" full>
-                <BadgeGrid achievements={state.gamification?.achievements ?? {}} />
-              </DashboardCard>
+                <DashboardCard num="F" title="Badges" full>
+                  <BadgeGrid achievements={state.gamification?.achievements ?? {}} />
+                </DashboardCard>
 
-              <DashboardCard num="G" title="Last 12 months" full>
-                <Heatmap data={heatmap} mobile={mobile} />
-                <HeatmapLegend />
-              </DashboardCard>
+                <DashboardCard num="G" title="Last 12 months" full>
+                  <Heatmap data={heatmap} mobile={mobile} />
+                  <HeatmapLegend />
+                </DashboardCard>
+              </div>
             </div>
-          </div>
-        </UserProfile>
+          </UserProfile>
+        </div>
       )}
     </div>
   );

@@ -169,6 +169,8 @@ export default function AuthSheet({
         type="button"
         tabIndex={-1}
         aria-label="Dismiss sign-in"
+        // The ui/Modal entrance: the scrim fades, the card rises.
+        className="modal-scrim-in"
         onClick={onClose}
         style={{
           position: 'absolute',
@@ -183,6 +185,7 @@ export default function AuthSheet({
       <dialog
         ref={sheetRef}
         open
+        className="modal-card-in"
         aria-modal="true"
         aria-label={heading}
         tabIndex={-1}

@@ -951,6 +951,25 @@ describe('guest trial wall', () => {
     }
   });
 
+  // Every switch fades the new tab in, but only the part that is new. The wall
+  // is shared by the four practice tabs and autofocuses its call to action
+  // when it mounts, so a fade that remounted it would pull focus off the nav
+  // on every switch.
+  it('fades each practice tab in without remounting the wall they share', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    const shared = wall();
+    const views = [];
+    for (const name of ['Alphabet', 'Vocab', 'Translate', 'Chat']) {
+      await goToTab(user, name);
+      views.push(document.querySelector('main .view-in'));
+      expect(wall()).toBe(shared);
+    }
+    expect(views.every(Boolean)).toBe(true);
+    expect(new Set(views).size).toBe(4);
+    expect(shared.closest('.view-in')).toBeNull();
+  });
+
   it('never walls the Stats tab — it is the escape hatch', async () => {
     const user = userEvent.setup();
     await renderApp();

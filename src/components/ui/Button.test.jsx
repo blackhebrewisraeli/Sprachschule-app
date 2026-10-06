@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event';
 import Button from './Button';
 
 describe('Button', () => {
+  // The hover brightening lives in the global sheet (inline styles cannot
+  // hover). With no filter in the transition list it snapped on and off.
+  it('eases its hover brightening instead of snapping', () => {
+    render(<Button>Go</Button>);
+    expect(screen.getByRole('button', { name: 'Go' }).style.transition).toMatch(/filter/);
+  });
+
   it('renders its children as the accessible label', () => {
     render(<Button>CHECK</Button>);
     expect(screen.getByRole('button', { name: 'CHECK' })).toBeInTheDocument();

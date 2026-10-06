@@ -118,6 +118,7 @@ export default function FeedbackDialog({ context, onClose }) {
     <>
       <div
         aria-hidden="true"
+        className="modal-scrim-in"
         onClick={onClose}
         style={{
           position: 'fixed',
@@ -128,6 +129,11 @@ export default function FeedbackDialog({ context, onClose }) {
       />
       <div
         ref={panelRef}
+        // Fades with its scrim and does NOT rise: the panel centres itself
+        // with the inline translate below, and rise-in animates transform,
+        // which would override that centring for as long as it ran. The panel
+        // would start off-centre and snap.
+        className="modal-scrim-in"
         role="dialog"
         aria-modal="true"
         aria-label="Report an issue"

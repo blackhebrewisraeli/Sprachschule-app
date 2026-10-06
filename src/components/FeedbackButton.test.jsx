@@ -36,6 +36,16 @@ describe('FeedbackButton', () => {
     expect(trigger).toHaveAccessibleName();
   });
 
+  // The panel centres itself with an inline translate(-50%, -50%), and rise-in
+  // animates transform, which overrides that centring for as long as it runs:
+  // the panel would start off-centre and snap. So it fades with its scrim.
+  it('fades the dialog in without the rise that would undo its centring', async () => {
+    const dialog = await openDialog(userEvent.setup());
+    expect(dialog).toHaveClass('modal-scrim-in');
+    expect(dialog).not.toHaveClass('modal-card-in');
+    expect(dialog.previousElementSibling).toHaveClass('modal-scrim-in');
+  });
+
   it('keeps the form closed until asked for', () => {
     render(<FeedbackButton context={VOCAB_CONTEXT} />);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
