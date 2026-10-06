@@ -47,6 +47,16 @@ describe('PersonalHub', () => {
     expect(screen.getByText(/member since jun 2026/i)).toBeInTheDocument();
   });
 
+  // Its own line, not a " · " suffix on the handle: the handle line is clamped
+  // to one line, so a long handle ellipsized the join month away entirely.
+  it('puts the join month on its own line under the handle', () => {
+    render(<PersonalHub user={user} profile={profile} cefrLevel="a2" score={score} />);
+    const handleLine = screen.getByText('@semion');
+    const joinLine = screen.getByText('Member since Jun 2026');
+    expect(handleLine.contains(joinLine)).toBe(false);
+    expect(handleLine.compareDocumentPosition(joinLine)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('falls back from display name to handle, then the email local-part', () => {
     const { unmount } = render(
       <PersonalHub

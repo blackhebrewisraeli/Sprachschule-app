@@ -59,7 +59,7 @@ const FIT_REGULAR = {
   identityGap: SPACE[4],
 };
 
-// The greeting and the account line carry text the learner chose — a display
+// The greeting and the handle line carry text the learner chose — a display
 // name, a handle — so their length is unbounded. Both clamp at every width
 // (unclamped, a long name at the 36px desktop face ran four lines and stretched
 // the right column far past the avatar beside it) and offer "See more" only
@@ -67,7 +67,7 @@ const FIT_REGULAR = {
 // hatch, and a touch screen has no hover to reveal it.
 const GREETING_LINES = 2;
 const GREETING_TEXT_ID = 'home-identity-greeting';
-const ACCOUNT_LINE_ID = 'home-identity-account-line';
+const HANDLE_LINE_ID = 'home-identity-handle-line';
 
 // Every layer in the right-hand grid track declares the same boundary. This is
 // intentionally stronger than minWidth: 0 alone: width/maxWidth plus border-box
@@ -118,16 +118,6 @@ function greetingName(user, profile) {
   if (!user) return null;
   const displayName = typeof profile?.display_name === 'string' ? profile.display_name.trim() : '';
   return displayName || profile?.handle || user.email?.split('@')[0] || null;
-}
-
-function accountLine(profile, copy) {
-  const createdAt = profile?.created_at ? new Date(profile.created_at) : null;
-  return [
-    profile?.handle ? `@${profile.handle}` : null,
-    createdAt ? copy.memberSince?.(createdAt) : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 }
 
 function XpTile({ totalXp, goalPct, goalMet, tileSpan }) {
@@ -249,9 +239,11 @@ function StandingTiles({ lvl, streak, goalPct, goalMet, user, league, tileSpan }
 
 function IdentityFacts({ greeting, cefrLevel, copy, fit, wide, user, profile }) {
   const band = String(cefrLevel ?? '').toUpperCase();
-  const account = user ? accountLine(profile, copy) : '';
+  const handle = user && profile?.handle ? `@${profile.handle}` : '';
+  const joined =
+    user && profile?.created_at ? copy.memberSince?.(new Date(profile.created_at)) : '';
   const greetingMore = useSeeMore(GREETING_LINES, greeting);
-  const accountMore = useSeeMore(1, account);
+  const handleMore = useSeeMore(1, handle);
   return (
     <Stack gap={1} style={BOUNDED_COLUMN}>
       <Row
@@ -331,19 +323,26 @@ function IdentityFacts({ greeting, cefrLevel, copy, fit, wide, user, profile }) 
             labels are mute; these two lines had it backwards, so the handle
             and the level — the two facts this card exists to state — were set
             in the quietest ink on the page. */}
-      {user ? (
+      {handle ? (
         <>
           <Body size="sm" tone="soft" as="div">
             <span
-              id={ACCOUNT_LINE_ID}
-              ref={accountMore.ref}
-              style={{ display: 'block', overflowWrap: 'anywhere', ...accountMore.clamp }}
+              id={HANDLE_LINE_ID}
+              ref={handleMore.ref}
+              style={{ display: 'block', overflowWrap: 'anywhere', ...handleMore.clamp }}
             >
-              {account}
+              {handle}
             </span>
           </Body>
-          <SeeMoreToggle state={accountMore} controls={ACCOUNT_LINE_ID} />
+          <SeeMoreToggle state={handleMore} controls={HANDLE_LINE_ID} />
         </>
+      ) : null}
+      {/* Its own line. The handle above is clamped to one, and as a " · "
+          suffix on it the join month was the first thing a long handle cut. */}
+      {joined ? (
+        <Body size="sm" tone="soft" as="div">
+          {joined}
+        </Body>
       ) : null}
     </Stack>
   );
