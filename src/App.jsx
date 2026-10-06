@@ -526,6 +526,20 @@ export default function App() {
     // or migrating a storage key.
     localStorage.setItem('deutsch-onboarded', '1');
   };
+  // A sign-in can land without passing through the sheet: a magic link opened
+  // in ANOTHER tab signs this tab in too (supabase-js broadcasts the session to
+  // every tab), and neither the sheet's onSuccess nor the callback landing's
+  // onSignedIn runs here, so the sheet sat open over the signed-in app.
+  //
+  // Only the status CHANGING to authenticated closes it, never being
+  // authenticated: the same sheet is the re-auth detour for a learner who is
+  // already signed in (a delete that needs a fresh sign-in), and a check on the
+  // state would shut that the moment it opened. Hence the partial dependency
+  // list — opening the sheet must not re-run this.
+  useEffect(() => {
+    if (rawAuth.status === 'authenticated' && authModal) handleAuthDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawAuth.status]);
   // Opens the shared AuthSheet in-place — no WelcomeGate round-trip.
   //
   // The guard's false side is deliberately untested, not overlooked: every

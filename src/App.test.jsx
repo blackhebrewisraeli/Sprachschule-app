@@ -1293,6 +1293,25 @@ describe('entry gate', () => {
     expect(screen.getByText('Signed in')).toBeInTheDocument();
   });
 
+  // A magic link opened in ANOTHER tab signs this one in too: supabase-js
+  // broadcasts the session to every tab, so useAuth flips here with no callback
+  // in this tab's URL and no code typed into this sheet. Neither the landing's
+  // onSignedIn nor the sheet's onSuccess runs, and the sheet that asked for the
+  // link sat open over the signed-in app.
+  it('closes the sign-in sheet when a sign-in lands from another tab', async () => {
+    localStorage.setItem('deutsch-level', 'a1');
+    const { rerender } = render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+    expect(screen.getByRole('dialog', { name: /^sign in$/i })).toBeInTheDocument();
+
+    authMock.status = 'authenticated';
+    authMock.mayHaveSession = true;
+    rerender(<App />);
+
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
+  });
+
   it('lets a signed-in user straight through to the app', () => {
     authMock.status = 'authenticated';
     authMock.mayHaveSession = true;
