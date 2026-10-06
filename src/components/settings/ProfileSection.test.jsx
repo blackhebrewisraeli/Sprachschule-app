@@ -80,6 +80,40 @@ describe('ProfileSection', () => {
     expect(handleField()).toHaveValue('');
   });
 
+  // App fetches the row AFTER the session settles, so a cold load of
+  // #/settings mounts this form with no profile. Seeded only at mount, every
+  // field stayed blank once the row arrived.
+  it('fills the form when the profile row arrives after mount', () => {
+    const { rerender } = render(<ProfileSection profile={null} save={vi.fn()} />);
+    rerender(<ProfileSection profile={profile} save={vi.fn()} />);
+    expect(firstField()).toHaveValue('Sam');
+    expect(lastField()).toHaveValue('Vimes');
+    expect(handleField()).toHaveValue('sam');
+    expect(saveButton()).toBeDisabled();
+  });
+
+  it('does not reseed when the profile object changes but its values do not', async () => {
+    const { rerender } = render(<ProfileSection profile={profile} save={vi.fn()} />);
+    await userEvent.clear(firstField());
+    await userEvent.type(firstField(), 'Samuel');
+
+    rerender(<ProfileSection profile={{ ...profile }} save={vi.fn()} />);
+    expect(firstField()).toHaveValue('Samuel');
+  });
+
+  // Typed before the row landed: the edit is kept, and every untouched field
+  // takes the row's value. Keeping the whole blank form instead would have
+  // sent handle: '' on Save, which the endpoint reads as "clear my handle".
+  it('keeps a field typed before the row arrived and fills the rest', async () => {
+    const { rerender } = render(<ProfileSection profile={null} save={vi.fn()} />);
+    await userEvent.type(firstField(), 'Samuel');
+    rerender(<ProfileSection profile={profile} save={vi.fn()} />);
+    expect(firstField()).toHaveValue('Samuel');
+    expect(lastField()).toHaveValue('Vimes');
+    expect(handleField()).toHaveValue('sam');
+    expect(saveButton()).toBeEnabled();
+  });
+
   // A UNIQUE column makes a pointless round trip worse than merely wasteful.
   it('keeps Save disabled until the handle actually changes', async () => {
     render(<ProfileSection profile={profile} save={vi.fn()} />);

@@ -251,6 +251,32 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
     expect(onViewChange).toHaveBeenCalledWith('stats');
   });
 
+  // Sized by its content and pinned left, the column was narrow for a guest
+  // and near full width once a long hint sat in it, so on a wide screen every
+  // section came out a different width. One centred, capped column, with the
+  // panel filling it and the back button at its leading edge.
+  it('centres the settings route in one capped column', () => {
+    render(
+      <StatsTab
+        user={USER}
+        view="settings"
+        onViewChange={() => {}}
+        settingsPanel={<div>stub-settings</div>}
+      />
+    );
+    const column = screen.getByText('stub-settings').parentElement;
+    expect(column).toHaveStyle({
+      width: '100%',
+      maxWidth: '900px',
+      marginInline: 'auto',
+      gridTemplateColumns: 'minmax(0, 1fr)',
+    });
+    expect(column.style.justifyItems).toBe('');
+    expect(screen.getByRole('button', { name: /back to profile/i })).toHaveStyle({
+      justifySelf: 'start',
+    });
+  });
+
   it('does not show the standings on the settings route', () => {
     render(
       <StatsTab

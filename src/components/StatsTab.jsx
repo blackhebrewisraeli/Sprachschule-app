@@ -35,6 +35,11 @@ const VIEWS = {
   settings: 'settings',
 };
 
+// SettingsRoute's Account panel deliberately grew to 900px in #452. Keep the
+// whole route on that same centred measure so Learning/System do not jump to a
+// different width, without re-narrowing the new Account layout.
+const SETTINGS_MAX_WIDTH = 900;
+
 const CARD_BOUNDARY = {
   width: '100%',
   maxWidth: '100%',
@@ -151,14 +156,31 @@ export default function StatsTab({
       )}
 
       {showingSettings ? (
-        <div style={{ display: 'grid', gap: SPACE[4], justifyItems: 'start' }}>
+        // One centred column at the cap Translate's column uses. Sized by its
+        // content and pinned left (`justifyItems: start`), it was narrow for a
+        // guest and near full width once a long hint sat in it, so on a wide
+        // screen every section came out a different width.
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'minmax(0, 1fr)',
+            gap: SPACE[4],
+            width: '100%',
+            maxWidth: SETTINGS_MAX_WIDTH,
+            marginInline: 'auto',
+          }}
+        >
           {/* The way back. The segmented control used to provide it for free —
               SETTINGS stayed on screen while you were inside it, with STATS
               beside it — so removing the control turned this route into a dead
               end reachable only by leaving the tab. SettingsRoute has no back
               control of its own. */}
           {controlled && (
-            <Button variant="secondary" onClick={() => onViewChange(VIEWS.stats)}>
+            <Button
+              variant="secondary"
+              onClick={() => onViewChange(VIEWS.stats)}
+              style={{ justifySelf: 'start' }}
+            >
               ← Back to profile
             </Button>
           )}

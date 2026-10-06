@@ -88,6 +88,25 @@ export default function ProfileSection({
   // actually changed.
   const dirty = FORM_FIELDS.some((f) => form[f] !== saved[f]);
 
+  // The row can arrive AFTER mount: App fetches it once the session settles,
+  // so a cold load of #/settings mounts this form with no profile, and a seed
+  // taken only at mount left every field blank. A new row refreshes each field
+  // the learner has not touched and keeps the ones they have. Keeping the whole
+  // blank form instead would send handle: '' on Save, which the endpoint reads
+  // as "clear my handle". Adjusted during render, as AuthSheet does, not in an
+  // effect, so the old values never paint for a frame after the row lands.
+  const incoming = asForm(profile);
+  const [seededFrom, setSeededFrom] = useState(incoming);
+  const profileChanged = FORM_FIELDS.some((field) => incoming[field] !== seededFrom[field]);
+  if (profileChanged) {
+    setSeededFrom(incoming);
+    const next = incoming;
+    setForm(
+      Object.fromEntries(FORM_FIELDS.map((f) => [f, form[f] === saved[f] ? next[f] : form[f]]))
+    );
+    setSaved(next);
+  }
+
   const onField = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
   const onSave = async () => {
