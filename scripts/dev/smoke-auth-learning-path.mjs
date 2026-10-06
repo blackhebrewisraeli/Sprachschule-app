@@ -1290,13 +1290,15 @@ async function stepOpenLeagues(page) {
  */
 async function stepAccountControlsAndLogout(page) {
   // Settings first, while still signed in: export + delete live there.
-  const nav = page.getByRole('navigation');
-  await nav.getByRole('button', { name: /Profile/i }).click();
-  // The door to Settings is a button on the profile page now, not a segment
-  // in a STATS / LEAGUES / SETTINGS control. Signed in it reads "Edit
-  // profile" — the spec's secondary self action, and the same destination the
-  // account sheet opens.
-  const settingsDoor = page.getByRole('button', { name: 'Edit profile', exact: true });
+  // Signed in, the profile card carries no account actions (#452): the door
+  // to Settings is the account sheet's "Edit Profile" row.
+  await assertNoMastheadAccountAmbiguity(page, 'step 5');
+  const account = mastheadAccountButton(page);
+  await account.waitFor({ state: 'visible', timeout: 10000 });
+  await account.click();
+  const settingsDoor = page
+    .getByRole('dialog', { name: 'Account' })
+    .getByRole('button', { name: 'Edit Profile', exact: true });
   await settingsDoor.waitFor({ state: 'visible', timeout: 10000 });
   await settingsDoor.click();
 
@@ -1311,7 +1313,6 @@ async function stepAccountControlsAndLogout(page) {
   // The chip sheet. Scoped to the banner: the Settings route this step is
   // standing on carries its own "Account" button (#311).
   await assertNoMastheadAccountAmbiguity(page, 'Settings');
-  const account = mastheadAccountButton(page);
   await account.waitFor({ state: 'visible', timeout: 10000 });
   await account.click();
 
@@ -1342,20 +1343,22 @@ async function stepAccountControlsAndLogout(page) {
   // beside Settings until #314, when the tabbed Settings route made the two a
   // second name for one place. That premise died when the Profile tab became
   // a single consolidated page and Settings became a route off it: they are
-  // two destinations now, and the sheet names both.
+  // two destinations now, and the sheet names both — plus "Edit Profile"
+  // since #452 moved that action off the profile card.
   //
   // Still asserted as a COUNT and not just a presence, for the reason the old
   // version gave: a duplicated row passes a bare "is it there" check. Sign out
   // is excluded — it is not a navigation row.
   const navRows = await sheet
     .getByRole('button')
-    .filter({ hasText: /Your profile|Settings/ })
+    .filter({ hasText: /Your profile|Edit Profile|Settings/ })
     .allInnerTexts();
   const normalised = navRows.map((t) => t.trim()).sort();
-  if (normalised.length !== 2 || normalised.join('|') !== 'Settings|Your profile') {
+  if (normalised.join('|') !== 'Edit Profile|Settings|Your profile') {
     throw new Error(
-      'smoke-auth-learning-path: expected exactly two navigation rows ("Your profile", ' +
-        `"Settings") in the account sheet, found ${navRows.length}: ${JSON.stringify(navRows)}`
+      'smoke-auth-learning-path: expected exactly three navigation rows ("Your profile", ' +
+        `"Edit Profile", "Settings") in the account sheet, found ${navRows.length}: ` +
+        JSON.stringify(navRows)
     );
   }
 
