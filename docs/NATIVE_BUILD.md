@@ -6,13 +6,13 @@ is not. `ios/App/App/public` and `android/app/src/main/assets/public` are
 gitignored and rebuilt by `npm run build:mobile`, so **every native build starts
 with that command**, on the machine that runs Xcode or Android Studio.
 
-| What              | Value                                                                                   |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)                                      |
-| Display name      | `Deutsch Sprachschule` (`CFBundleDisplayName` / `app_name`), same as the store listings |
-| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                             |
-| Android           | minSdk 24 · target/compile 36                                                           |
-| Toolchain         | Node 22 (`.nvmrc`), current Xcode, current Android Studio, **JDK 21** for Gradle (§4)   |
+| What              | Value                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| Bundle ID / appId | `com.sprachschule.deutsch` (`capacitor.config.ts`)                                          |
+| Display name      | `Deutsch Sprachschule` (`CFBundleDisplayName` / `app_name`), same as the store listings     |
+| iOS minimum       | 15.0 · Swift Package Manager (no CocoaPods)                                                 |
+| Android           | minSdk 24 · target/compile 36                                                               |
+| Toolchain         | Node 22 (`.nvmrc`), current Xcode / Android Studio, AGP 9.4.1 + Gradle 9.8, **JDK 21** (§4) |
 
 ## 1. Production env — nothing to set up
 
@@ -143,19 +143,20 @@ number already used". Simplest: pick one.
 `android/app/build/outputs/bundle/release/app-release.aab`.
 
 **Gradle needs JDK 21**, the version CI pins (Temurin 21). Capacitor 8 compiles
-at Java 21, so JDK 17 fails (`invalid source release: 21`); Gradle 8.14 cannot
-compile build scripts on Java 25, which is what Android Studio now bundles, so
-that fails too (`Unsupported class file major version 69`), though only after a
-`build.gradle` edit forces a recompile, which makes it look intermittent.
-OpenJDK 26 also fails, in AGP's `jlink` step. Install Temurin 21 (user-level
-is fine) and point Gradle at it:
+at Java 21. The checked-in `gradle/gradle-daemon-jvm.properties` makes Gradle
+use an installed JDK 21 regardless of the JDK that launched Android Studio or
+the wrapper. When none is installed, the Foojay resolver in `settings.gradle`
+provisions one automatically; that first build therefore needs network access.
+
+Run the wrapper normally:
 
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 21) ./gradlew bundleRelease
+./gradlew bundleRelease
 ```
 
-If a build fails right after switching JDKs, run `./gradlew --stop` first: a
-daemon started on another JDK keeps serving builds.
+If automatic provisioning is unavailable, install a JDK 21 locally and retry.
+If a build fails right after changing JDKs, run `./gradlew --stop` first: a
+daemon started on another JDK may still be serving builds.
 
 **Release builds are shrunk** (`minifyEnabled` + `shrinkResources`, R8). The
 native shell went from 10.0 MB of DEX to 1.4 MB, the APK from 6.8 to 3.7 MB.
