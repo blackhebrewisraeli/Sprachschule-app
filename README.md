@@ -11,6 +11,7 @@ secure cross-device sync, and AI where it genuinely helps.**
 [![Live demo](https://img.shields.io/badge/Live_demo-Open_app-D62828?style=for-the-badge)](https://www.sprachschule-app.com)
 [![CI](https://img.shields.io/github/actions/workflow/status/blackhebrewisraeli/deutsch-app/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/blackhebrewisraeli/deutsch-app/actions/workflows/ci.yml)
 [![React 18](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
+[![Vite 8](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![Capacitor 8](https://img.shields.io/badge/Capacitor_8-iOS_%2B_Android-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)](https://capacitorjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-Postgres_%2B_Auth_%2B_Storage-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deployed-000000?style=for-the-badge&logo=vercel)](https://vercel.com/)
@@ -30,22 +31,22 @@ secure cross-device sync, and AI where it genuinely helps.**
 > [!NOTE]
 > **Accounts are optional.** Lessons, vocabulary, speech, SRS, progress,
 > streaks, and quests all work locally, with no sign-up. Signing in
-> (passwordless: an email link or Google) adds cross-device sync, weekly
-> leagues, a followable profile, and quest tokens; generative features require
-> the server API.
+> (passwordless: an email code or link, Google, GitHub, and Apple where the
+> provider is enabled) adds cross-device sync, weekly leagues, a followable
+> profile, and quest tokens; generative features require the server API.
 
 ## ✨ What learners get
 
-| Experience                                  | What it does                                                                                                                                        |
-| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 💬 **Scene-based conversation**             | The AI opens a scene in character — a barista, an airport check-in agent — caps sentence length by CEFR level, and corrects you inline.             |
-| 🪜 **Scaffolding that fades**               | Chat and Translate share one input ladder: word bank, choose the word, type the word, free typing. Start where your level puts you; switch anytime. |
-| 🧠 **Vocabulary & SRS**                     | Leitner review over preset, lexicon, grammar-drill, interest-topic, and custom AI-generated decks, plus a Travel Basics phrasebook.                 |
-| 🔤 **Alphabet & listening**                 | German speech synthesis, confusable-letter quizzes, and a browsable pronunciation grid.                                                             |
-| 🧭 **Optional placement**                   | Start at A1 straight away, or take nine offline questions to place at A1, A2, or B1. The app suggests it again at 500 XP.                           |
-| 🎮 **Motivation that respects the learner** | XP, streak freezes, earned-only badges, daily quests that pay tokens, and optional weekly leagues.                                                  |
-| 👥 **Social, opt-in**                       | Pick a handle, find people, follow them, and choose whether your profile is public or private.                                                      |
-| 🤖 **Your choice of model**                 | Fast, Balanced, or Capable (Haiku, Sonnet, Opus), or let the router pick per request.                                                               |
+| Experience                                  | What it does                                                                                                                                                   |
+| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 💬 **Scene-based conversation**             | The AI opens a scene in character — a barista, an airport check-in agent — caps sentence length by CEFR level, and corrects you inline.                        |
+| 🪜 **Scaffolding that fades**               | Chat and Translate share one input ladder: word bank, choose the word, type the word, free typing. Start where your level puts you; switch anytime.            |
+| 🧠 **Vocabulary & SRS**                     | Leitner review over preset, lexicon, grammar-drill, interest-topic, and custom AI-generated decks, plus a Travel Basics phrasebook.                            |
+| 🔤 **Alphabet & listening**                 | German speech synthesis, confusable-letter quizzes, and a browsable pronunciation grid.                                                                        |
+| 🧭 **Optional placement**                   | Start at A1 straight away, or take nine offline questions to place at A1, A2, or B1. The app suggests it again at 500 XP.                                      |
+| 🎮 **Motivation that respects the learner** | XP, streak freezes, earned-only badges, daily quests that pay tokens, and optional weekly leagues.                                                             |
+| 👥 **Social, opt-in**                       | Pick a handle, find people, follow them, and choose whether your profile is public or private.                                                                 |
+| 🤖 **Cost-aware AI routing**                | Fast, Balanced, and Capable profiles sit behind server-enforced access ceilings and daily usage accounting; guest and Free requests currently resolve to Fast. |
 
 |                          Vocabulary practice                          |
 | :-------------------------------------------------------------------: |
@@ -124,12 +125,12 @@ flowchart LR
     end
 
     subgraph Vercel["Vercel"]
-        API["Versioned serverless API\nai · content · progress · league\nsocial · account · admin"]
+        API["Versioned serverless API\nai · content · progress · league\nsocial · account · admin · push"]
     end
 
     subgraph Supabase["Supabase"]
         Auth["Auth · email link + OAuth"]
-        DB[("Postgres + RLS")]
+        DB[("Postgres + RLS\nprogress · sync · quota accounting")]
         Storage[("Avatar Storage")]
     end
 
@@ -162,15 +163,17 @@ npm run dev
 Open [http://localhost:5173](http://localhost:5173). The offline-first learning
 flows work with no Supabase, Vercel, or Anthropic credentials at all.
 
-| Command                | Purpose                                                      |
-| ---------------------- | ------------------------------------------------------------ |
-| `npm run dev`          | Start the Vite UI                                            |
-| `npm run dev:full`     | Start Vite plus the Vercel functions (AI, leagues, social)   |
-| `npm test`             | Run the main Vitest suite                                    |
-| `npm run lint`         | Run ESLint                                                   |
-| `npm run format:check` | Check Prettier formatting                                    |
-| `npm run test:rls`     | Run the RLS policy suite (needs Docker + `supabase start`)   |
-| `npm run build:mobile` | Build against production and sync into `ios/` and `android/` |
+| Command                       | Purpose                                                      |
+| ----------------------------- | ------------------------------------------------------------ |
+| `npm run dev`                 | Start the Vite UI                                            |
+| `npm run dev:full`            | Start Vite plus the Vercel functions (AI, leagues, social)   |
+| `npm test`                    | Run the main Vitest suite                                    |
+| `npm run lint`                | Run ESLint                                                   |
+| `npm run format:check`        | Check Prettier formatting                                    |
+| `npm run test:rls`            | Run the RLS policy suite (needs Docker + `supabase start`)   |
+| `npm run build:mobile`        | Build against production and sync into `ios/` and `android/` |
+| `npm run smoke:learning-path` | Browser smoke test for the anonymous core learning loop      |
+| `npm run screenshots:capture` | Capture and validate native store artwork                    |
 
 Accounts, sync, leagues, avatars, and the AI endpoints each need a little more
 setup — local Supabase via Docker, a few `VITE_*` flags, and an
@@ -182,7 +185,10 @@ setup — local Supabase via Docker, a few `VITE_*` flags, and an
 
 `ios/` and `android/` are committed Capacitor 8 projects that wrap the same web
 bundle. Every push to `main` builds an iOS simulator app and an Android debug
-APK in CI. For signed builds, auth deep links, and store copy, see
+APK in CI. Native release builds pin the production API and Supabase project,
+enable sync, leagues, Google, GitHub, and Apple sign-in, and deliberately keep
+push, ads, and saved tutor history dark until their release runbooks are
+complete. For signed builds, auth deep links, and store copy, see
 [`docs/NATIVE_BUILD.md`](./docs/NATIVE_BUILD.md),
 [`docs/MOBILE_AUTH_SETUP.md`](./docs/MOBILE_AUTH_SETUP.md), and
 [`docs/store-metadata/`](./docs/store-metadata/).
