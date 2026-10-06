@@ -16,6 +16,25 @@ const lastField = () => screen.getByRole('textbox', { name: /last name/i });
 const saveButton = () => screen.getByRole('button', { name: /save profile/i });
 
 describe('ProfileSection', () => {
+  it('centres a polished editor with tactile fields and a full-width save action', () => {
+    render(<ProfileSection profile={profile} save={vi.fn()} />);
+
+    expect(screen.getByTestId('profile-editor')).toHaveStyle({
+      width: '100%',
+      maxWidth: '640px',
+      marginInline: 'auto',
+    });
+    expect(firstField()).toHaveAttribute('data-ui', 'field');
+    expect(firstField().style.padding).toBe('12px 16px');
+    expect(firstField().style.borderRadius).toBe('14px');
+    expect(firstField().style.boxShadow).toContain('inset');
+    expect(screen.getByTestId('avatar-picker')).toHaveStyle({
+      borderRadius: '16px',
+      padding: '16px',
+    });
+    expect(saveButton()).toHaveStyle({ width: '100%' });
+  });
+
   it('shows the current handle', () => {
     render(<ProfileSection profile={profile} save={vi.fn()} />);
     expect(handleField()).toHaveValue('sam');

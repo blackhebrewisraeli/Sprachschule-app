@@ -87,7 +87,6 @@ export default function StatsTab({
   profile,
   tokens = null,
   onSignIn,
-  onSignOut,
   view,
   onViewChange,
   settingsPanel = null,
@@ -176,7 +175,6 @@ export default function StatsTab({
           onSelectUser={setSelectedUser}
           onOpenSettings={openSettings}
           onOpenFollowList={setFollowListKind}
-          onSignOut={onSignOut}
           mobile={mobile}
           local={{ xp: sc.totalXp, level: readLevel(), streak: stats.streak ?? 0 }}
         >

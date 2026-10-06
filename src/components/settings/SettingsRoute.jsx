@@ -68,9 +68,9 @@ function Field({ label, hint, children }) {
   );
 }
 
-function Subsection({ title, children }) {
+function Subsection({ title, children, centered = false }) {
   return (
-    <section>
+    <section style={centered ? { width: '100%', maxWidth: 680, marginInline: 'auto' } : undefined}>
       <Heading level={3} size="sm" style={{ ...subsectionTitleStyle, marginBottom: SPACE[3] }}>
         {title}
       </Heading>
@@ -79,10 +79,14 @@ function Subsection({ title, children }) {
   );
 }
 
-function SettingsPanel({ title, children }) {
+function SettingsPanel({ title, children, maxWidth, ...rest }) {
   const titleId = `settings-${title.toLowerCase()}-title`;
   return (
-    <section aria-labelledby={titleId}>
+    <section
+      aria-labelledby={titleId}
+      style={{ width: '100%', maxWidth, marginInline: maxWidth ? 'auto' : undefined }}
+      {...rest}
+    >
       <Heading
         id={titleId}
         level={2}
@@ -122,8 +126,17 @@ export default function SettingsRoute({
   onExport,
   onDelete,
   lastSyncedAt,
+  accountRequest = 0,
 }) {
   const [activeSection, setActiveSection] = useState('account');
+  // The account menu's "Edit Profile" bumps accountRequest, which must land on
+  // the editor even when Settings is already open on another section. Adjusted
+  // during render rather than in an effect, so the old section never paints.
+  const [seenAccountRequest, setSeenAccountRequest] = useState(accountRequest);
+  if (accountRequest !== seenAccountRequest) {
+    setSeenAccountRequest(accountRequest);
+    setActiveSection('account');
+  }
   const [themeMode, setThemeMode] = useState(() => getThemeModeForUI());
   const [showLevelOverride, setShowLevelOverride] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -143,7 +156,7 @@ export default function SettingsRoute({
 
       <div style={{ marginTop: SPACE[6] }}>
         {activeSection === 'account' && (
-          <SettingsPanel title="Account">
+          <SettingsPanel title="Account" maxWidth={900} data-testid="settings-account-panel">
             <Stack gap={6}>
               {adminMe?.blocked ? (
                 <Body size="sm" style={{ overflowWrap: 'anywhere' }}>
@@ -153,7 +166,7 @@ export default function SettingsRoute({
 
               {user ? (
                 <>
-                  <Subsection title="Profile">
+                  <Subsection title="Profile" centered>
                     <ProfileSection
                       profile={profile}
                       userId={user.id}

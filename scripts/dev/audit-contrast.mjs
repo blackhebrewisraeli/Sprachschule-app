@@ -934,26 +934,41 @@ const SETTINGS_WIDTHS = [320, 375, 1280];
  * Click Profile's door to the Settings route, by accessible name.
  *
  * It used to be a segment in a STATS / LEAGUES / SETTINGS control, labelled
- * `settings`. That control is gone — the Profile tab is one page now — so the
- * door is a button on the page itself: "Edit profile" for a signed-in learner
- * (the spec's secondary self action) and plain "Settings" for a guest, who has
- * no account sheet to reach it from.
- *
- * Both names are tried because this one function serves the guest sweep and
- * the signed-in pass, and the caller owns which of the two it is.
+ * `settings`. That control is gone — the Profile tab is one page now. A guest,
+ * who has no account sheet, gets a plain "Settings" button on the page. A
+ * signed-in learner's profile card carries no account actions since #452, so
+ * their door is the account sheet's "Edit Profile" row — see
+ * `openSettingsFromAccountSheet`.
  */
 function clickSettingsDoor() {
-  const names = ['Edit profile', 'Settings'];
-  for (const name of names) {
-    const b = [...document.querySelectorAll('button')].find(
-      (x) => (x.getAttribute('aria-label') || x.textContent || '').trim() === name
-    );
-    if (b) {
-      b.click();
-      return true;
-    }
-  }
-  return false;
+  const b = [...document.querySelectorAll('button')].find(
+    (x) => (x.getAttribute('aria-label') || x.textContent || '').trim() === 'Settings'
+  );
+  if (!b) return false;
+  b.click();
+  return true;
+}
+
+/**
+ * The signed-in door: masthead Account chip → "Edit Profile".
+ *
+ * DOM clicks like the rest of this file's doors, not Playwright clicks: the
+ * Profile tutorial's scrim can be up at this point, and a pointer click on the
+ * chip is (correctly) intercepted by it. The old on-page door was clicked the
+ * same way, so this measures exactly what it did.
+ */
+async function openSettingsFromAccountSheet() {
+  const chip = document.querySelector('header button[aria-label="Account"]');
+  if (!chip) return false;
+  chip.click();
+  // React flushes the click's state update after this task; let it paint.
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  const row = [...document.querySelectorAll('[role="dialog"][aria-label="Account"] button')].find(
+    (b) => (b.getAttribute('aria-label') || b.textContent || '').trim() === 'Edit Profile'
+  );
+  if (!row) return false;
+  row.click();
+  return true;
 }
 
 /**
@@ -1004,7 +1019,10 @@ async function auditSettings(page, label) {
   // to profile" link. Clicking blindly measured 1 of 3 widths and reported
   // the door as missing.
   if (!(await page.evaluate(onSettingsRoute))) {
-    if (!(await page.evaluate(clickSettingsDoor))) {
+    if (
+      !(await page.evaluate(clickSettingsDoor)) &&
+      !(await page.evaluate(openSettingsFromAccountSheet))
+    ) {
       layout.push({ reason: 'no Settings door on Profile', view: label });
       return { layout, contrast, measured: 0 };
     }

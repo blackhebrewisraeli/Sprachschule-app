@@ -972,6 +972,13 @@ export default function App() {
     setProfileView('settings');
     setSettingsHash();
   };
+  // "Edit Profile" is Settings pinned to the Account section: the counter tells
+  // an already-open SettingsRoute to switch back to it.
+  const [editProfileRequest, setEditProfileRequest] = useState(0);
+  const openEditProfile = () => {
+    setEditProfileRequest((n) => n + 1);
+    openSettings();
+  };
   // The sheet's other destination. It is the same TAB as Settings but no
   // longer the same place: `stats` is the consolidated profile page, and
   // `settings` is the route off it. Clearing the hash matters — without it a
@@ -1267,6 +1274,7 @@ export default function App() {
     <SettingsRoute
       user={user}
       profile={profile}
+      accountRequest={editProfileRequest}
       adminMe={adminSession.me}
       onProfileSaved={setProfile}
       onToast={(title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'done' }])}
@@ -1645,6 +1653,7 @@ export default function App() {
                 onSignOut={handleSignOut}
                 onOpenSettings={openSettings}
                 onOpenProfile={openProfile}
+                onEditProfile={openEditProfile}
                 pending={syncStatus.pending}
               />
             </div>
@@ -1904,7 +1913,6 @@ export default function App() {
                 profile={profile}
                 tokens={tokens}
                 onSignIn={requestSignIn}
-                onSignOut={handleSignOut}
                 view={profileView}
                 onViewChange={handleProfileView}
                 settingsPanel={settingsPanel}

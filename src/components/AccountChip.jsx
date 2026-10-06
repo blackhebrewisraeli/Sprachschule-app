@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { User, Settings as SettingsIcon, LogOut, Smile } from 'lucide-react';
+import { User, Settings as SettingsIcon, LogOut, Smile, PencilLine } from 'lucide-react';
 import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, RADIUS, SHADOW, SPACE } from '../lib/theme';
 import { isAuthConfigured } from '../lib/auth.js';
 import { profileName } from '../lib/profile.js';
@@ -151,6 +151,7 @@ export default function AccountChip({
   onSignOut,
   onOpenSettings,
   onOpenProfile,
+  onEditProfile,
   pending = false,
 }) {
   const [open, setOpen] = useState(false);
@@ -431,6 +432,14 @@ export default function AccountChip({
               onClick={() => {
                 setOpen(false);
                 onOpenProfile?.();
+              }}
+            />
+            <Row
+              icon={PencilLine}
+              label="Edit Profile"
+              onClick={() => {
+                setOpen(false);
+                onEditProfile?.();
               }}
             />
             <Row

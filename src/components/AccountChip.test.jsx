@@ -154,6 +154,16 @@ describe('AccountChip → Settings', () => {
     expect(screen.queryByRole('button', { name: /sign out/i })).not.toBeInTheDocument();
   });
 
+  it('offers an Edit Profile row that opens the editor route and closes the sheet', async () => {
+    const onEditProfile = vi.fn();
+    renderChip({ onEditProfile });
+    await userEvent.click(screen.getByRole('button', { name: /account/i }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Profile' }));
+
+    expect(onEditProfile).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog', { name: /account/i })).not.toBeInTheDocument();
+  });
+
   // The sheet carried a "Profile →" row beside Settings until the tabbed
   // Settings route made it a second name for the same destination. Asserted as
   // a COUNT as well as an absence: a sheet that regrew the row would still pass
@@ -253,7 +263,7 @@ describe('AccountChip — identity header and grouped rows', () => {
   it('gives every row an icon, so the list reads as a menu and not as prose', async () => {
     await open();
     const sheet = screen.getByRole('dialog');
-    for (const name of [/your profile/i, /open settings/i, /sign out/i]) {
+    for (const name of [/your profile/i, /edit profile/i, /open settings/i, /sign out/i]) {
       const row = within(sheet).getByRole('button', { name });
       expect(row.querySelector('svg'), `${name} icon`).toBeTruthy();
     }
