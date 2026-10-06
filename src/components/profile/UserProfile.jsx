@@ -239,10 +239,18 @@ export default function UserProfile({
       : 'Your progress is saved on this device.';
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: SPACE[6] }}>
-        <div style={{ display: 'grid', gap: SPACE[4], justifyItems: 'start', minWidth: 0 }}>
-          <Heading level={2}>Dein Profil</Heading>
+        {/* The title stays where every tab's title sits; the placeholder under
+            it (note and doors) is centred as one. StatusNote centres its own
+            icon and text, but shrink-wrapped at the start of this column it sat
+            left, with the buttons pinned left beneath it. */}
+        <div style={{ display: 'grid', gap: SPACE[4], justifyItems: 'center', minWidth: 0 }}>
+          <Heading level={2} style={{ justifySelf: 'start' }}>
+            Dein Profil
+          </Heading>
           <StatusNote icon={UserRound}>{guestNote}</StatusNote>
-          <div style={{ display: 'flex', gap: SPACE[3], flexWrap: 'wrap' }}>
+          <div
+            style={{ display: 'flex', gap: SPACE[3], flexWrap: 'wrap', justifyContent: 'center' }}
+          >
             {onSignIn && <Button onClick={onSignIn}>Sign in</Button>}
             {/* A guest still needs Settings — level, daily goal and sound all
                 live there, and none of them require an account. The segmented
