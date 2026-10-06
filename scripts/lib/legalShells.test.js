@@ -55,6 +55,8 @@ describe('legal route shells', () => {
       'Delete account',
       'within 30 days',
       'Delete your Deutsch Sprachschule account',
+      'include your private relay address',
+      '@privaterelay.appleid.com',
     ];
     const shellText = LEGAL_SHELLS['delete-account'].noscript.join(' ');
     for (const fact of facts) {

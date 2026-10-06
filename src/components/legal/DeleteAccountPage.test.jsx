@@ -18,7 +18,7 @@ describe('DeleteAccountPage', () => {
 
   it('shows its own date', () => {
     render(<DeleteAccountPage />);
-    expect(screen.getByText('Last Updated: October 3, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated: October 6, 2026')).toBeInTheDocument();
   });
 
   it('carries the four sections, in order', () => {
@@ -40,6 +40,19 @@ describe('DeleteAccountPage', () => {
     );
     expect(text).toContain('"Account Deletion Request - Deutsch Sprachschule"');
     expect(text).toContain('We will delete your account within 30 days');
+  });
+
+  // A Hide My Email address can receive but not send, so "write from the
+  // address you sign in with" alone would lock these learners out.
+  it('gives Apple relay users an email route, and says it cannot revoke Apple access', () => {
+    const { container } = render(<DeleteAccountPage />);
+    const text = container.textContent;
+    expect(text).toContain('If you sign in with Apple, Google or GitHub');
+    expect(text).toContain('write from any address and include your private relay address');
+    expect(text).toContain('@privaterelay.appleid.com');
+    expect(text).toContain('We will confirm the request by writing to that relay address');
+    expect(text).toContain("Deleting by email cannot revoke our app's access to your Apple ID");
+    expect(text).toContain("then also revokes our app's access to your Apple ID");
   });
 
   it('says what is deleted and what is kept', () => {
