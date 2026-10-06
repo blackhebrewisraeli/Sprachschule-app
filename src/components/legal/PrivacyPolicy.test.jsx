@@ -11,12 +11,12 @@ describe('PrivacyPolicy', () => {
   });
 
   it('shows the effective date, derived from PRIVACY_VERSION', () => {
-    expect(PRIVACY_VERSION).toBe('2026-10-03');
+    expect(PRIVACY_VERSION).toBe('2026-10-06');
     render(<PrivacyPolicy />);
-    expect(screen.getByText('Last Updated: October 3, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated: October 6, 2026')).toBeInTheDocument();
   });
 
-  it('carries the nine numbered sections, in order', () => {
+  it('carries the ten numbered sections, in order', () => {
     render(<PrivacyPolicy />);
     expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual([
       '1. Who We Are',
@@ -25,9 +25,10 @@ describe('PrivacyPolicy', () => {
       '4. What Other Learners Can See',
       '5. Service Providers',
       '6. How Long We Keep Your Data',
-      '7. Exporting and Deleting Your Data',
+      '7. Your Right to Access and Delete Your Data',
       '8. Your Choices',
-      '9. Changes to This Policy',
+      '9. Children',
+      '10. Changes to This Policy',
     ]);
   });
 
@@ -41,6 +42,11 @@ describe('PrivacyPolicy', () => {
     expect(container.textContent).not.toMatch(/Deutsch App/);
     expect(container.textContent).not.toMatch(/esterkinshimon712@gmail\.com/);
     expect(container.textContent).toMatch(/sprachschule\.support@gmail\.com/);
+    expect(container.textContent).toMatch(/www\.sprachschule-app\.com/);
+    // The domain is the only place the old product name may still appear.
+    expect(container.textContent.replaceAll('sprachschule-app.com', '')).not.toMatch(
+      /sprachschule-app/
+    );
   });
 
   it('no longer makes the two claims the audit disproved', () => {
@@ -52,8 +58,16 @@ describe('PrivacyPolicy', () => {
   it('reproduces the approved copy verbatim', () => {
     render(<PrivacyPolicy />);
     for (const phrase of [
-      'You can use sprachschule-app without an account.',
-      'sprachschule-app is operated by Shimon Esterkin.',
+      'You can use Deutsch Sprachschule without an account.',
+      'is operated by Shimon Esterkin.',
+      'or with Apple, Google or GitHub — we collect your email address',
+      'a private relay address that forwards to you',
+      'If we introduce paid subscriptions or advertising in the future, we will update this policy',
+      'You can ask us at any time for a copy of your data, to correct it, or to delete your account',
+      "deleting your account also asks Apple to revoke our app's access to your Apple ID",
+      'as described at www.sprachschule-app.com/delete-account',
+      'We will delete your account within 30 days',
+      'not intended for children under 13',
       'contact us at sprachschule.support@gmail.com.',
       'is sent through our server to Anthropic, which generates the response.',
       'We do not send your name, email address or account ID with these requests.',

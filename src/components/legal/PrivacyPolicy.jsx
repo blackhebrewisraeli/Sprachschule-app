@@ -10,7 +10,7 @@ const SECTIONS = [
   {
     heading: '1. Who We Are',
     paragraphs: [
-      'sprachschule-app is operated by Shimon Esterkin. If you have questions about this policy or your data, contact us at sprachschule.support@gmail.com.',
+      'Deutsch Sprachschule — the website at www.sprachschule-app.com and the Deutsch Sprachschule apps for iPhone, iPad and Android — is operated by Shimon Esterkin. If you have questions about this policy or your data, contact us at sprachschule.support@gmail.com.',
     ],
   },
   {
@@ -18,11 +18,11 @@ const SECTIONS = [
     items: [
       {
         term: 'Using the App as a Guest:',
-        text: 'You can use sprachschule-app without an account. As a guest, your learning progress is stored only on your device and is not synced to our servers.',
+        text: 'You can use Deutsch Sprachschule without an account. As a guest, your learning progress is stored only on your device and is not synced to our servers.',
       },
       {
         term: 'Account Information:',
-        text: 'When you create an account or sign in — with a one-time email code or link, with Google, or with GitHub — we collect your email address to authenticate you and keep your progress in sync across devices. If you sign in with Google or GitHub, that service also shares the basic profile details it makes available to apps, such as your name, profile picture link and, for GitHub, your username; our authentication provider stores them with your account. For security, it also records technical information about each sign-in, such as your IP address and browser or device type. We also record which versions of our Terms of Service and this Privacy Policy you accepted, and when.',
+        text: 'When you create an account or sign in — with a one-time email code or link, or with Apple, Google or GitHub — we collect your email address to authenticate you and keep your progress in sync across devices. If you sign in with Google or GitHub, that service also shares the basic profile details it makes available to apps, such as your name, profile picture link and, for GitHub, your username; our authentication provider stores them with your account. If you sign in with Apple, Apple shares your email address — or, if you choose to hide it, a private relay address that forwards to you — and may share your name the first time you sign in. For security, it also records technical information about each sign-in, such as your IP address and browser or device type. We also record which versions of our Terms of Service and this Privacy Policy you accepted, and when.',
       },
       {
         term: 'Profile Information:',
@@ -69,7 +69,7 @@ const SECTIONS = [
   {
     heading: '3. How We Use Your Information',
     paragraphs: [
-      "Your data is used to provide the app's features: saving and syncing your progress, placing you in weekly leagues (Leagues), showing your profile to other learners, powering AI features, sending notifications you have turned on, fixing bugs, and protecting the service from abuse. We do not sell your data or use it for targeted advertising. If you choose to save your tutor conversations, we use them only to show them back to you. We do not use them to train AI models, for advertising or to build profiles, and we do not read them except where needed to investigate abuse of the service or to respond to a legal request.",
+      "Your data is used to provide the app's features: saving and syncing your progress, placing you in weekly leagues (Leagues), showing your profile to other learners, powering AI features, sending notifications you have turned on, fixing bugs, and protecting the service from abuse. We do not sell your data or use it for targeted advertising. If we introduce paid subscriptions or advertising in the future, we will update this policy to describe them, including any new service providers, and ask you to accept the updated policy before they apply to your account. If you choose to save your tutor conversations, we use them only to show them back to you. We do not use them to train AI models, for advertising or to build profiles, and we do not read them except where needed to investigate abuse of the service or to respond to a legal request.",
     ],
   },
   {
@@ -94,7 +94,7 @@ const SECTIONS = [
       { term: 'Supabase Auth —', text: 'sending sign-in emails' },
     ],
     after: [
-      'If you choose to use them, these services also receive data under their own privacy policies: Google or GitHub (if you sign in with them), and Apple Push Notification service or Firebase Cloud Messaging by Google (if you turn on push notifications).',
+      'If you choose to use them, these services also receive data under their own privacy policies: Apple, Google or GitHub (if you sign in with them), and Apple Push Notification service or Firebase Cloud Messaging by Google (if you turn on push notifications).',
     ],
   },
   {
@@ -121,9 +121,12 @@ const SECTIONS = [
     ],
   },
   {
-    heading: '7. Exporting and Deleting Your Data',
+    heading: '7. Your Right to Access and Delete Your Data',
     paragraphs: [
+      'You can ask us at any time for a copy of your data, to correct it, or to delete your account and the data linked to it. Most of this you can do yourself in the app.',
       "You can download a copy of your learning data, including your saved tutor conversations, and permanently delete your account, in the app under Profile → Settings → Account controls. You can also delete one saved conversation, or all of them, without deleting your account: in Chat → History, or in Settings → Account → Tutor conversations. Deleting your account immediately and permanently removes your account and the data linked to it in our database, including your learning data, profile, problem reports, saved tutor conversations, notification tokens and acceptance records. We also delete the profile pictures you uploaded; if any remain afterwards, contact us and we will remove them. Copies may remain for a limited time in our service providers' backups and logs. Problem reports you sent as a guest and error reports are not linked to your account.",
+      "If you signed in with Apple, deleting your account also asks Apple to revoke our app's access to your Apple ID.",
+      'If you cannot use the app, you can ask us to delete your account by email, as described at www.sprachschule-app.com/delete-account: write to sprachschule.support@gmail.com from the address you sign in with (if Apple hides your email, include your private relay address and we will confirm by writing to it). We will delete your account within 30 days and tell you when it is done. You can also email us to ask for a copy of your data or to correct it.',
     ],
   },
   {
@@ -146,7 +149,13 @@ const SECTIONS = [
     ],
   },
   {
-    heading: '9. Changes to This Policy',
+    heading: '9. Children',
+    paragraphs: [
+      'Deutsch Sprachschule is not intended for children under 13, and you must be at least 13 to create an account. If you believe a child under 13 has given us personal information, contact us and we will delete it.',
+    ],
+  },
+  {
+    heading: '10. Changes to This Policy',
     paragraphs: [
       'When we change this policy, we will update the "Last Updated" date above. If the changes are significant, we will ask you to review and accept the updated policy in the app before you continue using your account.',
     ],
@@ -158,7 +167,7 @@ export default function PrivacyPolicy({ onBack }) {
     <LegalPage
       title="Privacy Policy"
       updated={lastUpdatedLine(PRIVACY_VERSION)}
-      intro="Welcome to sprachschule-app. This Privacy Policy explains how we collect, use, and protect your information when you use our application."
+      intro="Welcome to Deutsch Sprachschule. This Privacy Policy explains how we collect, use, and protect your information when you use our application."
       sections={SECTIONS}
       onBack={onBack}
     />
