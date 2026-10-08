@@ -359,6 +359,23 @@ describe('UserProfile — the consolidated profile page', () => {
     error.mockRestore();
   });
 
+  // The note centres its own icon and text, but it shrink-wrapped at the start
+  // of a full-width column with the buttons pinned left beneath it, so on a
+  // wide screen the icon floated over the middle of a block hugging the edge.
+  // The placeholder (note and its doors) is centred as one; the page title
+  // stays where every tab's title sits.
+  it('centres the guest placeholder under the page title', () => {
+    render(<UserProfile user={null} local={local} onSignIn={vi.fn()} onOpenSettings={vi.fn()} />);
+    const note = screen.getByText(/saved on this device/).closest('[data-ui="status-note"]');
+    expect(note.parentElement).toHaveStyle({ justifyItems: 'center' });
+    expect(screen.getByRole('heading', { name: 'Dein Profil' })).toHaveStyle({
+      justifySelf: 'start',
+    });
+    expect(screen.getByRole('button', { name: 'Sign in' }).parentElement).toHaveStyle({
+      justifyContent: 'center',
+    });
+  });
+
   it('keeps the page usable when the profile fetch fails', async () => {
     leagues.fetchProfile.mockRejectedValue(new Error('offline'));
     render(<UserProfile user={USER} local={local} />);

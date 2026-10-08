@@ -304,7 +304,9 @@ const btnBase = {
   alignItems: 'center',
   justifyContent: 'center',
   gap: SPACE[2],
-  transition: 'transform .08s ease, box-shadow .08s ease',
+  // filter is the hover brightening in injectGlobalStyles; without it here
+  // the hover snapped on and off.
+  transition: 'transform .08s ease, box-shadow .08s ease, filter .15s ease',
 };
 
 export const BUTTON = {

@@ -122,6 +122,23 @@ describe('injectGlobalStyles — passport motion', () => {
     expect(sheet()).toMatch(/\.modal-card-in\s*\{[^}]*animation:\s*rise-in/);
   });
 
+  // Tab and route changes swapped content in one frame. Each view that mounts
+  // fresh now fades in, on opacity alone: a transform would shift the
+  // tutorial's anchors mid-measure and make the view a containing block for
+  // anything fixed inside it.
+  it('fades a newly mounted view in on opacity alone', () => {
+    injectGlobalStyles();
+    expect(sheet()).toMatch(/\.view-in\s*\{[^}]*animation:\s*scrim-in/);
+    const frames = sheet().match(/@keyframes scrim-in\s*\{([^\n]*)\}/)?.[1] ?? '';
+    expect(frames).toContain('opacity');
+    expect(frames).not.toContain('transform');
+  });
+
+  it('switches view fades off under reduced motion', () => {
+    injectGlobalStyles();
+    expect(reducedBlock()).toMatch(/\.view-in[^{]*\{[^}]*animation:\s*none/);
+  });
+
   it('rises the card from below, fading, so the motion points at where it lands', () => {
     injectGlobalStyles();
     const frames = sheet().match(/@keyframes rise-in\s*\{([^@]*?)\n/)?.[1] ?? '';

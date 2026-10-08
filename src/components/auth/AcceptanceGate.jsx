@@ -65,6 +65,8 @@ export default function AcceptanceGate({
 
   return (
     <div
+      // The ui/Modal entrance: the scrim fades, the panel rises.
+      className="modal-scrim-in"
       style={{
         position: 'fixed',
         inset: 0,
@@ -79,6 +81,7 @@ export default function AcceptanceGate({
     >
       <div
         ref={panelRef}
+        className="modal-card-in"
         role="alertdialog"
         aria-modal="true"
         aria-labelledby={titleId}

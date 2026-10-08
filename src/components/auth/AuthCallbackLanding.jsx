@@ -170,6 +170,8 @@ export default function AuthCallbackLanding({
 
   return (
     <div
+      // The ui/Modal entrance: the scrim fades, the panel rises.
+      className="modal-scrim-in"
       style={{
         position: 'fixed',
         inset: 0,
@@ -184,6 +186,7 @@ export default function AuthCallbackLanding({
     >
       <div
         ref={panelRef}
+        className="modal-card-in"
         role={actionable ? 'alertdialog' : 'status'}
         tabIndex={actionable ? -1 : undefined}
         aria-modal={actionable ? 'true' : undefined}

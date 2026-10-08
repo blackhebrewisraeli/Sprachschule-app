@@ -138,6 +138,14 @@ import NotFoundPage from './components/NotFoundPage';
 import { useWindowWidth, isMobile, isTiny, isTablet, bp } from './lib/useWindowWidth';
 import { apiUrl } from './lib/apiUrl';
 
+// A view that mounts fresh on a tab or route change fades in (.view-in in
+// injectGlobalStyles). It wraps only what is NEW on the switch: the goal
+// strip, the practice lane and the trial wall persist across practice tabs and
+// must not remount, because the wall autofocuses its call to action on mount.
+function ViewIn({ children }) {
+  return <div className="view-in">{children}</div>;
+}
+
 export default function App() {
   const [tab, setTab] = useState(() =>
     typeof window !== 'undefined' && window.location.hash === SETTINGS_HASH ? 'stats' : 'home'
@@ -526,6 +534,20 @@ export default function App() {
     // or migrating a storage key.
     localStorage.setItem('deutsch-onboarded', '1');
   };
+  // A sign-in can land without passing through the sheet: a magic link opened
+  // in ANOTHER tab signs this tab in too (supabase-js broadcasts the session to
+  // every tab), and neither the sheet's onSuccess nor the callback landing's
+  // onSignedIn runs here, so the sheet sat open over the signed-in app.
+  //
+  // Only the status CHANGING to authenticated closes it, never being
+  // authenticated: the same sheet is the re-auth detour for a learner who is
+  // already signed in (a delete that needs a fresh sign-in), and a check on the
+  // state would shut that the moment it opened. Hence the partial dependency
+  // list — opening the sheet must not re-run this.
+  useEffect(() => {
+    if (rawAuth.status === 'authenticated' && authModal) handleAuthDone();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawAuth.status]);
   // Opens the shared AuthSheet in-place — no WelcomeGate round-trip.
   //
   // The guard's false side is deliberately untested, not overlooked: every
@@ -1414,10 +1436,37 @@ export default function App() {
     </>
   );
 
-  if (legalRoute === 'privacy') return <PrivacyPolicy onBack={closeLegal} />;
-  if (legalRoute === 'terms') return <TermsOfService onBack={closeLegal} />;
-  if (legalRoute === 'delete-account') return <DeleteAccountPage onBack={closeLegal} />;
-  if (notFound) return <NotFoundPage onHome={leaveNotFound} />;
+  // Keyed per route: each is a ViewIn at the same root, so moving from one
+  // legal page straight to another would otherwise reuse the element and skip
+  // the fade.
+  if (legalRoute === 'privacy') {
+    return (
+      <ViewIn key="privacy">
+        <PrivacyPolicy onBack={closeLegal} />
+      </ViewIn>
+    );
+  }
+  if (legalRoute === 'terms') {
+    return (
+      <ViewIn key="terms">
+        <TermsOfService onBack={closeLegal} />
+      </ViewIn>
+    );
+  }
+  if (legalRoute === 'delete-account') {
+    return (
+      <ViewIn key="delete-account">
+        <DeleteAccountPage onBack={closeLegal} />
+      </ViewIn>
+    );
+  }
+  if (notFound) {
+    return (
+      <ViewIn key="not-found">
+        <NotFoundPage onHome={leaveNotFound} />
+      </ViewIn>
+    );
+  }
 
   if (holdSplash) {
     // Same wordmark as index.html's pre-JS shell, so the hand-off is invisible.
@@ -1797,23 +1846,25 @@ export default function App() {
               />
             )}
             {tab === 'home' && (
-              <HomeTab
-                score={score(liveState.daily ?? {})}
-                learnedCount={stats.learnedCount ?? 0}
-                goalPct={game.goal.pct}
-                goalMet={game.goal.met}
-                streak={game.streak}
-                user={user}
-                profile={profile}
-                cefrLevel={level}
-                missions={missions}
-                quests={quests}
-                league={leagueStanding}
-                onGoToTab={goToTab}
-                showPlacementOffer={placementOfferVisible && !welcomeOpen}
-                onRetakePlacement={acceptPlacementOffer}
-                onDismissPlacementOffer={dismissPlacementOffer}
-              />
+              <ViewIn>
+                <HomeTab
+                  score={score(liveState.daily ?? {})}
+                  learnedCount={stats.learnedCount ?? 0}
+                  goalPct={game.goal.pct}
+                  goalMet={game.goal.met}
+                  streak={game.streak}
+                  user={user}
+                  profile={profile}
+                  cefrLevel={level}
+                  missions={missions}
+                  quests={quests}
+                  league={leagueStanding}
+                  onGoToTab={goToTab}
+                  showPlacementOffer={placementOfferVisible && !welcomeOpen}
+                  onRetakePlacement={acceptPlacementOffer}
+                  onDismissPlacementOffer={dismissPlacementOffer}
+                />
+              </ViewIn>
             )}
             {tab === 'home' && <AdSlot placement="home" tier={tier} />}
             {/* The four practice tabs share one positioned wrapper so the trial
@@ -1829,60 +1880,68 @@ export default function App() {
                 own content moves into the lane's collapsible. */}
                 <PracticeLane level={level} tab={tab}>
                   {tab === 'chat' && (
-                    <ChatTab
-                      level={level}
-                      mobile={mobile}
-                      wide={width >= bp.wide}
-                      learnedWords={learnedWords}
-                      learnedByDeck={learnedByDeck}
-                      enabledInterests={enabledInterests}
-                      preferredModel={preferredModel}
-                      onPreferredModelChange={handlePreferredModelChange}
-                      user={user}
-                      onSignIn={requestSignIn}
-                    />
+                    <ViewIn>
+                      <ChatTab
+                        level={level}
+                        mobile={mobile}
+                        wide={width >= bp.wide}
+                        learnedWords={learnedWords}
+                        learnedByDeck={learnedByDeck}
+                        enabledInterests={enabledInterests}
+                        preferredModel={preferredModel}
+                        onPreferredModelChange={handlePreferredModelChange}
+                        user={user}
+                        onSignIn={requestSignIn}
+                      />
+                    </ViewIn>
                   )}
                   {tab === 'alphabet' && (
-                    <AlphabetTab
-                      level={level}
-                      mobile={mobile}
-                      reviewTarget={reviewTarget?.tab === 'alphabet' ? reviewTarget : null}
-                      onReviewConsumed={clearReviewTarget}
-                    />
+                    <ViewIn>
+                      <AlphabetTab
+                        level={level}
+                        mobile={mobile}
+                        reviewTarget={reviewTarget?.tab === 'alphabet' ? reviewTarget : null}
+                        onReviewConsumed={clearReviewTarget}
+                      />
+                    </ViewIn>
                   )}
                   {tab === 'vocab' && (
-                    <VocabTab
-                      learnedWords={learnedWords}
-                      learnedByDeck={learnedByDeck}
-                      markLearned={markLearned}
-                      level={level}
-                      mobile={mobile}
-                      reviewTarget={reviewTarget?.tab === 'vocab' ? reviewTarget : null}
-                      onReviewConsumed={clearReviewTarget}
-                      customDecks={liveDecks(decks)}
-                      onDeckGenerated={handleDeckGenerated}
-                      onDeckDeleted={handleDeckDeleted}
-                      enabledInterests={enabledInterests}
-                    />
+                    <ViewIn>
+                      <VocabTab
+                        learnedWords={learnedWords}
+                        learnedByDeck={learnedByDeck}
+                        markLearned={markLearned}
+                        level={level}
+                        mobile={mobile}
+                        reviewTarget={reviewTarget?.tab === 'vocab' ? reviewTarget : null}
+                        onReviewConsumed={clearReviewTarget}
+                        customDecks={liveDecks(decks)}
+                        onDeckGenerated={handleDeckGenerated}
+                        onDeckDeleted={handleDeckDeleted}
+                        enabledInterests={enabledInterests}
+                      />
+                    </ViewIn>
                   )}
                   {tab === 'translate' && (
-                    <TranslateTab
-                      // Keyed by level so a switch REMOUNTS rather than mutating a
-                      // live session. The exercise banks are differently shaped per
-                      // level (A1 rows carry `words`, A2 `template`), so any scheme
-                      // that keeps the old state for even one commit hands the wrong
-                      // row to the wrong exercise component and throws. Remounting
-                      // is also what already happens on every tab switch — this tab
-                      // is conditionally rendered — so the level switch now matches
-                      // the lifecycle the component was always written against.
-                      // Removing this key resurrects the A1 -> A2 crash; the
-                      // "restarts the exercise set" test in App.test.jsx is the guard.
-                      key={level}
-                      level={level}
-                      mobile={mobile}
-                      reviewTarget={reviewTarget?.tab === 'translate' ? reviewTarget : null}
-                      onReviewConsumed={clearReviewTarget}
-                    />
+                    <ViewIn>
+                      <TranslateTab
+                        // Keyed by level so a switch REMOUNTS rather than mutating a
+                        // live session. The exercise banks are differently shaped per
+                        // level (A1 rows carry `words`, A2 `template`), so any scheme
+                        // that keeps the old state for even one commit hands the wrong
+                        // row to the wrong exercise component and throws. Remounting
+                        // is also what already happens on every tab switch — this tab
+                        // is conditionally rendered — so the level switch now matches
+                        // the lifecycle the component was always written against.
+                        // Removing this key resurrects the A1 -> A2 crash; the
+                        // "restarts the exercise set" test in App.test.jsx is the guard.
+                        key={level}
+                        level={level}
+                        mobile={mobile}
+                        reviewTarget={reviewTarget?.tab === 'translate' ? reviewTarget : null}
+                        onReviewConsumed={clearReviewTarget}
+                      />
+                    </ViewIn>
                   )}
                 </PracticeLane>
                 {trialWallUp && (
@@ -1919,7 +1978,11 @@ export default function App() {
               />
             )}
             {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
-            {tab === 'admin' && isAdmin && <AdminTab me={adminSession.me} />}
+            {tab === 'admin' && isAdmin && (
+              <ViewIn>
+                <AdminTab me={adminSession.me} />
+              </ViewIn>
+            )}
           </PageFrame>
 
           {/* ── Footer ────────────────────────────────────────────────

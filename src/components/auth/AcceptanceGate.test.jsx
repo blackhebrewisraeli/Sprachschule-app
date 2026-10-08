@@ -20,6 +20,13 @@ describe('AcceptanceGate', () => {
     expect(screen.getByRole('alertdialog', { name: 'One more step' })).toBeInTheDocument();
   });
 
+  it('enters like the other modals: the scrim fades and the panel rises', () => {
+    render(<AcceptanceGate {...props()} />);
+    const panel = screen.getByRole('alertdialog', { name: 'One more step' });
+    expect(panel).toHaveClass('modal-card-in');
+    expect(panel.parentElement).toHaveClass('modal-scrim-in');
+  });
+
   it('tells an older acceptance the terms were updated', () => {
     render(<AcceptanceGate {...props({ hasPrior: true })} />);
     expect(

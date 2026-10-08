@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { COLORS, FONTS, FONT_SIZE, SPACE, RADIUS } from '../../lib/theme';
 import Button from '../ui/Button';
 import { Body, Meta } from '../ui/Text';
+import { Stack } from '../ui/Layout';
 import { isAuthConfigured } from '../../lib/auth.js';
 
 // Mirrors CONFIRM_PHRASE in api/v1/account/delete.js. The server is the
@@ -43,16 +44,18 @@ export default function AccountSection({
   // to, so don't advertise it. A signed-in user still gets the full section.
   if (!user && !isAuthConfigured()) return null;
 
+  // Centred: it sits under the Profile subsection's centred guest note, and a
+  // left-aligned prompt there read as a second, misaligned block.
   if (!user) {
     return (
-      <div style={{ fontFamily: FONTS.body }}>
+      <Stack gap={3} align="center" style={{ fontFamily: FONTS.body, textAlign: 'center' }}>
         {/* A sentence, so it is set as one. This shipped as 10px mono at the
             muted ink — the label recipe, worn by prose. */}
-        <Body size="sm" tone="soft" style={{ marginBottom: SPACE[3] }}>
+        <Body size="sm" tone="soft">
           Sign in to sync your progress across devices.
         </Body>
         <Button onClick={onSignIn}>Sign in to sync →</Button>
-      </div>
+      </Stack>
     );
   }
 

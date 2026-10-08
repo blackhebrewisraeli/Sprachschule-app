@@ -134,6 +134,14 @@ describe('AuthCallbackLanding', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it('enters like the other modals: the scrim fades and the panel rises', () => {
+    authCallbackKind.mockReturnValue('pending');
+    render(<AuthCallbackLanding status="loading" onSignedIn={() => {}} onRequestNew={() => {}} />);
+    const panel = screen.getByRole('status', { name: /signing you in/i });
+    expect(panel).toHaveClass('modal-card-in');
+    expect(panel.parentElement).toHaveClass('modal-scrim-in');
+  });
+
   it('shows Signing you in… for a pending callback hash', () => {
     authCallbackKind.mockReturnValue('pending');
     render(<AuthCallbackLanding status="loading" onSignedIn={() => {}} onRequestNew={() => {}} />);

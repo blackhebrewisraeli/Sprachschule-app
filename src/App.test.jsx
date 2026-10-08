@@ -951,6 +951,25 @@ describe('guest trial wall', () => {
     }
   });
 
+  // Every switch fades the new tab in, but only the part that is new. The wall
+  // is shared by the four practice tabs and autofocuses its call to action
+  // when it mounts, so a fade that remounted it would pull focus off the nav
+  // on every switch.
+  it('fades each practice tab in without remounting the wall they share', async () => {
+    const user = userEvent.setup();
+    await renderApp();
+    const shared = wall();
+    const views = [];
+    for (const name of ['Alphabet', 'Vocab', 'Translate', 'Chat']) {
+      await goToTab(user, name);
+      views.push(document.querySelector('main .view-in'));
+      expect(wall()).toBe(shared);
+    }
+    expect(views.every(Boolean)).toBe(true);
+    expect(new Set(views).size).toBe(4);
+    expect(shared.closest('.view-in')).toBeNull();
+  });
+
   it('never walls the Stats tab — it is the escape hatch', async () => {
     const user = userEvent.setup();
     await renderApp();
@@ -1291,6 +1310,25 @@ describe('entry gate', () => {
     expect(screen.getByRole('navigation')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
     expect(screen.getByText('Signed in')).toBeInTheDocument();
+  });
+
+  // A magic link opened in ANOTHER tab signs this one in too: supabase-js
+  // broadcasts the session to every tab, so useAuth flips here with no callback
+  // in this tab's URL and no code typed into this sheet. Neither the landing's
+  // onSignedIn nor the sheet's onSuccess runs, and the sheet that asked for the
+  // link sat open over the signed-in app.
+  it('closes the sign-in sheet when a sign-in lands from another tab', async () => {
+    localStorage.setItem('deutsch-level', 'a1');
+    const { rerender } = render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+    expect(screen.getByRole('dialog', { name: /^sign in$/i })).toBeInTheDocument();
+
+    authMock.status = 'authenticated';
+    authMock.mayHaveSession = true;
+    rerender(<App />);
+
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: /^sign in$/i })).toBeNull();
   });
 
   it('lets a signed-in user straight through to the app', () => {

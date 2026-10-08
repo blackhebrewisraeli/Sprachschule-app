@@ -46,6 +46,15 @@ describe('AccountSection', () => {
     expect(onSignIn).toHaveBeenCalled();
   });
 
+  // It sits under the Profile subsection's centred guest note, and a
+  // left-aligned prompt there read as a second, misaligned block.
+  it('centres the guest sign-in prompt', () => {
+    renderAccount({ user: null });
+    const prompt = screen.getByRole('button', { name: /sign in to sync/i }).parentElement;
+    expect(prompt).toHaveTextContent('Sign in to sync your progress across devices.');
+    expect(prompt).toHaveStyle({ alignItems: 'center', textAlign: 'center' });
+  });
+
   it('offers a sign-out for signed-in users', async () => {
     const onSignOut = vi.fn();
     renderAccount({ onSignOut });

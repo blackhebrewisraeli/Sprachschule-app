@@ -94,6 +94,14 @@ describe('AuthSheet', () => {
     expect(screen.getByTestId('magic-link-form')).toHaveTextContent('Sign in');
   });
 
+  // ui/Modal enters this way; the sheet appeared in one frame. The scrim fades
+  // and the card rises, on the global sheet's two classes.
+  it('enters like the other modals: the scrim fades and the card rises', () => {
+    render(<AuthSheet open intent="signin" onClose={() => {}} onSuccess={() => {}} />);
+    expect(screen.getByRole('dialog', { name: /sign in/i })).toHaveClass('modal-card-in');
+    expect(screen.getByRole('button', { name: 'Dismiss sign-in' })).toHaveClass('modal-scrim-in');
+  });
+
   it('shows create-account heading for create intent', () => {
     render(<AuthSheet open intent="create" onClose={() => {}} onSuccess={() => {}} />);
     expect(screen.getByRole('dialog', { name: /create your account/i })).toBeInTheDocument();
