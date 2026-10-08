@@ -6,6 +6,7 @@ import { LEGAL_ROUTES } from '../../src/lib/legalRoute.js';
 const index = readFileSync('index.html', 'utf8');
 const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'));
 const deletePage = readFileSync('src/components/legal/DeleteAccountPage.jsx', 'utf8');
+const genericTitle = index.match(/<title>[^<]*<\/title>/)[0];
 
 describe('legal route shells', () => {
   it('cover exactly the routes the app serves', () => {
@@ -30,7 +31,7 @@ describe('legal route shells', () => {
     expect(html).toContain(`<link rel="canonical" href="${url}"`);
     expect(html).toContain(`property="og:url" content="${url}"`);
     expect(html).toContain(`property="og:title" content="${shell.title}"`);
-    expect(html).not.toContain('<title>sprachschule-app</title>');
+    expect(html).not.toContain(genericTitle);
     // Still the same app: bundle, root and the rest of the head untouched.
     expect(html).toContain('<div id="root">');
     expect(html).toContain('social-preview.png');

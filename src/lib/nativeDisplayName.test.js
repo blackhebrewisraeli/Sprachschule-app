@@ -9,8 +9,9 @@ const read = (path) => readFileSync(path, 'utf8');
 
 // The store listings are named "Deutsch Sprachschule" (owner decision,
 // 2026-09-30), and Google checks the deletion page against that name. The
-// installed app carries the same label. The web title, PWA manifest and npm
-// package keep `sprachschule-app` on purpose; see the last two cases.
+// installed app, the browser tab and the installed PWA carry the same name.
+// Only the npm package keeps `sprachschule-app`, on purpose: it is an
+// identifier nobody sees.
 describe('declared app name', () => {
   it('capacitor.config.ts', () => {
     expect(read('capacitor.config.ts')).toMatch(/appName:\s*'Deutsch Sprachschule'/);
@@ -28,10 +29,12 @@ describe('declared app name', () => {
     expect(xml).toMatch(/<string name="title_activity_main">Deutsch Sprachschule<\/string>/);
   });
 
-  it('web title and PWA manifest', () => {
-    expect(read('index.html')).toMatch(/<title>sprachschule-app<\/title>/);
-    expect(read('vite.config.js')).toMatch(/\bname:\s*'sprachschule-app'/);
-    expect(read('vite.config.js')).toMatch(/short_name:\s*'sprachschule-app'/);
+  it('web title, home-screen title and PWA manifest', () => {
+    const html = read('index.html');
+    expect(html).toMatch(/<title>Deutsch Sprachschule — Learn German with an AI tutor<\/title>/);
+    expect(html).toMatch(/name="apple-mobile-web-app-title" content="Deutsch Sprachschule"/);
+    expect(read('vite.config.js')).toMatch(/\bname:\s*'Deutsch Sprachschule'/);
+    expect(read('vite.config.js')).toMatch(/short_name:\s*'Deutsch Sprachschule'/);
   });
 
   it('npm package name', () => {
