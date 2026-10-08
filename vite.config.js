@@ -115,9 +115,10 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: 'sprachschule-app',
-        short_name: 'sprachschule-app',
-        description: 'Learn German with AI-powered guided exercises',
+        name: 'Deutsch Sprachschule',
+        short_name: 'Deutsch Sprachschule',
+        description:
+          'Learn German step by step with vocabulary practice, structured lessons, and an AI tutor.',
         // Tokens, not literals: theme_color is the charcoal masthead (light
         // `fg`), background_color is the ivory splash (light `ground`).
         theme_color: MODE_COLORS.light.fg,
