@@ -42,9 +42,11 @@ ads, or enabled push/history features. Status terms are defined in
    conversation ID and confirm the server ignores/rejects it
    (`api/v1/account/profile.test.js:47-113`, `:285-325`;
    `api/_lib/accountHandler.test.js:315-365`).
-3. Exercise an unlisted verified email across account, progress, league, AI,
-   export, and deletion, then verify the owner can remove any Auth/profile row
-   created before the gate (`docs/PRE_BETA_OWNER_CHECKLIST.md:112-137`).
+3. Use an unlisted identity only to confirm signup is denied and no Auth,
+   profile, learner, progress, AI-quota, or league records are created. Use an
+   allowlisted disposable account for export and deletion testing
+   (`docs/security/Security Checklist.md` rows 6 and 11;
+   `docs/PRE_BETA_OWNER_CHECKLIST.md:112-137`).
 4. Exhaust burst and daily AI limits, simulate Supabase quota-store failure, and
    compare `shadow` versus `enforce` outcomes
    (`api/_lib/ratelimit.test.js`; `api/_lib/aiQuota.test.js`;
