@@ -9,7 +9,7 @@ Android builds — that blends focused practice, deterministic gamification,
 secure cross-device sync, and AI where it genuinely helps.**
 
 [![Live demo](https://img.shields.io/badge/Live_demo-Open_app-D62828?style=for-the-badge)](https://www.sprachschule-app.com)
-[![CI](https://img.shields.io/github/actions/workflow/status/blackhebrewisraeli/deutsch-app/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/blackhebrewisraeli/deutsch-app/actions/workflows/ci.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/blackhebrewisraeli/Sprachschule-app/ci.yml?branch=main&style=for-the-badge&label=CI)](https://github.com/blackhebrewisraeli/Sprachschule-app/actions/workflows/ci.yml)
 [![React 18](https://img.shields.io/badge/React-18-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Vite 8](https://img.shields.io/badge/Vite-8-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![Capacitor 8](https://img.shields.io/badge/Capacitor_8-iOS_%2B_Android-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)](https://capacitorjs.com/)
@@ -20,7 +20,7 @@ secure cross-device sync, and AI where it genuinely helps.**
 [Try the app](https://www.sprachschule-app.com) ·
 [Run it locally](#-quick-start) ·
 [See the architecture](#-system-at-a-glance) ·
-[Read the wiki](https://github.com/blackhebrewisraeli/deutsch-app/wiki)
+[Read the wiki](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki)
 
 ![Deutsch· — the Home dashboard](docs/images/home-dashboard.png)
 
@@ -81,7 +81,7 @@ express absence, so a stale device would recreate a deleted deck. Deutsch·
 keeps a timestamped tombstone; the same per-deck LWW comparison then decides
 whether an edit or deletion is newer.
 
-→ [Offline-First Sync Model](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Offline-First-Sync-Model) in the wiki.
+→ [Offline-First Sync Model](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Offline-First-Sync-Model) in the wiki.
 
 </details>
 
@@ -154,8 +154,8 @@ flowchart LR
 **Prerequisites:** Node.js 22 (see `.nvmrc`) and npm.
 
 ```bash
-git clone https://github.com/blackhebrewisraeli/deutsch-app.git
-cd deutsch-app
+git clone https://github.com/blackhebrewisraeli/Sprachschule-app.git
+cd Sprachschule-app
 npm install --legacy-peer-deps
 npm run dev
 ```
@@ -179,7 +179,7 @@ Accounts, sync, leagues, avatars, and the AI endpoints each need a little more
 setup — local Supabase via Docker, a few `VITE_*` flags, and an
 `ANTHROPIC_API_KEY`. The full matrix, every npm script, and the usual
 "why is sync doing nothing locally?" answer live in
-**[Local Development](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Local-Development)**.
+**[Local Development](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Local-Development)**.
 
 ### 📱 Native apps
 
@@ -188,24 +188,28 @@ bundle. Every push to `main` builds an iOS simulator app and an Android debug
 APK in CI. Native release builds pin the production API and Supabase project,
 enable sync, leagues, Google, GitHub, and Apple sign-in, and deliberately keep
 push, ads, and saved tutor history dark until their release runbooks are
-complete. For signed builds, auth deep links, and store copy, see
+complete. The source is at version 1.0.1, build 7; what has actually been
+uploaded to TestFlight or Google Play is tracked separately, in the release
+status at the top of
+[`docs/STORE_SUBMISSION_CHECKLIST.md`](./docs/STORE_SUBMISSION_CHECKLIST.md).
+For signed builds, auth deep links, and store copy, see
 [`docs/NATIVE_BUILD.md`](./docs/NATIVE_BUILD.md),
 [`docs/MOBILE_AUTH_SETUP.md`](./docs/MOBILE_AUTH_SETUP.md), and
 [`docs/store-metadata/`](./docs/store-metadata/).
 
 ## 📚 Where to learn more
 
-Deep documentation lives in the **[project wiki](https://github.com/blackhebrewisraeli/deutsch-app/wiki)**.
+Deep documentation lives in the **[project wiki](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki)**.
 
-| Page                                                                                                                  | What's there                                                    |
-| --------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [Architecture Overview](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Architecture-Overview)                 | The two-lane design, tech stack, and repository map             |
-| [Offline-First Sync Model](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Offline-First-Sync-Model)           | Merge semantics, tombstones, and independent LWW clocks         |
-| [Lesson Engine](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Lesson-Engine)                                 | Data-driven lessons, the exercise registry, and progress events |
-| [Security & Role Architecture](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Security-and-Role-Architecture) | Key boundaries, RLS, the AI boundary, and the avatar pipeline   |
-| [Operations Runbooks](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Operations-Runbooks)                     | OAuth, email templates, migrations, and the production drill    |
-| [Local Development](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Local-Development)                         | Full setup, every npm script, and troubleshooting               |
-| [Contributing & Quality](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Contributing-and-Quality)             | Testing philosophy, conventions, and the PR flow                |
+| Page                                                                                                                       | What's there                                                    |
+| -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [Architecture Overview](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Architecture-Overview)                 | The two-lane design, tech stack, and repository map             |
+| [Offline-First Sync Model](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Offline-First-Sync-Model)           | Merge semantics, tombstones, and independent LWW clocks         |
+| [Lesson Engine](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Lesson-Engine)                                 | Data-driven lessons, the exercise registry, and progress events |
+| [Security & Role Architecture](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Security-and-Role-Architecture) | Key boundaries, RLS, the AI boundary, and the avatar pipeline   |
+| [Operations Runbooks](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Operations-Runbooks)                     | OAuth, email templates, migrations, and the production drill    |
+| [Local Development](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Local-Development)                         | Full setup, every npm script, and troubleshooting               |
+| [Contributing & Quality](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Contributing-and-Quality)             | Testing philosophy, conventions, and the PR flow                |
 
 Versioned material stays in the repository, where it is reviewed alongside the
 code it describes: API contracts in [`docs/api/`](./docs/api/), design specs
@@ -217,7 +221,7 @@ deliberately deferred work in [`docs/BACKLOG.md`](./docs/BACKLOG.md).
 Bug reports, accessibility findings, architecture questions, and focused pull
 requests are all welcome. Please read [`AGENTS.md`](./AGENTS.md) first — it is
 the single source of truth for this project's conventions and product
-boundaries — and [Contributing & Quality](https://github.com/blackhebrewisraeli/deutsch-app/wiki/Contributing-and-Quality)
+boundaries — and [Contributing & Quality](https://github.com/blackhebrewisraeli/Sprachschule-app/wiki/Contributing-and-Quality)
 for the testing philosophy behind them.
 
 ## 📄 License

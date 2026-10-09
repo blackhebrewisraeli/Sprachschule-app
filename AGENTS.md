@@ -1,7 +1,7 @@
 # AGENTS.md — shared rules for every AI agent in this repo
 
 This file is the **single source of truth** for any AI coding agent working on
-deutsch-app: Cursor, Claude Code, Antigravity, or anything else. It is tracked
+Sprachschule-app: Cursor, Claude Code, Antigravity, or anything else. It is tracked
 in git, so it follows the project to every machine and environment.
 
 ## Project
@@ -21,12 +21,19 @@ git-excluded and therefore absent from CI and fresh checkouts.
 
 **Linked environments:**
 
-- **GitHub:** https://github.com/blackhebrewisraeli/deutsch-app (origin, `main` is protected truth)
+- **GitHub:** https://github.com/blackhebrewisraeli/Sprachschule-app (origin,
+  `main` is protected truth). Renamed from `deutsch-app`; the old URL
+  redirects, and some identifiers keep the old name on purpose
+  (`docs/STORE_SUBMISSION_CHECKLIST.md`, last section).
 - **Production:** Vercel auto-deploys `main` via the GitHub integration →
   https://www.sprachschule-app.com (`deutsch-app-dusky.vercel.app` remains the
   provider fallback domain)
 - **CI:** `.github/workflows/ci.yml` runs on every push/PR
-- **Local checkout:** `~/Projects/deutsch-app` (the only working copy — do not create others)
+- **Local checkout:** `~/projects/github/Sprachschule-app` (the only working copy — do not create others)
+- **Release status:** the version and build number in the source are not
+  evidence of an upload. Record what was uploaded to TestFlight or Google Play
+  only in the release status of `docs/STORE_SUBMISSION_CHECKLIST.md`, with
+  the source of each claim.
 
 ## Division of labor
 
@@ -177,13 +184,15 @@ pull`, or `supabase db reset` against the linked project.
   a migration nobody applied and killed server-side progress for ~26 hours. It
   is deliberately **not** a required check — it reports on production, which no
   PR can fix.
-- **`Supabase Preview`** (posted by the Supabase GitHub app) is **not required
-  and is currently red on `main`.** It asks the inverse question — _does the
-  repo have every production version stamp_ — and 7 stamps legitimately differ
-  because those migrations were applied through the MCP, which stamps
-  application time rather than the filename's authoring time.
-  `scripts/check-migrations/compare.js` names this exact divergence in its
-  docstring. **Ignore it. Do not "fix" it by applying or repairing migrations.**
+- **`Supabase Preview`** (posted by the Supabase GitHub app) is
+  **informational and not required** for merge or release decisions. It asks
+  the inverse question — _does the repo have every production version stamp_ —
+  so its result can diverge from Migration Drift's: it reads legacy migration
+  history, where a migration applied through the MCP or the Management API is
+  stamped with its application time rather than the filename's authoring time
+  (`scripts/check-migrations/compare.js` docstring; the rename rule in
+  `docs/STORE_SUBMISSION_CHECKLIST.md`). **Never "fix" its result by applying
+  migrations, repairing migration history, or `db push`.** Read Migration Drift.
 
 ## Verification
 
