@@ -86,8 +86,12 @@ export function identiconDataUri(seed, options) {
  * Composed here rather than stored, because the storage origin differs between
  * the local stack and production — a URL frozen into a row would be wrong in
  * whichever environment it was not written in.
+ *
+ * A plain member read, deliberately not optional chaining: Vite replaces only
+ * the plain form, and any other spelling inlines the whole env object — every
+ * VITE_ variable — into the bundle (src/noWholeEnvInBundle.test.js).
  */
-export function avatarUrl(path, base = import.meta.env?.VITE_SUPABASE_URL) {
+export function avatarUrl(path, base = import.meta.env.VITE_SUPABASE_URL) {
   if (!path || !base) return null;
   return `${String(base).replace(/\/+$/, '')}/storage/v1/object/public/avatars/${path}`;
 }

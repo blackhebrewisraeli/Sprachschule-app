@@ -27,12 +27,7 @@ function clearAuthParamsFromUrl() {
  * arrives through the app's URL scheme at any time, so the same state is fed
  * by onNativeAuthCallback as well.
  */
-export default function AuthCallbackLanding({
-  status,
-  signupRejected = false,
-  onSignedIn,
-  onRequestNew,
-}) {
+export default function AuthCallbackLanding({ status, onSignedIn, onRequestNew }) {
   const [kind, setKind] = useState(() => (isAuthConfigured() ? authCallbackKind() : null));
   // Captured at mount: clearAuthParamsFromUrl() wipes the URL, so reading the
   // reason lazily later would always come back null.
@@ -51,11 +46,10 @@ export default function AuthCallbackLanding({
   // Every error phase sets copy.action below; pending and success never do.
   // Derived from `phase` rather than from `copy` because the effects below sit
   // before the early return, and hooks cannot be conditional.
-  const actionable = phase === 'error' || phase === 'rejected';
+  const actionable = phase === 'error';
 
   useEffect(() => {
     if (kind !== 'pending' || phase !== 'pending') return undefined;
-    if (signupRejected) return undefined;
     if (status === 'authenticated') {
       setPhase('success');
       clearAuthParamsFromUrl();
@@ -69,21 +63,15 @@ export default function AuthCallbackLanding({
       clearAuthParamsFromUrl();
     }, 15000);
     return () => clearTimeout(t);
-  }, [kind, phase, status, onSignedIn, signupRejected]);
+  }, [kind, phase, status, onSignedIn]);
 
-  // A failed, cancelled or allowlist-rejected callback ends the flow a ticked
-  // box was for, and none of them delivers a user for the session-side check
-  // to consume the intent. It must not outlive the flow and be credited to
-  // some later sign-in.
+  // A failed, cancelled or not-invited callback ends the flow a ticked box was
+  // for, and none of them delivers a user for the session-side check to
+  // consume the intent. It must not outlive the flow and be credited to some
+  // later sign-in.
   useEffect(() => {
-    if (phase === 'error' || phase === 'rejected') clearIntent();
+    if (phase === 'error') clearIntent();
   }, [phase]);
-
-  useEffect(() => {
-    if (!signupRejected) return;
-    setPhase('rejected');
-    clearAuthParamsFromUrl();
-  }, [signupRejected]);
 
   // A callback that reached the native app. Setting `kind` as well as `phase`
   // re-arms the pending effect above, so success and the 15s timeout behave
@@ -139,7 +127,10 @@ export default function AuthCallbackLanding({
     copy = { title: 'Signing you in…', body: null, action: null };
   } else if (phase === 'success') {
     copy = { title: 'Signed in', body: 'Welcome back.', action: null };
-  } else if (phase === 'rejected') {
+  } else if (reason === 'not_invited') {
+    // Supabase Auth's closed-beta hook refused to create the account, so there
+    // is no session and nothing was stored. Same copy for every cause the hook
+    // folds into its one refusal.
     copy = {
       title: "This email isn't invited",
       body: `${SIGNUP_NOT_ALLOWED_MESSAGE} You can keep using the app as a guest.`,
@@ -233,9 +224,9 @@ export default function AuthCallbackLanding({
               onClick={() => {
                 clearAuthParamsFromUrl();
                 setPhase(null);
-                // Closed-list reject: stay a guest. Opening the sheet again
-                // would just bounce the same mailbox.
-                if (phase !== 'rejected') onRequestNew?.();
+                // Not invited: stay a guest. Opening the sheet again would
+                // just bounce the same mailbox.
+                if (reason !== 'not_invited') onRequestNew?.();
               }}
             >
               {copy.action}

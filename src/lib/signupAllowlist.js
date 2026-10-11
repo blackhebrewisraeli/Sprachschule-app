@@ -1,16 +1,18 @@
 /**
- * Optional closed-signup allowlist.
+ * Closed-beta admission — what the app knows about it.
  *
- * Default (unset / empty): open signup — anyone with a valid session may use
- * the account lane. That is production today and must stay that way until the
- * owner sets env.
+ * WHO MAY CREATE AN ACCOUNT is decided by Supabase Auth, not here: the
+ * before-user-created hook refuses any email missing from
+ * `private.beta_signup_allowlist` before `auth.users` is written
+ * (supabase/migrations/20261011120000_beta_signup_allowlist_hook.sql). The
+ * client carries no copy of that list — a `VITE_` list was inlined into the
+ * public bundle, publishing every tester's address — so it only recognises
+ * the hook's refusal and explains it.
  *
- * When `SIGNUP_EMAIL_ALLOWLIST` (server) and/or `VITE_SIGNUP_EMAIL_ALLOWLIST`
- * (client, build-time) is a comma-separated list, only those verified emails
- * keep a session. Guests are untouched: they never present a JWT.
- *
- * Exact match after trim + lowercase; no plus-address aliasing. Same recipe
- * as the admin allowlist in `api/_lib/roles.js`.
+ * `SIGNUP_EMAIL_ALLOWLIST` (server env, never `VITE_`) remains a second gate
+ * in `requireAuth` for accounts that existed before the hook. Unset or empty
+ * means it is off. Exact match after trim + lowercase, verified emails only —
+ * the same recipe as the admin allowlist in `api/_lib/roles.js`.
  */
 import { normalizeEmail, verifiedEmailsFromUser } from './verifiedEmails.js';
 
@@ -18,6 +20,25 @@ export const SIGNUP_NOT_ALLOWED_CODE = 'signup_not_allowed';
 
 export const SIGNUP_NOT_ALLOWED_MESSAGE =
   "This email isn't invited to the beta. Ask the owner for access.";
+
+/**
+ * The hook's refusal, byte for byte. GoTrue forwards only a status and this
+ * message — a hook cannot set an error code — so the text is the contract.
+ * signupAllowlist.test.js asserts the migration still says exactly this.
+ */
+export const BETA_SIGNUP_DENIED_MESSAGE = 'Sign-up is invite-only during the beta.';
+
+/**
+ * Is this text (an SDK error message, or an OAuth callback's decoded
+ * `error_description`) the hook's refusal? Query strings encode spaces as `+`,
+ * which decodeURIComponent leaves alone, so both spellings are accepted.
+ *
+ * @param {unknown} text
+ */
+export function isBetaSignupDenial(text) {
+  if (typeof text !== 'string') return false;
+  return text.replace(/\+/g, ' ').toLowerCase().includes(BETA_SIGNUP_DENIED_MESSAGE.toLowerCase());
+}
 
 /**
  * @param {unknown} raw
@@ -28,17 +49,17 @@ export function parseSignupAllowlist(raw) {
   return [...new Set(raw.split(',').map(normalizeEmail).filter(Boolean))];
 }
 
-/** Empty / unset list = open signup (production default). */
+/** Empty / unset list = gate off. */
 export function signupAllowlistActive(list) {
   return Array.isArray(list) && list.length > 0;
 }
 
 /**
- * May this authenticated user keep a session against `list`?
+ * May this authenticated user use the API against `list`?
  *
- * Open list → yes, including unverified users (current behaviour).
- * Closed list → only a *verified* address on the list. Unverified mailboxes
- * matching the list are denied — same rule as admin classification.
+ * Open list → yes. Closed list → only a *verified* address on the list;
+ * an unverified mailbox that matches is denied, same rule as admin
+ * classification.
  *
  * @param {object | null | undefined} user
  * @param {string[]} list
@@ -48,26 +69,8 @@ export function userAllowedBySignupList(user, list) {
   return verifiedEmailsFromUser(user).some((email) => list.includes(email));
 }
 
-/**
- * Typed-email pre-check for the magic-link form. We do not yet have a
- * verified identity, so this is UX only — the session gate still uses
- * `userAllowedBySignupList`.
- *
- * @param {unknown} email
- * @param {string[]} list
- */
-export function typedEmailAllowedForSignup(email, list) {
-  if (!signupAllowlistActive(list)) return true;
-  const normalized = normalizeEmail(email);
-  return Boolean(normalized) && list.includes(normalized);
-}
-
 export function readServerSignupAllowlist(env) {
   return parseSignupAllowlist(env?.SIGNUP_EMAIL_ALLOWLIST);
-}
-
-export function readClientSignupAllowlist(env = import.meta.env) {
-  return parseSignupAllowlist(env?.VITE_SIGNUP_EMAIL_ALLOWLIST);
 }
 
 /**

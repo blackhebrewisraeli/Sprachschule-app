@@ -66,13 +66,16 @@ describe('verifiedEmailsFromUser', () => {
     expect(verifiedEmailsFromUser(user)).toEqual([ADMIN]);
   });
 
-  it('treats an email-provider identity as verified (magic-link / OTP)', () => {
+  // A password signup creates an email identity before the mailbox is proven;
+  // the provider name is not evidence. A completed magic link sets
+  // email_confirmed_at, which is (src/lib/verifiedEmails.test.js).
+  it('does not treat an email-provider identity alone as verified', () => {
     const user = {
       email: ADMIN,
       email_confirmed_at: null,
       identities: [{ provider: 'email', identity_data: { email: ADMIN } }],
     };
-    expect(verifiedEmailsFromUser(user)).toEqual([ADMIN]);
+    expect(verifiedEmailsFromUser(user)).toEqual([]);
   });
 
   it('ignores an unverified Google identity for the allowlist mailbox', () => {
@@ -119,12 +122,28 @@ describe('classifyAuthUser', () => {
     expect(flags.isSystemAccount).toBe(true);
   });
 
-  it('grants the same authority for a magic-link identity with that mailbox', () => {
+  it('grants the same authority once a magic link has confirmed that mailbox', () => {
     const flags = classifyAuthUser({
-      identities: [{ provider: 'email', email: ADMIN, identity_data: { email: ADMIN } }],
+      email: ADMIN,
+      email_confirmed_at: '2026-09-18T00:00:00Z',
+      identities: [
+        { provider: 'email', email: ADMIN, identity_data: { email: ADMIN, email_verified: true } },
+      ],
     });
     expect(flags.isAdmin).toBe(true);
     expect(flags.isSystemAccount).toBe(true);
+  });
+
+  it('does not grant admin to an unconfirmed email identity for that mailbox', () => {
+    const flags = classifyAuthUser({
+      email: ADMIN,
+      email_confirmed_at: null,
+      identities: [
+        { provider: 'email', email: ADMIN, identity_data: { email: ADMIN, email_verified: false } },
+      ],
+    });
+    expect(flags.isAdmin).toBe(false);
+    expect(flags.isSystemAccount).toBe(false);
   });
 
   it('does not grant admin to blackhebrewisraeli@gmail.com', () => {

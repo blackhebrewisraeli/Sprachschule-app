@@ -41,8 +41,9 @@ app reads is left unpinned. To change a pinned value, change it in
 
 Still read from local env files, because they are not store-build decisions:
 `VITE_SENTRY_RELEASE` / `VITE_SENTRY_ENVIRONMENT` (inert while the DSN is
-empty) and `VITE_SIGNUP_EMAIL_ALLOWLIST`, which production web sets and native
-builds currently do not (P1-8 in the store checklist).
+empty). Beta admission needs no build variable on any platform: Supabase Auth
+refuses uninvited sign-ups for web and native alike
+(`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`).
 
 Native sign-in also needs owner action #11 in `docs/BACKLOG.md` (the
 `com.sprachschule.deutsch://login-callback` redirect URL in Supabase). Without it

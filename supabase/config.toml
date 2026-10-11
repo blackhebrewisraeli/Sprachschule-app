@@ -281,10 +281,16 @@ max_frequency = "5s"
 # Force log out if the user has been inactive longer than the specified duration.
 # inactivity_timeout = "8h"
 
-# This hook runs before a new user is created and allows developers to reject the request based on the incoming user object.
-# [auth.hook.before_user_created]
-# enabled = true
-# uri = "pg-functions://postgres/auth/before-user-created-hook"
+# Closed beta: Auth refuses to create a user whose email is not in
+# private.beta_signup_allowlist (20261011120000_beta_signup_allowlist_hook.sql).
+# Enabled locally so the stack behaves like production; the admin API that the
+# RLS suite uses to create fixtures does not run this hook. To sign up locally
+# through the app, first add the address:
+#   insert into private.beta_signup_allowlist (email) values ('you@example.com');
+# Hosted projects enable it in the dashboard: docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md.
+[auth.hook.before_user_created]
+enabled = true
+uri = "pg-functions://postgres/public/hook_restrict_signup_to_beta_allowlist"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # [auth.hook.custom_access_token]

@@ -15,6 +15,7 @@ statement that a cloud dashboard is configured. The evidence snapshot is
 | **NOT RUN**  | A check exists, but this dossier did not execute it.                          |
 | **BLOCKED**  | The check needs owner-only dashboard, provider, production, or device access. |
 | **UNKNOWN**  | Neither repository evidence nor a completed check settles the fact.           |
+| **OWNER CONFIRMATION REQUIRED** | The repository side is done and tested; the hosted step (dashboard, production data or env) is the owner's to perform and record. |
 
 An earlier runbook or audit entry is evidence that somebody observed a state on
 its recorded date. It is not independent confirmation that the state still

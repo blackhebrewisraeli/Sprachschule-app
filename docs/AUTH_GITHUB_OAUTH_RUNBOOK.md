@@ -100,9 +100,10 @@ Do not paste either into chat, a ticket or a commit.
 3. Paste the **Client ID** and **Client secret** from steps 1–2.
 4. Save.
 
-Leave **Allow users without an email** off. The auto-link and the optional
-signup allowlist both key on the email address, and a GitHub account with no
-verified email would slip past both.
+Leave **Allow users without an email** off. The auto-link and the closed-beta
+allowlist both key on the email address. A GitHub account with no email is
+refused by the beta hook, so it would be a confusing dead end rather than a
+way in (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`).
 
 **No scopes to add, and no Redirect URL entries.** Supabase asks GitHub for
 `user:email` by itself, which is enough to read a _private_ primary address.
@@ -190,10 +191,14 @@ like "my progress is gone" to the learner. If it bites, the fix is for them to
 sign in with the method they started with; merging two real accounts after the
 fact is far more painful than preventing the split.
 
-### Allowlist check — only if `VITE_SIGNUP_EMAIL_ALLOWLIST` is set
+### Allowlist check — only while `SIGNUP_EMAIL_ALLOWLIST` is set
 
-The allowlist trusts an address only when the identity marks it verified
-(`src/lib/verifiedEmails.js`). Confirm the GitHub identity carries that:
+New GitHub sign-ups are admitted by the Supabase Auth beta hook, which matches
+the account's primary email against `private.beta_signup_allowlist`
+(`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`). The server gate for pre-existing
+accounts additionally trusts an address only when the identity marks it
+verified (`src/lib/verifiedEmails.js`). Confirm the GitHub identity carries
+that:
 
 ```sql
 select provider, identity_data->>'email' as email,
