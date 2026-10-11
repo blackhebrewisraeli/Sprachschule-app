@@ -24,8 +24,11 @@ const DENIED = {
 
 const admin = adminClient();
 
+// -q: since PostgreSQL 15, psql prints a result for EVERY statement in a
+// multi-statement -c string (BEGIN, ALTER TABLE, …), not just the last one.
+// Quiet mode drops those command tags, so the output is only query rows.
 function sql(q) {
-  return execFileSync('psql', [DB_URL, '-At', '-v', 'ON_ERROR_STOP=1', '-c', q], {
+  return execFileSync('psql', [DB_URL, '-q', '-At', '-v', 'ON_ERROR_STOP=1', '-c', q], {
     encoding: 'utf8',
   }).trim();
 }
