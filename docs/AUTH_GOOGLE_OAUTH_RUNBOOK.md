@@ -244,10 +244,11 @@ accounts after the fact is far more painful than preventing the split.
 
 ## Closed signup (beta allowlist)
 
-Do **not** disable the Google provider to lock beta. The optional env
-allowlist in `docs/PRE_BETA_OWNER_CHECKLIST.md` §5 is the switch:
-`SIGNUP_EMAIL_ALLOWLIST` + `VITE_SIGNUP_EMAIL_ALLOWLIST`, then redeploy.
-Unset, signup stays open (production default). Google stays on.
+Do **not** disable the Google provider to lock beta. The switch is the
+Supabase Auth before-user-created hook and its allowlist table
+(`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`; `docs/PRE_BETA_OWNER_CHECKLIST.md` §5).
+An unlisted Google account lands on "This email isn't invited", and no account
+is created. Google stays on. There is no `VITE_` list any more.
 
 ## Rollback
 

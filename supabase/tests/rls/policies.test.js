@@ -175,22 +175,24 @@ describe('RLS: profiles', () => {
     expect(data).toEqual([]);
   });
 
-  it("A cannot update B's profile (zero rows affected)", async () => {
-    const { data, error } = await A.client
+  // profiles is server-written since 20261011120100: the client has no write
+  // grant at all, so these fail at the privilege layer rather than matching
+  // zero rows. Field-by-field coverage and the API path: profiles-write.test.js.
+  it("A cannot update B's profile (no client write grant)", async () => {
+    const { error } = await A.client
       .from('profiles')
       .update({ first_name: 'pwned' })
       .eq('user_id', B.id)
       .select();
-    expect(error).toBeNull();
-    expect(data).toEqual([]);
+    expect(error?.code).toBe('42501');
   });
 
-  it('A can still update an allowed column on their own row', async () => {
+  it('A cannot update even their own row directly', async () => {
     const { error } = await A.client
       .from('profiles')
-      .update({ first_name: 'Allowed' })
+      .update({ first_name: 'Direct' })
       .eq('user_id', A.id);
-    expect(error).toBeNull();
+    expect(error?.code).toBe('42501');
   });
 });
 

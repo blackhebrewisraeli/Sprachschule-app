@@ -4,10 +4,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../_lib/supabase.js', () => ({ serviceClient: vi.fn() }));
 vi.mock('../../_lib/auth-middleware.js', () => ({ requireAuth: vi.fn() }));
 
+import { readFileSync } from 'node:fs';
 import {
   profileHandler as handler,
   buildPatch,
   EDITABLE_FIELDS,
+  MAX_LEN,
   ownsAvatarPath,
 } from '../../_lib/accountEndpoints.js';
 import { serviceClient } from '../../_lib/supabase.js';
@@ -283,9 +285,10 @@ describe('PATCH /api/v1/account/profile', () => {
 });
 
 // avatar_path names something OUTSIDE this row. Storage RLS stops a learner
-// WRITING an object into another user's folder, but this column is ordinary
-// text — nothing in the database stops them SAYING their avatar lives at
-// someone else's path and wearing that person's picture.
+// WRITING an object into another user's folder, but the column is ordinary
+// text, so this check is what stops them SAYING their avatar lives at someone
+// else's path and wearing that person's picture. Since 20261011120100 the
+// database enforces the same rule, and clients can no longer write the row.
 describe('ownsAvatarPath', () => {
   it('accepts a path inside your own folder', () => {
     expect(ownsAvatarPath('u1/abc.webp', 'u1')).toBe(true);
@@ -326,5 +329,32 @@ describe('PATCH rejects an avatar path that is not yours', () => {
     const res = createRes();
     await handler(req({ avatar_path: `${USER.userId}/pic.webp` }), res);
     expect(res.statusCode).toBe(200);
+  });
+});
+
+// The API's limits are also database constraints (20261011120100). If one side
+// moves without the other, the API and the table disagree about what a valid
+// profile is — and a writer that skips the API gets the looser rule.
+describe('profile rules match the database constraints', () => {
+  const sql = readFileSync(
+    'supabase/migrations/20261011120100_profiles_server_only_writes.sql',
+    'utf8'
+  );
+
+  it('enforces the same handle length as the API', () => {
+    expect(sql).toContain(`check (char_length(handle) between 1 and ${MAX_LEN.handle})`);
+  });
+
+  it('enforces the same own-folder, no-traversal avatar rule as ownsAvatarPath', () => {
+    expect(sql).toContain("starts_with(avatar_path, user_id::text || '/')");
+    expect(sql).toContain("strpos(avatar_path, '..') = 0");
+  });
+
+  it('takes INSERT and UPDATE on profiles away from client roles', () => {
+    expect(sql).toMatch(
+      /revoke insert, update on table public\.profiles from anon, authenticated;/
+    );
+    expect(sql).toContain('drop policy if exists "insert own profile" on public.profiles;');
+    expect(sql).toContain('drop policy if exists "update own profile" on public.profiles;');
   });
 });

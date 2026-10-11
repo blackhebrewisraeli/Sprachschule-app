@@ -58,3 +58,13 @@ it('rejects a duplicate handle as bad_request', async () => {
   await handler(req({ handle: 'Taken01' }), res);
   expect(res.statusCode).toBe(400);
 });
+
+it('turns the database handle-length check into a bad_request, not a 500', async () => {
+  requireAuth.mockResolvedValue(USER);
+  const eq = vi.fn().mockResolvedValue({ error: { code: '23514' } });
+  serviceClient.mockReturnValue({ from: vi.fn(() => ({ update: vi.fn(() => ({ eq })) })) });
+  const res = createRes();
+  await handler(req({ handle: 'x'.repeat(25) }), res);
+  expect(res.statusCode).toBe(400);
+  expect(res.body.error.message).toBe('A handle must be 1–24 characters.');
+});

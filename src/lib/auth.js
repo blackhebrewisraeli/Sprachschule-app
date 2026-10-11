@@ -6,9 +6,7 @@
 import { captureAppleRefreshToken } from './appleRevokeToken.js';
 import { useState, useEffect } from 'react';
 import {
-  readClientSignupAllowlist,
-  userAllowedBySignupList,
-  typedEmailAllowedForSignup,
+  isBetaSignupDenial,
   SIGNUP_NOT_ALLOWED_CODE,
   SIGNUP_NOT_ALLOWED_MESSAGE,
 } from './signupAllowlist.js';
@@ -151,10 +149,16 @@ export function authCallbackKind(loc = typeof window !== 'undefined' ? window.lo
  * Why did this auth callback fail? Companion to authCallbackKind — the URL
  * patterns live here, in one place, and are never re-derived in a component.
  *
+ * - `'not_invited'` — Supabase Auth's closed-beta hook refused to create the
+ *                     account (see signupAllowlist.js)
  * - `'cancelled'` — the user backed out of the provider's consent screen
  * - `'expired'`   — a magic link that timed out or was already used
  * - `'failed'`    — any other reported error
  * - `null`        — not an error callback at all
+ *
+ * The hook's refusal arrives as `error=access_denied` — the OAuth name for a
+ * 403 — so it is recognised by its message before the cancel check, or every
+ * uninvited sign-up would be told they cancelled.
  *
  * ORDER MATTERS. Supabase reports an expired magic link as
  * `error=access_denied&error_code=otp_expired&…` — BOTH signals in one URL —
@@ -178,6 +182,7 @@ export function authCallbackReason(loc = typeof window !== 'undefined' ? window.
     blob = raw.toLowerCase();
   }
 
+  if (isBetaSignupDenial(blob)) return 'not_invited';
   if (/otp_expired|expired/.test(blob)) return 'expired';
   if (/access_denied|user_denied|user_cancelled|consent_required/.test(blob)) return 'cancelled';
   return 'failed';
@@ -220,8 +225,12 @@ const NOT_CONFIGURED = { error: { message: 'Sign-in is not available right now.'
 /** Map Supabase/auth errors to short human copy — never surface raw SDK text. */
 export function humanAuthError(error) {
   if (!error) return '';
-  if (error.code === SIGNUP_NOT_ALLOWED_CODE) return SIGNUP_NOT_ALLOWED_MESSAGE;
   const raw = `${error.message || ''} ${error.code || ''} ${error.error_description || ''}`;
+  // The API's closed-list code, or Supabase Auth's closed-beta hook refusing a
+  // new address (a 403 that carries only its message).
+  if (error.code === SIGNUP_NOT_ALLOWED_CODE || isBetaSignupDenial(raw)) {
+    return SIGNUP_NOT_ALLOWED_MESSAGE;
+  }
   const msg = raw.toLowerCase();
   if (error.status === 429 || /rate.?limit|too many|over_email_send_rate_limit/.test(msg)) {
     return 'Too many attempts — try again in a minute.';
@@ -232,16 +241,10 @@ export function humanAuthError(error) {
   return 'Something went wrong — try again.';
 }
 
-const SIGNUP_BLOCKED = {
-  error: { code: SIGNUP_NOT_ALLOWED_CODE, message: SIGNUP_NOT_ALLOWED_MESSAGE },
-};
-
-function clientSignupList() {
-  return readClientSignupAllowlist();
-}
-
+// No allowlist pre-check: admission is Supabase Auth's call (signupAllowlist.js).
+// An uninvited address comes back from signInWithOtp as the hook's 403, which
+// humanAuthError turns into the closed-beta copy.
 export async function signInWithMagicLink(email) {
-  if (!typedEmailAllowedForSignup(email, clientSignupList())) return SIGNUP_BLOCKED;
   const c = await getClient();
   if (!c) return NOT_CONFIGURED;
   return c.auth.signInWithOtp({
@@ -321,7 +324,6 @@ async function startOAuth(provider) {
 }
 
 export async function verifyCode(email, token) {
-  if (!typedEmailAllowedForSignup(email, clientSignupList())) return SIGNUP_BLOCKED;
   const c = await getClient();
   if (!c) return NOT_CONFIGURED;
   return c.auth.verifyOtp({ email, token, type: 'email' });
@@ -441,33 +443,25 @@ export async function signOut() {
   return c.auth.signOut();
 }
 
-// React hook exposing { session, user, status, signupRejected }. status ∈
+// React hook exposing { session, user, status }. status ∈
 // 'loading' | 'authenticated' | 'anonymous'. When auth is not configured the
 // hook settles on 'anonymous' immediately and never subscribes.
 //
-// `signupRejected` is true when a session arrived whose verified email is
-// not on VITE_SIGNUP_EMAIL_ALLOWLIST. The hook signs that session out and
-// never reports `authenticated`, so the rest of the app stays guest. Empty
-// / unset flag → current behaviour, including restored stranger sessions.
+// It does not second-guess a session against an allowlist: Supabase Auth
+// refuses to create an uninvited account in the first place, and a bundled
+// list would publish the testers. An account that predates the hook is
+// refused by the server gate (SIGNUP_EMAIL_ALLOWLIST) and handled by the
+// owner (docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md step 7).
 export function useAuth() {
   const [session, setSession] = useState(null);
   const [status, setStatus] = useState('loading');
-  const [signupRejected, setSignupRejected] = useState(false);
 
   useEffect(() => {
     let active = true;
     let unsubscribe = null;
 
-    const applySession = (c, next) => {
+    const applySession = (next) => {
       captureAppleRefreshToken(next);
-      if (next && !userAllowedBySignupList(next.user, clientSignupList())) {
-        setSignupRejected(true);
-        setSession(null);
-        setStatus('anonymous');
-        void c.auth.signOut();
-        return;
-      }
-      if (next) setSignupRejected(false);
       setSession(next);
       setStatus(next ? 'authenticated' : 'anonymous');
     };
@@ -477,11 +471,11 @@ export function useAuth() {
       if (!active || !c || unsubscribe) return;
       void c.auth.getSession().then(({ data }) => {
         if (!active) return;
-        applySession(c, data.session);
+        applySession(data.session);
       });
       const { data: sub } = c.auth.onAuthStateChange((_event, next) => {
         if (!active) return;
-        applySession(c, next);
+        applySession(next);
       });
       unsubscribe = () => sub.subscription.unsubscribe();
     };
@@ -509,7 +503,7 @@ export function useAuth() {
     };
   }, []);
 
-  return { session, user: session?.user ?? null, status, signupRejected };
+  return { session, user: session?.user ?? null, status };
 }
 
 /**

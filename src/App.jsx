@@ -452,7 +452,6 @@ export default function App() {
   if (rawAuth.user) {
     authStatus = legalAccepted ? 'authenticated' : 'loading';
   }
-  const { signupRejected } = rawAuth;
   const acceptanceGateUp = Boolean(rawAuth.user) && legal.status === 'required';
   const adminSession = useAdminSession(user);
   const isAdmin = Boolean(user && adminSession.me?.isAdmin);
@@ -1391,7 +1390,6 @@ export default function App() {
     <>
       <AuthCallbackLanding
         status={rawAuth.status}
-        signupRejected={signupRejected}
         onSignedIn={handleAuthDone}
         onRequestNew={requestSignIn}
       />

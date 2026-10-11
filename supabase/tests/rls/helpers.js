@@ -25,6 +25,10 @@ const clientOptions = () => ({
   realtime: { transport: ws },
 });
 
+// For suites that drive server code in-process (api/_lib reads the service
+// client from the environment), so they target the same stack as the clients.
+export { URL as TEST_SUPABASE_URL, SERVICE_KEY as TEST_SERVICE_ROLE_KEY };
+
 export function adminClient() {
   return createClient(URL, SERVICE_KEY, clientOptions());
 }

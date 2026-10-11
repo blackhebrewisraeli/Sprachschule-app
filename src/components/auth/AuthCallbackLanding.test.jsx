@@ -47,17 +47,14 @@ describe('AuthCallbackLanding', () => {
     expect(clearIntent).toHaveBeenCalled();
   });
 
-  // An allowlist reject never delivers a user, so the session-side check never
-  // runs to consume the intent; left alone it would outlive the flow by up to
-  // 30 minutes and could be credited to a later sign-in.
-  it('an allowlist-rejected callback clears it too', () => {
+  // A closed-beta refusal never delivers a user, so the session-side check
+  // never runs to consume the intent; left alone it would outlive the flow by
+  // up to 30 minutes and could be credited to a later sign-in.
+  it('a not-invited callback clears it too', () => {
+    authCallbackKind.mockReturnValue('error');
+    authCallbackReason.mockReturnValue('not_invited');
     render(
-      <AuthCallbackLanding
-        status="anonymous"
-        signupRejected
-        onSignedIn={() => {}}
-        onRequestNew={() => {}}
-      />
+      <AuthCallbackLanding status="anonymous" onSignedIn={() => {}} onRequestNew={() => {}} />
     );
     expect(clearIntent).toHaveBeenCalled();
   });
@@ -84,16 +81,15 @@ describe('AuthCallbackLanding', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('explains a closed-list reject and stays a guest', async () => {
+  // Supabase Auth's before-user-created hook refused the sign-up: no account,
+  // no session. The landing explains it and the learner stays a guest.
+  it('explains a closed-beta refusal and stays a guest', async () => {
+    authCallbackKind.mockReturnValue('error');
+    authCallbackReason.mockReturnValue('not_invited');
     const onSignedIn = vi.fn();
     const onRequestNew = vi.fn();
     render(
-      <AuthCallbackLanding
-        status="anonymous"
-        signupRejected
-        onSignedIn={onSignedIn}
-        onRequestNew={onRequestNew}
-      />
+      <AuthCallbackLanding status="anonymous" onSignedIn={onSignedIn} onRequestNew={onRequestNew} />
     );
     expect(
       await screen.findByRole('heading', { name: /this email isn't invited/i })
@@ -104,23 +100,21 @@ describe('AuthCallbackLanding', () => {
     expect(onSignedIn).not.toHaveBeenCalled();
   });
 
-  it('does not celebrate a pending callback that the allowlist then rejects', async () => {
-    authCallbackKind.mockReturnValue('pending');
+  // Native OAuth: the refusal reaches the app through its URL scheme, after
+  // the landing has mounted.
+  it('explains a closed-beta refusal delivered by a native callback', async () => {
     const onSignedIn = vi.fn();
-    const { rerender } = render(
-      <AuthCallbackLanding status="loading" onSignedIn={onSignedIn} onRequestNew={() => {}} />
+    const onRequestNew = vi.fn();
+    render(
+      <AuthCallbackLanding status="anonymous" onSignedIn={onSignedIn} onRequestNew={onRequestNew} />
     );
-    rerender(
-      <AuthCallbackLanding
-        status="anonymous"
-        signupRejected
-        onSignedIn={onSignedIn}
-        onRequestNew={() => {}}
-      />
-    );
+    act(() => native.emit({ kind: 'error', reason: 'not_invited' }));
     expect(
       await screen.findByRole('heading', { name: /this email isn't invited/i })
     ).toBeInTheDocument();
+    expect(clearIntent).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue as guest' }));
+    expect(onRequestNew).not.toHaveBeenCalled();
     expect(onSignedIn).not.toHaveBeenCalled();
     expect(screen.queryByText('Signed in')).not.toBeInTheDocument();
   });

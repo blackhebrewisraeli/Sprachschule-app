@@ -89,56 +89,38 @@ Decide and, if shipping, do both:
 Do **not** disable the Google provider while doing this. The live flag
 `VITE_GOOGLE_AUTH_ENABLED` stays on.
 
-## 5. Registration policy (optional email allowlist)
+## 5. Registration policy (closed beta)
 
-> **Status 2026-10-05: enabled.** Both variables are set on Production and
-> Preview (Vercel names-only check; the client list was read from the live
-> bundle on 2026-10-04). The native apps do not carry
-> `VITE_SIGNUP_EMAIL_ALLOWLIST`, but they call this server, so an unlisted
-> account that signs in on a phone (an App Reviewer, any Apple Hide My Email
-> address) has every account, progress, league and AI call refused, Delete
-> account included. Choose open or invite-only before store review:
-> `docs/STORE_SUBMISSION_CHECKLIST.md` P1-8.
+> **Status 2026-10-11: OWNER CONFIRMATION REQUIRED.** The repository now
+> enforces the closed beta at the Supabase Auth boundary: a
+> before-user-created hook refuses any email missing from
+> `private.beta_signup_allowlist` **before** `auth.users` or `profiles` is
+> written (`supabase/migrations/20261011120000_beta_signup_allowlist_hook.sql`,
+> `supabase/tests/rls/beta-signup-hook.test.js`). Nothing is live until the
+> owner applies the migrations, enters the addresses and enables the hook in
+> the dashboard. Procedure and verification:
+> **`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`**.
 
-**After #294.** The gate is in the repo; enabling it is Vercel env, not
-another PR. Google signup was **open** before the list was set, which is how
-`fateevvl@gmail.com` got an account. The optional allowlist locks signup
-for beta **without a code change and without touching the Google provider**.
+What changed from the 2026-10-05 setup:
 
-**Unset:** `SIGNUP_EMAIL_ALLOWLIST` and `VITE_SIGNUP_EMAIL_ALLOWLIST` unset
-or empty means open signup: anyone who completes Google, Apple or
-magic-link can keep a session.
+- **`VITE_SIGNUP_EMAIL_ALLOWLIST` is gone.** The client no longer reads it, and
+  as a `VITE_` variable it was inlined into the public bundle, publishing every
+  tester's address. **Delete it from Vercel Production and Preview and
+  redeploy** (runbook step 5). `src/noWholeEnvInBundle.test.js` keeps any
+  client code from inlining the env object again.
+- **The tester list lives in the database**, entered by the owner in SQL. It is
+  never committed to the repository, an env file or a doc.
+- **`SIGNUP_EMAIL_ALLOWLIST` (server only) stays**, as the gate for accounts
+  that existed before the hook (`api/_lib/auth-middleware.js`). Keep it equal
+  to the table, or unset it once every pre-existing unlisted account is dealt
+  with (runbook step 7, and §6 below). Unset or empty means that gate is off.
+- An uninvited sign-up now sees "This email isn't invited to the beta" from
+  the magic-link form or the OAuth callback landing, and no account is created.
+  Guests (Continue without account) are unaffected.
 
-**To close signup for beta:**
-
-1. Vercel → project → **Settings → Environment Variables**.
-2. Add **`SIGNUP_EMAIL_ALLOWLIST`** (server, not `VITE_`) on Production
-   and Preview, comma-separated. Example:
-   `esterkinshimon712@gmail.com,friend@example.com`
-   - Exact match after trim + lowercase. No plus-address aliasing.
-   - Always include `esterkinshimon712@gmail.com` or you lock yourself out
-     of account/admin APIs.
-3. Add **`VITE_SIGNUP_EMAIL_ALLOWLIST`** with the **same list**. Vite
-   inlines `VITE_*` at build time; this is the client UX so a rejected
-   user sees "This email isn't invited" instead of a generic failure.
-   Server enforcement still holds if you only set the non-`VITE_` var
-   (privileged `/api/v1/*` calls 403 `signup_not_allowed`), but the
-   session can look signed-in until they hit an API.
-4. **Redeploy.** Env edits do not rebuild the client bundle on their own.
-5. Smoke-test: sign in as the admin mailbox (must work). Try a second
-   Google account that is not on the list — the app must sign that
-   session out and explain closed beta. Guests (Continue without account)
-   must still work. Google itself stays enabled.
-
-Do **not** flip `enable_signup` in the Supabase dashboard. Do **not**
-disable the Google provider. Do **not** delete users from an agent
-session. Existing Auth users (including `fateevvl@gmail.com`) stay in
-`auth.users`; they simply cannot keep a session while the list is on
-unless you add them. Remove both vars and redeploy to re-open signup.
-
-The gate lives in `requireAuth` (`api/_lib/auth-middleware.js`), which
-every account / league / progress / admin handler already calls. Guests
-never present a JWT.
+Do **not** flip `enable_signup` in the Supabase dashboard and do **not**
+disable a provider: the hook is the switch, and turning it off re-opens signup
+in one click. Do **not** delete users from an agent session.
 
 ## 6. Decision on `fateevvl@gmail.com`
 

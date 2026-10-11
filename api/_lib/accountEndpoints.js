@@ -58,9 +58,18 @@ export const EDITABLE_FIELDS = [
 
 const NAME_FIELDS = ['first_name', 'middle_name', 'last_name'];
 
-// Guards on the write path, not column constraints: the name parts are plain
-// text. 40 each keeps the old display_name's per-field limit.
-const MAX_LEN = { handle: 24, avatar_path: 200, first_name: 40, middle_name: 40, last_name: 40 };
+// Guards on the write path: the name parts are plain text, and 40 each keeps
+// the old display_name's per-field limit. The handle limit and the avatar
+// ownership rule below are ALSO database constraints (20261011120100), so a
+// writer that skips this file still cannot break them; profile.test.js keeps
+// the two definitions in step.
+export const MAX_LEN = {
+  handle: 24,
+  avatar_path: 200,
+  first_name: 40,
+  middle_name: 40,
+  last_name: 40,
+};
 
 /**
  * `avatar_path` is the one editable field that names something OUTSIDE this

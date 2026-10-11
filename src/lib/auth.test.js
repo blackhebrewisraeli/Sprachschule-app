@@ -88,23 +88,29 @@ describe('auth actions', () => {
     expect(mockAuth.signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it('refuses a magic-link send for an unlisted email when the client allowlist is closed', async () => {
-    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'esterkinshimon712@gmail.com');
+  // Admission is Supabase Auth's decision (the before-user-created hook). The
+  // client keeps no list to pre-check against — a stale VITE_ variable left in
+  // the build environment must change nothing.
+  it('sends the magic link for any address and ignores a leftover client list', async () => {
+    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'listed@example.test');
     vi.resetModules();
-    const { signInWithMagicLink } = await import('./auth.js');
-    const { error } = await signInWithMagicLink('fateevvl@gmail.com');
-    expect(error.code).toBe('signup_not_allowed');
-    expect(error.message).toMatch(/isn't invited to the beta/i);
-    expect(mockAuth.signInWithOtp).not.toHaveBeenCalled();
+    const { signInWithMagicLink, verifyCode } = await import('./auth.js');
+    expect((await signInWithMagicLink('unlisted@example.test')).error).toBeNull();
+    expect(mockAuth.signInWithOtp).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'unlisted@example.test' })
+    );
+    expect((await verifyCode('unlisted@example.test', '123456')).error).toBeNull();
+    expect(mockAuth.verifyOtp).toHaveBeenCalled();
   });
 
-  it('still sends a magic link for the admin mailbox when the client allowlist is closed', async () => {
-    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'esterkinshimon712@gmail.com');
-    vi.resetModules();
-    const { signInWithMagicLink } = await import('./auth.js');
-    const { error } = await signInWithMagicLink('esterkinshimon712@gmail.com');
-    expect(error).toBeNull();
-    expect(mockAuth.signInWithOtp).toHaveBeenCalled();
+  it("passes the Auth hook's refusal back untouched for the form to explain", async () => {
+    const { BETA_SIGNUP_DENIED_MESSAGE } = await import('./signupAllowlist.js');
+    const refusal = { message: BETA_SIGNUP_DENIED_MESSAGE, status: 403 };
+    mockAuth.signInWithOtp.mockResolvedValueOnce({ data: {}, error: refusal });
+    const { signInWithMagicLink, humanAuthError } = await import('./auth.js');
+    const { error } = await signInWithMagicLink('unlisted@example.test');
+    expect(error).toBe(refusal);
+    expect(humanAuthError(error)).toMatch(/isn't invited to the beta/i);
   });
 
   it('signOut reports success (not an error) when auth is not configured', async () => {
@@ -192,13 +198,18 @@ describe('useAuth', () => {
     await waitFor(() => expect(result.current.status).toBe('anonymous'));
   });
 
-  it('keeps a restored stranger signed in when the client allowlist is unset', async () => {
+  // Supabase Auth only creates invited accounts, so a restored session is
+  // trusted as-is: no bundled list, no client-side sign-out, even if a stale
+  // VITE_ list is still in the build environment.
+  it('restores a session without consulting any client-side list', async () => {
+    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'someone-else@example.test');
+    vi.resetModules();
     localStorage.setItem('sb-xcnn-auth-token', JSON.stringify({ access_token: 'x' }));
     const session = {
       access_token: 'tok',
       user: {
-        id: 'u-stranger',
-        email: 'fateevvl@gmail.com',
+        id: 'u-learner',
+        email: 'learner@example.test',
         email_confirmed_at: '2026-09-18T00:00:00Z',
       },
     };
@@ -206,51 +217,8 @@ describe('useAuth', () => {
     const { useAuth } = await import('./auth.js');
     const { result } = renderHook(() => useAuth());
     await waitFor(() => expect(result.current.status).toBe('authenticated'));
-    expect(result.current.user.email).toBe('fateevvl@gmail.com');
-    expect(result.current.signupRejected).toBe(false);
-    expect(mockAuth.signOut).not.toHaveBeenCalled();
-    localStorage.clear();
-  });
-
-  it('signs out a restored stranger when the client allowlist is closed', async () => {
-    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'esterkinshimon712@gmail.com');
-    vi.resetModules();
-    localStorage.setItem('sb-xcnn-auth-token', JSON.stringify({ access_token: 'x' }));
-    const session = {
-      access_token: 'tok',
-      user: {
-        id: 'u-stranger',
-        email: 'fateevvl@gmail.com',
-        email_confirmed_at: '2026-09-18T00:00:00Z',
-      },
-    };
-    mockAuth.getSession.mockResolvedValue({ data: { session } });
-    const { useAuth } = await import('./auth.js');
-    const { result } = renderHook(() => useAuth());
-    await waitFor(() => expect(result.current.status).toBe('anonymous'));
-    expect(result.current.signupRejected).toBe(true);
-    expect(result.current.user).toBeNull();
-    expect(mockAuth.signOut).toHaveBeenCalled();
-    localStorage.clear();
-  });
-
-  it('lets the admin mailbox through a closed client allowlist', async () => {
-    vi.stubEnv('VITE_SIGNUP_EMAIL_ALLOWLIST', 'esterkinshimon712@gmail.com');
-    vi.resetModules();
-    localStorage.setItem('sb-xcnn-auth-token', JSON.stringify({ access_token: 'x' }));
-    const session = {
-      access_token: 'tok',
-      user: {
-        id: 'u-admin',
-        email: 'esterkinshimon712@gmail.com',
-        email_confirmed_at: '2026-09-18T00:00:00Z',
-      },
-    };
-    mockAuth.getSession.mockResolvedValue({ data: { session } });
-    const { useAuth } = await import('./auth.js');
-    const { result } = renderHook(() => useAuth());
-    await waitFor(() => expect(result.current.status).toBe('authenticated'));
-    expect(result.current.signupRejected).toBe(false);
+    expect(result.current.user.email).toBe('learner@example.test');
+    expect(result.current).not.toHaveProperty('signupRejected');
     expect(mockAuth.signOut).not.toHaveBeenCalled();
     localStorage.clear();
   });
@@ -357,15 +325,27 @@ describe('humanAuthError', () => {
     expect(humanAuthError(null)).toBe('');
   });
 
-  it('maps a closed-signup reject without leaking the mailbox', async () => {
+  it("maps the API's closed-list code without leaking the mailbox", async () => {
     const { humanAuthError } = await import('./auth.js');
     const { SIGNUP_NOT_ALLOWED_CODE, SIGNUP_NOT_ALLOWED_MESSAGE } =
       await import('./signupAllowlist.js');
-    expect(humanAuthError({ code: SIGNUP_NOT_ALLOWED_CODE, message: 'raw sdk' })).toBe(
+    const error = { code: SIGNUP_NOT_ALLOWED_CODE, message: 'raw sdk stranger@example.test' };
+    expect(humanAuthError(error)).toBe(SIGNUP_NOT_ALLOWED_MESSAGE);
+    expect(humanAuthError(error)).not.toMatch(/@/);
+  });
+
+  // The before-user-created hook can set only a status and a message, so its
+  // refusal arrives with no code — it is recognised by the message.
+  it("maps Supabase Auth's closed-beta refusal to the not-invited copy", async () => {
+    const { humanAuthError } = await import('./auth.js');
+    const { BETA_SIGNUP_DENIED_MESSAGE, SIGNUP_NOT_ALLOWED_MESSAGE } =
+      await import('./signupAllowlist.js');
+    expect(humanAuthError({ message: BETA_SIGNUP_DENIED_MESSAGE, status: 403 })).toBe(
       SIGNUP_NOT_ALLOWED_MESSAGE
     );
-    expect(humanAuthError({ code: SIGNUP_NOT_ALLOWED_CODE, message: 'raw sdk' })).not.toMatch(
-      /fateevvl|gmail/i
+    // Any other 403 is not dressed up as an invitation problem.
+    expect(humanAuthError({ message: 'Signups not allowed for otp', status: 403 })).toBe(
+      'Something went wrong — try again.'
     );
   });
 });
@@ -680,6 +660,24 @@ describe('authCallbackReason', () => {
       'failed',
       'a GitHub account with no verified email',
       '/?error=server_error&error_description=Error+getting+user+email+from+external+provider',
+    ],
+    // Supabase Auth's closed-beta hook refusing an OAuth sign-up: GoTrue sends a
+    // 403 as access_denied, so without the message check this would read as a
+    // cancellation. Query and fragment both carry it; spaces arrive as `+`.
+    [
+      'not_invited',
+      'a closed-beta refusal in the query',
+      '/?error=access_denied&error_code=&error_description=Sign-up+is+invite-only+during+the+beta.',
+    ],
+    [
+      'not_invited',
+      'a closed-beta refusal in the fragment',
+      '/#error=access_denied&error_description=Sign-up+is+invite-only+during+the+beta.&sb=',
+    ],
+    [
+      'not_invited',
+      'a percent-encoded closed-beta refusal',
+      '/?error=access_denied&error_description=Sign-up%20is%20invite-only%20during%20the%20beta.',
     ],
     // Not an error callback at all.
     [null, 'a clean URL', '/'],

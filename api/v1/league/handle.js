@@ -24,6 +24,11 @@ async function handler(req, res) {
   const { error } = await db.from('profiles').update(patch).eq('user_id', auth.userId);
   if (error) {
     if (error.code === '23505') return sendError(res, 'bad_request', 'That handle is taken.');
+    // profiles_handle_length (20261011120100): the database holds the 1–24
+    // rule this route never checked itself.
+    if (error.code === '23514') {
+      return sendError(res, 'bad_request', 'A handle must be 1–24 characters.');
+    }
     return sendError(res, 'server_error', 'Failed to update profile.');
   }
 
