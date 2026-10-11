@@ -37,7 +37,7 @@ export const BETA_SIGNUP_DENIED_MESSAGE = 'Sign-up is invite-only during the bet
  */
 export function isBetaSignupDenial(text) {
   if (typeof text !== 'string') return false;
-  return text.replace(/\+/g, ' ').toLowerCase().includes(BETA_SIGNUP_DENIED_MESSAGE.toLowerCase());
+  return text.replaceAll('+', ' ').toLowerCase().includes(BETA_SIGNUP_DENIED_MESSAGE.toLowerCase());
 }
 
 /**
