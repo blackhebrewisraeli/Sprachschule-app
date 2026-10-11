@@ -35,12 +35,17 @@ function flag(expr) {
   return sql(`select case when (${expr}) then 't' else 'f' end`);
 }
 
+// An event as a SQL jsonb literal. Dollar-quoted so any JSON — including
+// deliberately malformed shapes — passes through verbatim. One helper for every
+// call site: hand-writing `$ev$` next to a template `${` is how one of them
+// lost its closing `$`.
+function jsonbArg(event) {
+  return event === null ? 'null' : `$ev$${JSON.stringify(event)}$ev$::jsonb`;
+}
+
 // Calls the hook as postgres (the function owner) with an arbitrary event.
-// Dollar-quoted so any JSON — including deliberately malformed shapes — passes
-// through verbatim.
 function hook(event) {
-  const arg = event === null ? 'null' : `$ev$${JSON.stringify(event)}$ev$::jsonb`;
-  return JSON.parse(sql(`select ${HOOK}(${arg})::text`));
+  return JSON.parse(sql(`select ${HOOK}(${jsonbArg(event)})::text`));
 }
 
 async function findUserByEmail(email) {
@@ -155,7 +160,7 @@ describe('beta allowlist: the hook decision', () => {
     // table vanishes, the lookup raises, and the listed address is refused.
     const out = sql(
       `begin; alter table ${TABLE} rename to beta_signup_allowlist_gone; ` +
-        `select ${HOOK}($ev${JSON.stringify({ user: { email: LISTED } })}$ev$::jsonb)::text`
+        `select ${HOOK}(${jsonbArg({ user: { email: LISTED } })})::text`
     );
     expect(JSON.parse(out)).toEqual(DENIED);
     // And the rename really was rolled back.
