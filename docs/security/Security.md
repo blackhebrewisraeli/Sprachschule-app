@@ -16,6 +16,7 @@ statement that a cloud dashboard is configured. The evidence snapshot is
 | **BLOCKED**  | The check needs owner-only dashboard, provider, production, or device access. |
 | **UNKNOWN**  | Neither repository evidence nor a completed check settles the fact.           |
 | **OWNER CONFIRMATION REQUIRED** | The repository side is done and tested; the hosted step (dashboard, production data or env) is the owner's to perform and record. |
+| **VERIFIED IN PRODUCTION** | A dated production check or owner-run production test, recorded with its environment, proves it. Used in the companion docs from 2026-10-14. |
 
 An earlier runbook or audit entry is evidence that somebody observed a state on
 its recorded date. It is not independent confirmation that the state still

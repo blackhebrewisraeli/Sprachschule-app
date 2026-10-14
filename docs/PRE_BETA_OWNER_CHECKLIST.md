@@ -91,22 +91,27 @@ Do **not** disable the Google provider while doing this. The live flag
 
 ## 5. Registration policy (closed beta)
 
-> **Status 2026-10-11: OWNER CONFIRMATION REQUIRED.** The repository now
-> enforces the closed beta at the Supabase Auth boundary: a
-> before-user-created hook refuses any email missing from
-> `private.beta_signup_allowlist` **before** `auth.users` or `profiles` is
-> written (`supabase/migrations/20261011120000_beta_signup_allowlist_hook.sql`,
-> `supabase/tests/rls/beta-signup-hook.test.js`). Nothing is live until the
-> owner applies the migrations, enters the addresses and enables the hook in
-> the dashboard. Procedure and verification:
-> **`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`**.
+> **Status 2026-10-14: VERIFIED IN PRODUCTION, live.** A before-user-created
+> hook refuses any email missing from `private.beta_signup_allowlist`
+> **before** `auth.users` or `profiles` is written
+> (`supabase/migrations/20261011120000_beta_signup_allowlist_hook.sql`,
+> `supabase/tests/rls/beta-signup-hook.test.js`). The migrations are applied,
+> the list holds three rows (admin, tester, support), the hook is on, and
+> `VITE_SIGNUP_EMAIL_ALLOWLIST` is gone from Vercel. All of it was re-checked
+> after the 2026-10-14 Postgres upgrade. **OWNER CONFIRMATION REQUIRED**: the
+> **Continue as guest** control on the denial landing, and the value of
+> `SIGNUP_EMAIL_ALLOWLIST`. Four unwanted accounts are banned until
+> 2026-11-13, not deleted, and the owner reviews deletion around 2026-10-21.
+> Evidence and pending follow-ups: **`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`**,
+> "Production state — 2026-10-14".
 
 What changed from the 2026-10-05 setup:
 
 - **`VITE_SIGNUP_EMAIL_ALLOWLIST` is gone.** The client no longer reads it, and
   as a `VITE_` variable it was inlined into the public bundle, publishing every
-  tester's address. **Delete it from Vercel Production and Preview and
-  redeploy** (runbook step 5). `src/noWholeEnvInBundle.test.js` keeps any
+  tester's address. It is now absent from Vercel, and the live bundle holds no
+  private mailbox (runbook step 5, checked 2026-10-14).
+  `src/noWholeEnvInBundle.test.js` keeps any
   client code from inlining the env object again.
 - **The tester list lives in the database**, entered by the owner in SQL. It is
   never committed to the repository, an env file or a doc.
@@ -137,7 +142,8 @@ admin UI as the owner. Note the choice next to this item.
 > silences the advisor; it does not change a user-facing risk. P2.
 
 Supabase advisor WARN `auth_leaked_password_protection` is currently
-firing: Auth is not checking passwords against HaveIBeenPwned.
+firing (still present and unchanged on 2026-10-14): Auth is not checking
+passwords against HaveIBeenPwned.
 
 Dashboard: **Authentication → Attack Protection** (or **Providers → Email**
 password security) → enable **Leaked password protection**.
