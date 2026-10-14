@@ -50,14 +50,7 @@ const EXPECTED_POLICIES = [
 // Bare auth.uid() calls that are KNOWN and scheduled for R1–R5
 // (docs/superpowers/plans/2026-10-14-supabase-performance-advisor.md).
 // Each R-mission deletes its table's entries in the same PR as its migration.
-const KNOWN_OFFENDERS = [
-  'profiles.select own profile',
-  'settings.delete own rows',
-  'settings.insert own rows',
-  'settings.select own rows',
-  'settings.update own rows',
-  'stats_daily.select own rows',
-];
+const KNOWN_OFFENDERS = ['profiles.select own profile', 'stats_daily.select own rows'];
 
 // Policies an R-mission has rewritten, pinned to their exact stored text so a
 // rewrite cannot change the operand, the column, or which clause is set.
@@ -67,6 +60,10 @@ const REWRITTEN = {
   'decks.insert own rows': { qual: '', with_check: OWN_ROW },
   'decks.select own rows': { qual: OWN_ROW, with_check: '' },
   'decks.update own rows': { qual: OWN_ROW, with_check: OWN_ROW },
+  'settings.delete own rows': { qual: OWN_ROW, with_check: '' },
+  'settings.insert own rows': { qual: '', with_check: OWN_ROW },
+  'settings.select own rows': { qual: OWN_ROW, with_check: '' },
+  'settings.update own rows': { qual: OWN_ROW, with_check: OWN_ROW },
   'srs_state.delete own rows': { qual: OWN_ROW, with_check: '' },
   'srs_state.insert own rows': { qual: '', with_check: OWN_ROW },
   'srs_state.select own rows': { qual: OWN_ROW, with_check: '' },
