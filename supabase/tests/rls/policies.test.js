@@ -14,12 +14,30 @@ beforeAll(async () => {
 
 // Per-table row factories — minimal valid rows owned by the given user.
 const TABLES = [
-  { name: 'srs_state', row: (uid) => ({ user_id: uid, srs_key: 'greetings:Hallo', box: 2 }) },
+  {
+    name: 'srs_state',
+    row: (uid) => ({ user_id: uid, srs_key: 'greetings:Hallo', box: 2 }),
+    update: { box: 3 },
+    read: 'box',
+    updated: { box: 3 },
+    original: { box: 2 },
+  },
   {
     name: 'decks',
     row: (uid) => ({ user_id: uid, deck_id: 'custom', name: 'My deck', cards: [] }),
+    update: { name: 'Updated deck' },
+    read: 'name',
+    updated: { name: 'Updated deck' },
+    original: { name: 'My deck' },
   },
-  { name: 'settings', row: (uid) => ({ user_id: uid, data: { soundOn: true } }) },
+  {
+    name: 'settings',
+    row: (uid) => ({ user_id: uid, data: { soundOn: true } }),
+    update: { data: { soundOn: false } },
+    read: 'data',
+    updated: { data: { soundOn: false } },
+    original: { data: { soundOn: true } },
+  },
 ];
 
 for (const t of TABLES) {
@@ -32,6 +50,38 @@ for (const t of TABLES) {
     it('B inserts an own row (fixture for cross-user attempts)', async () => {
       const { error } = await B.client.from(t.name).insert(t.row(B.id));
       expect(error).toBeNull();
+    });
+
+    it('an unfiltered select returns only A’s own rows', async () => {
+      const { data, error } = await A.client.from(t.name).select('user_id');
+      expect(error).toBeNull();
+      expect(data.length).toBeGreaterThan(0);
+      expect(data.every((r) => r.user_id === A.id)).toBe(true);
+    });
+
+    it('A can upsert an own row and change its value', async () => {
+      const { data, error } = await A.client
+        .from(t.name)
+        .upsert({ ...t.row(A.id), ...t.update })
+        .select(t.read)
+        .single();
+      expect(error).toBeNull();
+      expect(data).toEqual(t.updated);
+    });
+
+    it("A cannot upsert B's row, and B's row stays unchanged", async () => {
+      // Write CHANGED values: re-sending B's original row would leave it
+      // unchanged even if RLS let the upsert through.
+      const { error } = await A.client.from(t.name).upsert({ ...t.row(B.id), ...t.update });
+      expect(error).not.toBeNull();
+
+      const { data, error: readError } = await adminClient()
+        .from(t.name)
+        .select(t.read)
+        .eq('user_id', B.id)
+        .single();
+      expect(readError).toBeNull();
+      expect(data).toEqual(t.original);
     });
 
     it("A cannot see B's rows", async () => {

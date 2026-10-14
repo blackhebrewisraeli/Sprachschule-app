@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { execFileSync } from 'node:child_process';
 
-// L2: the league policies must not re-evaluate auth.uid() per row.
+// Policies that call auth helpers must not accidentally add untracked,
+// per-row auth.uid() evaluations.
 //
-// Supabase's performance linter calls this auth_rls_initplan, and it flagged
-// both league policies. `is_league_member(league_id, auth.uid())` re-runs the
-// auth lookup for EVERY candidate row; `(select auth.uid())` is hoisted into an
-// InitPlan and runs once. The leaderboard read is the hot path this protects.
+// Supabase's performance linter calls this auth_rls_initplan. A bare
+// `auth.uid()` can run for every candidate row; `(select auth.uid())` is
+// hoisted into an InitPlan and runs once.
 //
 // WHY pg_policies AND NOT A SCAN OF THE MIGRATION FILES: a static scan cannot
 // answer the question. The original policy in 20260627000000_leagues.sql
@@ -21,7 +21,51 @@ import { execFileSync } from 'node:child_process';
 
 const DB_URL = process.env.DB_URL || 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
 
-const LEAGUE_TABLES = ['leagues', 'league_members'];
+const EXPECTED_POLICIES = [
+  'ai_conversations.delete own conversations|DELETE|{authenticated}|PERMISSIVE',
+  'ai_conversations.select own conversations|SELECT|{authenticated}|PERMISSIVE',
+  'ai_messages.select own messages|SELECT|{authenticated}|PERMISSIVE',
+  'ai_quota_grants.read own grants|SELECT|{authenticated}|PERMISSIVE',
+  'decks.delete own rows|DELETE|{public}|PERMISSIVE',
+  'decks.insert own rows|INSERT|{public}|PERMISSIVE',
+  'decks.select own rows|SELECT|{public}|PERMISSIVE',
+  'decks.update own rows|UPDATE|{public}|PERMISSIVE',
+  'entitlements.read own entitlements|SELECT|{authenticated}|PERMISSIVE',
+  'feedback.insert own feedback|INSERT|{anon,authenticated}|PERMISSIVE',
+  'league_members.read my league rows|SELECT|{public}|PERMISSIVE',
+  'leagues.read my leagues|SELECT|{public}|PERMISSIVE',
+  'legal_acceptances.read own acceptances|SELECT|{authenticated}|PERMISSIVE',
+  'profiles.select own profile|SELECT|{public}|PERMISSIVE',
+  'settings.delete own rows|DELETE|{public}|PERMISSIVE',
+  'settings.insert own rows|INSERT|{public}|PERMISSIVE',
+  'settings.select own rows|SELECT|{public}|PERMISSIVE',
+  'settings.update own rows|UPDATE|{public}|PERMISSIVE',
+  'srs_state.delete own rows|DELETE|{public}|PERMISSIVE',
+  'srs_state.insert own rows|INSERT|{public}|PERMISSIVE',
+  'srs_state.select own rows|SELECT|{public}|PERMISSIVE',
+  'srs_state.update own rows|UPDATE|{public}|PERMISSIVE',
+  'stats_daily.select own rows|SELECT|{public}|PERMISSIVE',
+];
+
+// Bare auth.uid() calls that are KNOWN and scheduled for R1–R5
+// (docs/superpowers/plans/2026-10-14-supabase-performance-advisor.md).
+// Each R-mission deletes its table's entries in the same PR as its migration.
+const KNOWN_OFFENDERS = [
+  'decks.delete own rows',
+  'decks.insert own rows',
+  'decks.select own rows',
+  'decks.update own rows',
+  'profiles.select own profile',
+  'settings.delete own rows',
+  'settings.insert own rows',
+  'settings.select own rows',
+  'settings.update own rows',
+  'srs_state.delete own rows',
+  'srs_state.insert own rows',
+  'srs_state.select own rows',
+  'srs_state.update own rows',
+  'stats_daily.select own rows',
+];
 
 function queryPolicies() {
   // JSON rather than a delimited format: a USING clause may contain any
@@ -38,11 +82,16 @@ function queryPolicies() {
       `select coalesce(json_agg(json_build_object(
             'tablename', tablename,
             'policyname', policyname,
-            'qual', coalesce(qual, '')
+            'cmd', cmd,
+            'roles', roles::text,
+            'permissive', permissive,
+            'qual', coalesce(qual, ''),
+            'with_check', coalesce(with_check, '')
           ) order by tablename, policyname), '[]'::json)
          from pg_policies
         where schemaname = 'public'
-          and tablename in (${LEAGUE_TABLES.map((t) => `'${t}'`).join(', ')});`,
+          and (coalesce(qual, '') ~ 'auth\\.'
+            or coalesce(with_check, '') ~ 'auth\\.');`,
     ],
     { encoding: 'utf8' }
   );
@@ -54,23 +103,34 @@ function queryPolicies() {
 const bareAuthCalls = (qual) =>
   qual.replace(/\(\s*SELECT\s+auth\.uid\(\)[^)]*\)/gi, '').match(/auth\.uid\(\)/g) ?? [];
 
-describe('league RLS policies do not re-evaluate auth.uid() per row', () => {
+describe('RLS policy auth helper audit', () => {
   const policies = queryPolicies();
+  const leaguePolicies = policies.filter((p) =>
+    ['leagues', 'league_members'].includes(p.tablename)
+  );
 
-  it('inspected both league policies — the denominator, not just the findings', () => {
+  it('inspects the complete expected policy denominator', () => {
     // Zero findings and zero rows inspected print identically. State the
     // denominator so an empty result can never masquerade as a pass.
-    expect(policies.map((p) => `${p.tablename}.${p.policyname}`).sort()).toEqual([
-      'league_members.read my league rows',
-      'leagues.read my leagues',
-    ]);
-    for (const p of policies) {
-      expect(p.qual, `${p.tablename}.${p.policyname} has an empty USING clause`).not.toBe('');
-    }
+    expect(
+      policies
+        .map((p) => `${p.tablename}.${p.policyname}|${p.cmd}|${p.roles}|${p.permissive}`)
+        .sort()
+    ).toEqual(EXPECTED_POLICIES);
+  });
+
+  it('bare auth.uid() appears in exactly the known offenders', () => {
+    const bare = policies
+      .filter((p) => bareAuthCalls(p.qual).length + bareAuthCalls(p.with_check).length > 0)
+      .map((p) => `${p.tablename}.${p.policyname}`)
+      .sort();
+    // Fails both ways: a new bare call (regression) or a fixed policy still
+    // listed (stale list), so the list can only shrink deliberately.
+    expect(bare).toEqual([...KNOWN_OFFENDERS].sort());
   });
 
   it('wraps every auth.uid() call in a subselect', () => {
-    const offenders = policies
+    const offenders = leaguePolicies
       .filter((p) => bareAuthCalls(p.qual).length > 0)
       .map((p) => `${p.tablename}.${p.policyname}: ${p.qual}`);
     expect(offenders).toEqual([]);
@@ -81,7 +141,7 @@ describe('league RLS policies do not re-evaluate auth.uid() per row', () => {
     // reintroduce the RLS self-recursion that is_league_member exists to avoid.
     // public.is_league_member is gone (advisor 0029); the helper lives in
     // schema private, which PostgREST does not expose.
-    for (const p of policies) {
+    for (const p of leaguePolicies) {
       expect(p.qual).toMatch(/private\.is_league_member\(/);
     }
   });
