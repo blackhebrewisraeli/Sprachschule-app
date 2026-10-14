@@ -47,10 +47,11 @@ const EXPECTED_POLICIES = [
   'stats_daily.select own rows|SELECT|{public}|PERMISSIVE',
 ];
 
-// Bare auth.uid() calls that are KNOWN and scheduled for R1–R5
-// (docs/superpowers/plans/2026-10-14-supabase-performance-advisor.md).
-// Each R-mission deletes its table's entries in the same PR as its migration.
-const KNOWN_OFFENDERS = ['profiles.select own profile'];
+// Bare auth.uid() calls that are KNOWN and scheduled for a fix. R1–R5
+// (docs/superpowers/plans/2026-10-14-supabase-performance-advisor.md) emptied
+// it. Keep it empty: a new policy must use `(select auth.uid())`, or the
+// ratchet below fails.
+const KNOWN_OFFENDERS = [];
 
 // Policies an R-mission has rewritten, pinned to their exact stored text so a
 // rewrite cannot change the operand, the column, or which clause is set.
@@ -60,6 +61,7 @@ const REWRITTEN = {
   'decks.insert own rows': { qual: '', with_check: OWN_ROW },
   'decks.select own rows': { qual: OWN_ROW, with_check: '' },
   'decks.update own rows': { qual: OWN_ROW, with_check: OWN_ROW },
+  'profiles.select own profile': { qual: OWN_ROW, with_check: '' },
   'settings.delete own rows': { qual: OWN_ROW, with_check: '' },
   'settings.insert own rows': { qual: '', with_check: OWN_ROW },
   'settings.select own rows': { qual: OWN_ROW, with_check: '' },
