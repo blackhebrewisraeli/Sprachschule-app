@@ -274,8 +274,12 @@ describe('the consent column', () => {
     let { data } = await admin.from('settings').select('ai_history_enabled').eq('user_id', user.id);
     expect(data[0].ai_history_enabled).toBe(false);
     await admin.from('settings').update({ ai_history_enabled: true }).eq('user_id', user.id);
-    // An older client's push names only (user_id, data).
-    await user.client.from('settings').upsert({ user_id: user.id, data: { level: 'a2' } });
+    // An older client's push names only (user_id, data). It must succeed: a
+    // rejected push would also leave the column true and pass vacuously.
+    const { error } = await user.client
+      .from('settings')
+      .upsert({ user_id: user.id, data: { level: 'a2' } });
+    expect(error).toBeNull();
     ({ data } = await admin.from('settings').select('ai_history_enabled').eq('user_id', user.id));
     expect(data[0].ai_history_enabled).toBe(true);
   });
