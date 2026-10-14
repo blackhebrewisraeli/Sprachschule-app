@@ -60,12 +60,18 @@ const KNOWN_OFFENDERS = [
   'settings.insert own rows',
   'settings.select own rows',
   'settings.update own rows',
-  'srs_state.delete own rows',
-  'srs_state.insert own rows',
-  'srs_state.select own rows',
-  'srs_state.update own rows',
   'stats_daily.select own rows',
 ];
+
+// Policies an R-mission has rewritten, pinned to their exact stored text so a
+// rewrite cannot change the operand, the column, or which clause is set.
+const OWN_ROW = '(( SELECT auth.uid() AS uid) = user_id)';
+const REWRITTEN = {
+  'srs_state.delete own rows': { qual: OWN_ROW, with_check: '' },
+  'srs_state.insert own rows': { qual: '', with_check: OWN_ROW },
+  'srs_state.select own rows': { qual: OWN_ROW, with_check: '' },
+  'srs_state.update own rows': { qual: OWN_ROW, with_check: OWN_ROW },
+};
 
 function queryPolicies() {
   // JSON rather than a delimited format: a USING clause may contain any
@@ -127,6 +133,13 @@ describe('RLS policy auth helper audit', () => {
     // Fails both ways: a new bare call (regression) or a fixed policy still
     // listed (stale list), so the list can only shrink deliberately.
     expect(bare).toEqual([...KNOWN_OFFENDERS].sort());
+  });
+
+  it('rewritten policies store exactly the wrapped expression', () => {
+    for (const [name, expected] of Object.entries(REWRITTEN)) {
+      const p = policies.find((q) => `${q.tablename}.${q.policyname}` === name);
+      expect({ qual: p?.qual, with_check: p?.with_check }, name).toEqual(expected);
+    }
   });
 
   it('wraps every auth.uid() call in a subselect', () => {
