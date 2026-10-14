@@ -21,8 +21,11 @@ function queryForeignKeys() {
   // audit print the same thing, and only one of them means anything.
   //
   // `covered`: some valid index starts with exactly the FK's columns, in the
-  // FK's order. A partial index does not count: whether the planner uses one
-  // for the referential action's query is unproven (spec §4 of
+  // FK's order, as KEY columns. indkey also lists INCLUDE columns after the
+  // keys, so an index on (a) include (b) would match an FK on (a, b) without
+  // being able to look up b; indnkeyatts is the count of real key columns.
+  // A partial index does not count: whether the planner uses one for the
+  // referential action's query is unproven (spec §4 of
   // docs/superpowers/specs/2026-10-14-supabase-performance-advisor-design.md).
   const out = execFileSync(
     'psql',
@@ -43,6 +46,7 @@ function queryForeignKeys() {
                where i.indrelid = c.conrelid
                  and i.indisvalid
                  and i.indpred is null
+                 and i.indnkeyatts >= cardinality(c.conkey)
                  and (string_to_array(i.indkey::text, ' ')::smallint[])[1:cardinality(c.conkey)]
                      = c.conkey)
           ) order by t.relname, c.conname), '[]'::json)
