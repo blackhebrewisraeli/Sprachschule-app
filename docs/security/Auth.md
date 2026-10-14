@@ -55,7 +55,7 @@ longer proof on its own (`src/lib/verifiedEmails.js`;
 | Hook decision table, normalisation, fail-closed, grants, non-exposure | Written; **NOT RUN** locally (Docker unavailable); runs in CI **RLS Policy Tests** | `supabase/tests/rls/beta-signup-hook.test.js` |
 | End to end through local GoTrue: unlisted password and OTP signup refused with no user created; listed signup creates user + profile | Same as above | same file, "end to end through Supabase Auth" |
 | Client maps the refusal; no list is bundled | **VERIFIED** (`npm test`) | `src/lib/auth.test.js`; `src/lib/signupAllowlist.test.js`; `src/components/auth/AuthCallbackLanding.test.jsx`; `src/noWholeEnvInBundle.test.js` |
-| Migration applied, addresses entered, hook enabled, `VITE_SIGNUP_EMAIL_ALLOWLIST` deleted from Vercel, production unlisted attempt leaves no `auth.users`/`profiles` row | **OWNER CONFIRMATION REQUIRED** | `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md` steps 2–6 |
+| Migration applied, addresses entered, hook enabled, `VITE_SIGNUP_EMAIL_ALLOWLIST` deleted from Vercel, production unlisted attempt leaves no `auth.users`/`profiles` row | **VERIFIED IN PRODUCTION** 2026-10-14, re-checked after the Postgres upgrade. The **Continue as guest** control on the denial landing: **OWNER CONFIRMATION REQUIRED** | `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md` steps 2–6 and "Production state — 2026-10-14" |
 
 ## Permissions table
 
@@ -92,15 +92,20 @@ run is green was not checked in this mission.
 
 ## Known auth gaps
 
-- **OWNER CONFIRMATION REQUIRED — invite state:** apply the two 2026-10-11
-  migrations, enter the tester addresses, enable the hook, delete
-  `VITE_SIGNUP_EMAIL_ALLOWLIST` from Vercel and smoke a listed and an unlisted
-  identity (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md` steps 2–6).
+- **VERIFIED IN PRODUCTION 2026-10-14 — invite state:** both 2026-10-11
+  migrations are applied, the list holds three rows (admin, tester, support),
+  the hook is on, `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel, and a
+  listed and an unlisted identity behaved as expected
+  (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md` steps 2–6 and "Production state —
+  2026-10-14"). The **Continue as guest** control on the denial landing:
+  **OWNER CONFIRMATION REQUIRED**.
 - **Closed in the repository — stranded unlisted account:** once the hook is
   on, an unlisted identity never gets an `auth.users` or `profiles` row, so
   there is nothing it cannot export or delete. Accounts created **before** the
   hook are unaffected by it. The owner lists, blocks or deletes each one, and
-  `SIGNUP_EMAIL_ALLOWLIST` keeps refusing them meanwhile (runbook step 7).
+  `SIGNUP_EMAIL_ALLOWLIST` keeps refusing them meanwhile (runbook step 7). As
+  of 2026-10-14, four such accounts are banned until 2026-11-13, not deleted.
+  The owner reviews deletion around 2026-10-21.
 - **BLOCKED — provider setup:** OAuth consent-screen status, redirect allowlists,
   SMTP sender, OTP expiry, and Apple secret renewal are dashboard/provider facts,
   not repository controls (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md:42-70`;

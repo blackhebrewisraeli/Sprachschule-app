@@ -4,10 +4,12 @@
 Agents never apply migrations, edit the allowlist, toggle the hook, or touch
 Vercel env (`AGENTS.md`, "The MCP config points at PRODUCTION").
 
-**Status 2026-10-11: OWNER CONFIRMATION REQUIRED.** The repository side is done
-and tested. None of it is live until the owner completes steps 2–6. Record
-each step's date, environment and result in the **Evidence** table at the end.
-Do not mark anything VERIFIED without that record (`docs/security/Security
+**Status 2026-10-14: LIVE in production.** Steps 2–6 are done. Step 7 is under
+way: four accounts are banned, not deleted. One control in 6c still needs
+owner confirmation. The **Production state** section below holds the
+2026-10-14 evidence (checked after the Postgres upgrade). Record each later
+step's date, environment and result in the **Evidence** table at the end. Do
+not mark anything VERIFIED without that record (`docs/security/Security
 Checklist.md`, sign-off rule).
 
 ## What the repository does
@@ -72,8 +74,9 @@ Use the usual drill: baseline `list_migrations`, apply, verify, then
 2. `20261011120100_profiles_server_only_writes.sql`
 
 Never `migration repair` and never `db push`. Afterwards **Migration Drift**
-must be green. That needs a working `SUPABASE_ACCESS_TOKEN` repository secret:
-on 2026-10-10 it returned 401, so drift is currently unverified.
+must be green. That needs a working `SUPABASE_ACCESS_TOKEN` repository secret.
+It returned 401 on 2026-10-10. Drift works again: run `38578641927` succeeded
+on `977ad476` on 2026-10-14. The token expires around 2027-01-12.
 
 The app keeps working after step 2. Profile edits already go through the API,
 and the hook is not on yet.
@@ -123,6 +126,9 @@ JS bundle contains none of the tester addresses.
 
 Keep `SIGNUP_EMAIL_ALLOWLIST` (server, never `VITE_`) for now. See step 7.
 
+**Done:** `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel, and the live
+bundle contains no private mailbox (6i, 2026-10-14).
+
 ### 6. Verify
 
 | # | Action | Expected |
@@ -160,6 +166,83 @@ account remains, keep `SIGNUP_EMAIL_ALLOWLIST` equal to the table, so the
 server keeps refusing that account's API calls. Once none remain, the variable
 can be unset.
 
+**State 2026-10-14:** four unwanted accounts are banned in Auth until
+2026-11-13. They are not deleted. The owner reviews deletion around
+2026-10-21. After that, decide whether `SIGNUP_EMAIL_ALLOWLIST` can be
+removed.
+
+## Production state — 2026-10-14
+
+Checked after the owner upgraded Postgres on 2026-10-14. These checks read
+production and changed nothing. No email address is recorded here. The
+allowlist was matched by role against a normalized hash and is never printed.
+
+**VERIFIED IN PRODUCTION**
+
+- Project `ACTIVE_HEALTHY` on Postgres `17.11.0.003`. Extensions:
+  `pg_stat_statements` 1.11, `pgcrypto` 1.3, `plpgsql` 1.0, `supabase_vault`
+  0.3.1, `uuid-ossp` 1.1.
+- Hook `public.hook_restrict_signup_to_beta_allowlist`: source md5
+  `783611196fa5da340cfc864d39019833`, SECURITY INVOKER, empty `search_path`.
+  Only `postgres` and `supabase_auth_admin` hold EXECUTE.
+- `private.beta_signup_allowlist`: RLS enabled. It holds exactly three rows,
+  matching the **admin**, **tester** and **support** roles. Policy set md5
+  `301e7c4c02cf968990cd549b9064fdc1`. The table's single CHECK definition md5 is
+  `497f6782d157ee19558229e48455cd9b`.
+- `public.profiles`: RLS is still enabled. `authenticated` holds SELECT only.
+  The select-own-profile policy and the three CHECK constraints are unchanged
+  in meaning. This was checked against their definitions, not by hash: an
+  aggregate hash of the catalog text is not claimed to be stable across
+  Postgres versions.
+- Counts: 6 auth users, 6 profiles, 0 anonymous users, 4 bans that run into the
+  future, 41 migrations (the same number as `supabase/migrations/`).
+- Migration Drift run `38578641927` succeeded on `977ad476`, after the upgrade.
+- Earlier closed-beta tests in production passed: a listed address signed up
+  (6a); an unlisted address was refused by magic link and by Google, and
+  neither refusal left a row (6b–6d); direct profile writes were denied, and a
+  profile edit through the server, then its revert, both saved (6e, 6f);
+  grants and constraints were intact (6g, 6h); private mailboxes were absent
+  from the bundle (6i); admin and tester API calls succeeded; the guest path
+  from the welcome screen worked.
+- `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel.
+- `SIGNUP_EMAIL_ALLOWLIST` is still a Vercel Secret in Production and Preview.
+  Only its name and type were checked, not its value.
+- The support address is listed for a future sign-up. It has no account, and
+  it is not an admin.
+- Four unwanted accounts are banned until 2026-11-13, not deleted.
+- Custom SMTP through Resend is live, and its sending domain is verified.
+
+**Unchanged advisor findings (existing items, not caused by the upgrade)**
+
+- Security: five 0029 warnings for SECURITY DEFINER functions
+  (`PRE_BETA_OWNER_CHECKLIST.md` §8c: these are accepted), and
+  leaked-password protection (§7 there).
+- Performance, informational, each a separate follow-up and none of them fixed
+  here: one unindexed foreign key on `feedback`, 14 RLS initplan warnings, and
+  six unused indexes.
+
+**OWNER CONFIRMATION REQUIRED**
+
+- In 6c, the **Continue as guest** button on the denial landing.
+- The value of `SIGNUP_EMAIL_ALLOWLIST`.
+- The deletion review of the four banned accounts, around 2026-10-21.
+
+**Pending follow-ups (not done)**
+
+- The Confirm signup email template has no six-digit code, and native testers
+  need the code. `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` covers only the Magic
+  Link template.
+- **BLOCKED / EXTERNAL DEPENDENCY:** the Privacy Policy must name Resend before
+  any outside tester joins. That edit comes with a `PRIVACY_VERSION` bump, after
+  the DPA and counsel review.
+- After the banned accounts are deleted, decide whether to remove
+  `SIGNUP_EMAIL_ALLOWLIST` (step 7).
+- Replace the Migration Drift token before it expires, around 2027-01-12.
+- DMARC is at `p=none`.
+- Optional: show Google's account chooser at sign-in.
+- The public mailbox addresses hardcoded in the repository need a separate
+  design review.
+
 ## Local development
 
 `supabase/config.toml` enables the same hook on the local stack. To sign up
@@ -175,10 +258,11 @@ Fixtures created through the admin API (the RLS suite) are not affected.
 
 | Step | Date | Environment | Result / evidence |
 | --- | --- | --- | --- |
-| 1 Pre-checks | | Production | |
-| 2 Migrations applied | | Production | |
-| 3 Addresses entered (count only) | | Production | |
-| 4 Hook enabled | | Production | |
-| 5 `VITE_SIGNUP_EMAIL_ALLOWLIST` deleted + redeploy | | Vercel Production, Preview | |
-| 6a–6i | | Production | |
-| 7 Pre-existing accounts decided | | Production | |
+| 1 Pre-checks | 2026-10-14 | Production | **VERIFIED IN PRODUCTION** before the hook was enabled: 0 invalid `avatar_path` rows, 0 invalid handle rows; account inventory completed |
+| 2 Migrations applied | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**: 41 migrations; Migration Drift run `38578641927` succeeded on `977ad476` |
+| 3 Addresses entered (count only) | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**: 3 rows, matched by role (admin, tester, support) |
+| 4 Hook enabled | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**: a listed sign-up passed, and unlisted magic-link and Google sign-ups were refused |
+| 5 `VITE_SIGNUP_EMAIL_ALLOWLIST` deleted + redeploy | 2026-10-14 (checked) | Vercel Production, Preview | **VERIFIED IN PRODUCTION**: the variable is absent, and no private mailbox is in the live bundle |
+| 6a–6i | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**, except the 6c **Continue as guest** control: **OWNER CONFIRMATION REQUIRED** |
+| 7 Pre-existing accounts decided | 2026-10-14 | Production | Under way: 4 accounts banned until 2026-11-13, not deleted; deletion review around 2026-10-21 |
+| Postgres upgrade re-check | 2026-10-14 | Production | **VERIFIED IN PRODUCTION**: `17.11.0.003`, `ACTIVE_HEALTHY`; hook, allowlist and profiles unchanged (Production state above) |

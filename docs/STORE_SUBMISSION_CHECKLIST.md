@@ -47,6 +47,43 @@ that it was uploaded. Anything not under the first label is unproven.
 - **Apple:** processing, export-compliance and privacy verdicts appear only
   after an upload (P1-5); App Review only after submission.
 
+## Closed beta and database — 2026-10-14 (main `977ad476`)
+
+Evidence and the full list: `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production
+state — 2026-10-14". No address is recorded in either file.
+
+**VERIFIED IN REPO**
+
+- 41 migrations in `supabase/migrations/`.
+
+**VERIFIED IN PRODUCTION**
+
+- Postgres was upgraded on 2026-10-14. The project is `ACTIVE_HEALTHY` on
+  `17.11.0.003`.
+- The closed-beta hook, the three-row allowlist and the `profiles` write
+  lockdown were re-checked after the upgrade and are unchanged. Production
+  lists 41 migrations, and Migration Drift run `38578641927` succeeded on
+  `977ad476`.
+- `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel. Four unwanted accounts
+  are banned until 2026-11-13, not deleted.
+- Custom SMTP through Resend is live, and its sending domain is verified.
+- The advisor findings are the existing ones: five SECURITY DEFINER warnings
+  and leaked-password protection. The performance findings are informational
+  and tracked as separate follow-ups.
+
+**OWNER CONFIRMATION REQUIRED**
+
+- The **Continue as guest** control on the denial landing (runbook 6c).
+- The value of `SIGNUP_EMAIL_ALLOWLIST`, a Vercel Secret in Production and
+  Preview.
+- The deletion review of the four banned accounts, around 2026-10-21.
+
+**BLOCKED / EXTERNAL DEPENDENCY**
+
+- The Privacy Policy must name Resend before any outside tester joins. The
+  edit comes with a `PRIVACY_VERSION` bump, after the DPA and counsel review
+  (item 2 under "Before merging the terms-acceptance PR").
+
 ## Play Console — ON HOLD (2026-10-06)
 
 The Google Play lane is paused at the owner's request while Play Console
@@ -133,7 +170,7 @@ has a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 | P1-5 | ✅ **Fixed (#415).** `PrivacyInfo.xcprivacy` is bundled in the App target and `ITSAppUsesNonExemptEncryption` is `false`. Apple's verdict only shows on the first TestFlight upload.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                  | —                                                               | First upload shows no ITMS privacy or export-compliance warnings                                                                                                             | device                       |
 | P1-6 | **Screenshots: automated and current (2026-10-04), owner review left.** `npm run screenshots:capture` produces the iPhone `1320×2868`, iPad `2064×2752` and Play `1080×1920` sets plus the `1024×500` feature graphic from the native release-candidate apps (Simulator / emulator), seeded with a fictional guest and verified for exact size and no alpha; see the plan's "Automated capture". Scene 5 (league) needs the fictional signed-in account and is captured by hand. IPA renders correctly on every platform since the font fix (#427).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Agent (pipeline), owner (review, scene 5, upload)  | P0-2 / Play Console for upload; fictional account for scene 5   | `store-screenshots/REPORT.md` all `ok`; owner ticks the review boxes in it                                                                                                   | device                       |
 | P1-7 | **Listing and policy fields not entered in the consoles.** Privacy URL (items 4–5), deletion URL (item 6), age/content ratings, category, support contact. The three compliance routes now return their own static HTML (title, canonical and a `<noscript>` statement of the facts), so a crawler that does not run JavaScript sees the app name, developer and deletion steps; see `scripts/lib/legalShells.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Owner                                              | P1-3                                                            | Open `/delete-account` signed out in a private window and read the app name; confirm in Play Console that the URL validates. **Owner confirmation required**                 | dashboard                    |
-| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. **Owner confirmation required**: apply the migrations, enter the addresses, enable the hook, delete the `VITE_` variable (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`). Review still needs a posture: list the reviewer's sign-in address (and each Hide My Email relay address), or disable the hook to open signup. Separately, the Google consent screen still shows `xcnnlczvxmuwcqwychox.supabase.co`, and if the Google OAuth app is in "Testing", only listed test users can sign in. | Owner                                              | Runbook steps 2–7; decide review posture; Google Cloud → OAuth consent screen | A listed reviewer/tester account signs in on the iPhone and can delete itself; an unlisted one is refused with no account created. Google publishing status: **owner confirmation required** | dashboard                    |
+| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. Review still needs a posture: list the reviewer's sign-in address (and each Hide My Email relay address), or disable the hook to open signup. Separately, the Google consent screen still shows `xcnnlczvxmuwcqwychox.supabase.co`, and if the Google OAuth app is in "Testing", only listed test users can sign in. | Owner                                              | Runbook steps 2–7; decide review posture; Google Cloud → OAuth consent screen | A listed reviewer/tester account signs in on the iPhone and can delete itself; an unlisted one is refused with no account created. Google publishing status: **owner confirmation required** | dashboard                    |
 | P1-9 | **Play Console closed-testing rule.** A personal developer account created after Nov 2023 must run a closed test with 12+ testers for 14 days before it may apply for production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Owner                                              | Account type                                                    | **Owner confirmation required** of the account type and the Play Console release dashboard                                                                                   | dashboard                    |
 
 ### P2 — post-launch polish
@@ -220,6 +257,10 @@ owner, dashboard, device or counsel work.
    2026-09-30). If a custom SMTP provider is ever configured under Supabase →
    Auth → SMTP Settings, add it to the policy's service-provider list and bump
    `PRIVACY_VERSION`.
+
+   **Triggered 2026-10-14, still pending:** custom SMTP through Resend is now
+   live. The policy must name Resend, with a `PRIVACY_VERSION` bump, after the
+   DPA and counsel review and before any outside tester joins.
 3. **Have qualified counsel review** the final Privacy Policy and Terms,
    including international transfers, the minimum age (Terms say 13), and
    whether the optional AI clause is wanted.
