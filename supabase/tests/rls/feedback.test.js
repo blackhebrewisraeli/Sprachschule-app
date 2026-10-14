@@ -126,3 +126,38 @@ describe('RLS: feedback', () => {
     expect(error).not.toBeNull();
   });
 });
+
+describe('feedback: deleting the account that handled a report', () => {
+  // feedback_handled_by_fkey is ON DELETE SET NULL, so every account deletion
+  // clears handled_by on the rows that account handled (served by
+  // feedback_handled_by_idx). Pins what that must keep doing: the reporter's
+  // row survives, only the reference to the deleted account is cleared, and
+  // the triage status stays.
+  it("keeps A's report handled and clears handled_by", async () => {
+    const H = await createSignedInUser('feedback-h');
+    const { data: inserted, error: insertError } = await admin
+      .from('feedback')
+      .insert(
+        row({
+          user_id: A.id,
+          status: 'handled',
+          handled_at: new Date().toISOString(),
+          handled_by: H.id,
+        })
+      )
+      .select('id')
+      .single();
+    expect(insertError).toBeNull();
+
+    const { error: deleteError } = await admin.auth.admin.deleteUser(H.id);
+    expect(deleteError).toBeNull();
+
+    const { data, error } = await admin
+      .from('feedback')
+      .select('user_id, status, handled_by')
+      .eq('id', inserted.id)
+      .single();
+    expect(error).toBeNull();
+    expect(data).toEqual({ user_id: A.id, status: 'handled', handled_by: null });
+  });
+});
