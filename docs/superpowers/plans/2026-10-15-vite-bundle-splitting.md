@@ -118,8 +118,11 @@ It does **not** commit the project to the full split.
 6. **Measure and record** in the PR:
    - the entry and legal chunk sizes;
    - the JS gzip total;
-   - the number of `assets/*.js` requests on the first-Vocab path, before and
-     after (it must be unchanged).
+   - the number of `assets/*.js` loads the page itself makes on the
+     first-Vocab path, before and after; it must be unchanged. Take them from
+     `performance.getEntriesByType('resource')`, or Playwright requests whose
+     `serviceWorker()` is null. The service worker's install-time precache
+     downloads are excluded (spec §9, metric 3).
 7. **Record the two spec UNVERIFIEDs:**
    - whether Chromium re-fetches a failed dynamic import in the same document;
    - whether the worker registers in the Android WebView, checked on the

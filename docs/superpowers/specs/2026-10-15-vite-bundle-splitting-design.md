@@ -416,8 +416,13 @@ Each PR measures these, and PR 6 must meet all of them:
 2. **Gzip total for all JS ≤ 280.56 kB + 2%.** Splitting costs a little
    compression; a larger rise needs a stated reason.
 3. **No extra JS request on the minimum first-Vocab path:** fresh guest →
-   level → Home → Vocab → first card. Count the `assets/*.js` requests in the
-   smoke's network log before and after.
+   level → Home → Vocab → first card. Count only the `assets/*.js` loads the
+   page itself makes. Take them from the page's
+   `performance.getEntriesByType('resource')`, or from Playwright requests whose
+   `serviceWorker()` is null, before and after. The service worker's
+   install-time precache downloads fetch every chunk whether the page imports
+   it or not (§6), so they are excluded from this count. They are covered by
+   metric 6 instead.
 4. `npm test`, `npm run lint`, `npm run format:check`, both Learning-path
    smokes, `Contrast · Rendered DOM` and the RLS job are unchanged and green.
 5. The new offline and upgrade check (§6) is green.
