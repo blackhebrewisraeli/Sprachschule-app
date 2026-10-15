@@ -3606,7 +3606,9 @@ describe('terms acceptance gate', () => {
     render(<App />);
     await userEvent.click(await screen.findByRole('checkbox', { name: /i agree/i }));
     await userEvent.click(screen.getByRole('link', { name: 'Terms of Service' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Terms of Service' })
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
     const box = await screen.findByRole('checkbox', { name: /i agree/i });
     expect(box).toBeChecked();
