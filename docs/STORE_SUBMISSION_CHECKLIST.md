@@ -25,6 +25,11 @@ that it was uploaded. Anything not under the first label is unproven.
 - `build:mobile` pins push, saved tutor conversations and the Sentry DSN off.
 - Every check on `main` `3aaf364c` is green, including the iOS Simulator and
   Android debug builds. Neither is a store build.
+- Re-checked 2026-10-15 on `main` `719792ed` (#472): the source is still
+  1.0.1 (7), and every check is green, including Lint · Test · Build, RLS
+  Policy Tests, Build for iOS Simulator and Build debug APK. Since 2026-10-09
+  the repository has gained no record of a build-7 upload, store-dashboard
+  state, a device pass or counsel review, so the items below are unchanged.
 
 **OWNER CONFIRMATION REQUIRED** (dashboard or device only)
 
@@ -47,32 +52,54 @@ that it was uploaded. Anything not under the first label is unproven.
 - **Apple:** processing, export-compliance and privacy verdicts appear only
   after an upload (P1-5); App Review only after submission.
 
-## Closed beta and database — 2026-10-14 (main `977ad476`)
+## Closed beta and database — 2026-10-14, re-checked 2026-10-15 (main `719792ed`)
 
 Evidence and the full list: `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production
-state — 2026-10-14". No address is recorded in either file.
+state — 2026-10-14" and its 2026-10-15 re-check. No address is recorded in
+either file.
 
 **VERIFIED IN REPO**
 
-- 41 migrations in `supabase/migrations/`.
+- 47 migrations in `supabase/migrations/` on `719792ed`, counted from the tree.
+  On 2026-10-14 there were 41. #463 and #466–#470 added one each; #464, #465,
+  #471 and #472 added none.
+- #472 wires the **Confirm signup** email to the same code-and-link template as
+  Magic Link (`supabase/config.toml`, `src/authEmailTemplates.test.js`). That
+  file configures only the local stack; hosted Auth needs a dashboard paste
+  (below).
 
 **VERIFIED IN PRODUCTION**
 
 - Postgres was upgraded on 2026-10-14. The project is `ACTIVE_HEALTHY` on
   `17.11.0.003`.
 - The closed-beta hook, the three-row allowlist and the `profiles` write
-  lockdown were re-checked after the upgrade and are unchanged. Production
-  lists 41 migrations, and Migration Drift run `38578641927` succeeded on
-  `977ad476`.
+  lockdown were re-checked after the upgrade on 2026-10-14 and were unchanged.
+  They were not re-checked on 2026-10-15.
+- 2026-10-15, read-only `list_migrations`: production lists 47 migrations,
+  identical to the repository by version and name. Migration Drift run
+  `38736350948` (scheduled, on `7794b963`) "compared 47 repo migration(s)
+  against 47 applied" and passed. `719792ed` changed no migration. Uptime run
+  `38724294155` passed on 2026-10-15.
 - `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel. Four unwanted accounts
   are banned until 2026-11-13, not deleted.
 - Custom SMTP through Resend is live, and its sending domain is verified.
-- The advisor findings are the existing ones: five SECURITY DEFINER warnings
-  and leaked-password protection. The performance findings are informational
-  and tracked as separate follow-ups.
+- The live security advisors on 2026-10-15 are unchanged: five SECURITY DEFINER
+  warnings and leaked-password protection.
+- The live performance advisor on 2026-10-15:
+  - The unindexed foreign key on `feedback.handled_by` is gone (#463).
+  - The 14 `auth_rls_initplan` warnings are gone (#466–#470, on the #465
+    baseline; #471 strengthened a test).
+  - Seven INFO `unused_index` findings remain: the six from 2026-10-14, plus
+    the new `feedback_handled_by_idx`, which the plan expected. They wait for
+    the read-only observation O1, no earlier than 2026-11-13.
 
 **OWNER CONFIRMATION REQUIRED**
 
+- **Not done (owner-only):** paste the template into the hosted **Confirm
+  signup** template, then check that a new invited tester receives a working
+  6-digit code and link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify:
+  Confirm signup"). Until then, a first-time native or installed-PWA tester
+  gets no code.
 - The **Continue as guest** control on the denial landing (runbook 6c).
 - The value of `SIGNUP_EMAIL_ALLOWLIST`, a Vercel Secret in Production and
   Preview.
@@ -133,8 +160,9 @@ device can show it, so it is not assumed either way. Needs: **code**,
 - **Next action:** the owner confirms whether build 7 is in TestFlight, or
   uploads it (Shortest safe path, step 2), then starts the P0-4 device pass.
 
-**Verified healthy, not blockers:** production has all 39 repo migrations by
-name, including AI quota (`20261006120000`), usage retention (`20261007120000`)
+**Verified healthy, not blockers:** production had all 39 repo migrations by
+name on 2026-10-05 (47 of 47 on 2026-10-15, "Closed beta and database" above),
+including AI quota (`20261006120000`), usage retention (`20261007120000`)
 and conversation history (`20261008120000`): Migration Drift is green on
 `0223fde3` (2026-10-05), and every version equalled its filename on the
 2026-10-03 read-only `list_migrations` (no migration was added since). CI, iOS

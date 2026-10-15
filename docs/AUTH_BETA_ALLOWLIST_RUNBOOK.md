@@ -219,7 +219,29 @@ allowlist was matched by role against a normalized hash and is never printed.
   leaked-password protection (§7 there).
 - Performance, informational, each a separate follow-up and none of them fixed
   here: one unindexed foreign key on `feedback`, 14 RLS initplan warnings, and
-  six unused indexes.
+  six unused indexes. The first two are fixed since; see the re-check below.
+
+**Re-checked 2026-10-15 (main `719792ed`), read-only**
+
+Only migrations, advisors and GitHub checks were re-read. The hook, the
+allowlist and `profiles` were not re-checked.
+
+- Migrations: `supabase/migrations/` holds 47 files, and production's
+  `list_migrations` lists the same 47 by version and name. Migration Drift run
+  `38736350948` (scheduled, on `7794b963`) "compared 47 repo migration(s)
+  against 47 applied" and passed. #472 (`719792ed`) added no migration.
+- Performance advisor:
+  - No unindexed foreign key: #463 indexed `feedback.handled_by`.
+  - No `auth_rls_initplan` warnings: #466–#470 wrapped `auth.uid()` on
+    `srs_state`, `decks`, `settings`, `stats_daily` and `profiles`, after the
+    #465 baseline tests. #471 strengthened the ai-history settings-upsert test.
+  - Seven INFO `unused_index` findings: the six above, plus the new
+    `feedback_handled_by_idx`, which the plan expected. They wait for the
+    observation O1, no earlier than 2026-11-13.
+- Security advisor: unchanged. Five 0029 warnings and leaked-password
+  protection.
+- On `719792ed` every check is green, including Build for iOS Simulator and
+  Build debug APK. Uptime run `38724294155` passed on 2026-10-15.
 
 **OWNER CONFIRMATION REQUIRED**
 
@@ -230,9 +252,9 @@ allowlist was matched by role against a normalized hash and is never printed.
 **Pending follow-ups (not done)**
 
 - The hosted Confirm signup email template has no six-digit code, and native
-  testers need the code. **Repository side done 2026-10-15:**
-  `supabase/config.toml` wires Confirm signup to the same body as Magic Link,
-  and `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` now covers both. **Owner-only, not
+  testers need the code. **Repository side done by #472 (merged as `719792ed`,
+  2026-10-15):** `supabase/config.toml` wires Confirm signup to the same body
+  as Magic Link, and `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` now covers both. **Owner-only, not
   done:** paste that body into the hosted Confirm signup template, then check a
   new invited tester gets a working code and link ("Verify: Confirm signup" in
   that runbook).
@@ -270,3 +292,5 @@ Fixtures created through the admin API (the RLS suite) are not affected.
 | 6a–6i | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**, except the 6c **Continue as guest** control: **OWNER CONFIRMATION REQUIRED** |
 | 7 Pre-existing accounts decided | 2026-10-14 | Production | Under way: 4 accounts banned until 2026-11-13, not deleted; deletion review around 2026-10-21 |
 | Postgres upgrade re-check | 2026-10-14 | Production | **VERIFIED IN PRODUCTION**: `17.11.0.003`, `ACTIVE_HEALTHY`; hook, allowlist and profiles unchanged (Production state above) |
+| Migrations and advisors re-check | 2026-10-15 | Production | **VERIFIED IN PRODUCTION**: 47 migrations, identical to the repo; Migration Drift run `38736350948` 47/47; no unindexed FK, no `auth_rls_initplan`, seven `unused_index` (re-check above) |
+| Confirm signup template | — | Production | **NOT DONE (owner-only)**: hosted paste and new-invited-tester check; the repo side is #472 |
