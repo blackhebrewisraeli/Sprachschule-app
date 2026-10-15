@@ -47,7 +47,6 @@ import { AUTO_MODEL, sanitizePreferredModel } from './lib/ai-routing/preference.
 import HomeTab from './components/HomeTab';
 import SettingsRoute from './components/settings/SettingsRoute';
 import AppFooter from './components/AppFooter';
-import AdminTab from './components/admin/AdminTab';
 import { deriveMissions } from './lib/missions';
 import { deriveQuests, questHistory } from './lib/quests';
 import { deckProgressFor } from './lib/deckProgress';
@@ -142,6 +141,10 @@ import { apiUrl } from './lib/apiUrl';
 const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy'));
 const TermsOfService = lazy(() => import('./components/legal/TermsOfService'));
 const DeleteAccountPage = lazy(() => import('./components/legal/DeleteAccountPage'));
+// Admin is for confirmed admins only, so its code stays out of everyone
+// else's download. useAdminSession and the nav badge stay eager: they decide
+// whether the tab exists at all.
+const AdminTab = lazy(() => import('./components/admin/AdminTab'));
 
 // A view that mounts fresh on a tab or route change fades in (.view-in in
 // injectGlobalStyles). It wraps only what is NEW on the switch: the goal
@@ -1990,9 +1993,11 @@ export default function App() {
             )}
             {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
             {tab === 'admin' && isAdmin && (
-              <ViewIn>
-                <AdminTab me={adminSession.me} />
-              </ViewIn>
+              <LazyBoundary>
+                <ViewIn>
+                  <AdminTab me={adminSession.me} />
+                </ViewIn>
+              </LazyBoundary>
             )}
           </PageFrame>
 

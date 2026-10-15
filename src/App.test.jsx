@@ -294,7 +294,7 @@ describe('App navigation a11y', () => {
     await userEvent.click(admin);
 
     expect(admin).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { name: 'Admin' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Admin' })).toBeInTheDocument();
     // The admin panel's own section switcher is a tablist, not a row of the
     // app's primary-action pills — see AdminRail.
     expect(screen.getByRole('tab', { name: /feedback/i })).toBeInTheDocument();
