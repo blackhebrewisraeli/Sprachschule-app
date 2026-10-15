@@ -2,10 +2,13 @@
 
 **Owner-only.** The sign-in template is version-controlled under
 `supabase/templates/magic_link.html` and wired for local GoTrue via
-`supabase/config.toml` (`[auth.email.template.magic_link]`). The **hosted**
-Supabase project does **not** pick that file up automatically — Auth email
-templates there are dashboard settings. Paste once after any template change
-so production emails stay in sync with the repo.
+`supabase/config.toml`, for **two** Auth templates that share that one file:
+`[auth.email.template.magic_link]` and `[auth.email.template.confirmation]`
+(dashboard name: **Confirm signup**). The **hosted** Supabase project does
+**not** pick that file up automatically — Auth email templates there are
+dashboard settings. Paste into both after any template change so production
+emails stay in sync with the repo. `src/authEmailTemplates.test.js` pins the
+wiring, the placeholders, and that both entries stay identical.
 
 Companion to Phase C of
 `docs/superpowers/specs/2026-08-02-auth-overhaul-design.md`.
@@ -21,9 +24,19 @@ Owner-applied 2026-09-18, body re-pasted 2026-10-03:
 - **Email OTP / magic-link expiry** = 300 seconds (5 minutes). Repo
   `supabase/config.toml` `[auth.email] otp_expiry` matches. JWT expiry is
   unchanged.
+- **Confirm signup**: **not pasted yet.** The hosted template has no 6-digit
+  code (recorded 2026-10-14), so a first-time native or installed-PWA tester
+  cannot sign in. Status as of 2026-10-15:
 
-Re-paste the template after any future `magic_link.html` edit — hosted
-Auth does not read the file automatically.
+  | Part                                                                                     | Who        | Status                |
+  | ---------------------------------------------------------------------------------------- | ---------- | --------------------- |
+  | `[auth.email.template.confirmation]` in `config.toml` + `src/authEmailTemplates.test.js` | repository | **Done** (2026-10-15) |
+  | Paste subject + body into the hosted **Confirm signup** template ("Paste" below)         | owner      | **Not done**          |
+  | New invited tester receives a working code and link ("Verify: Confirm signup" below)     | owner      | **Not done**          |
+
+Re-paste the template after any future `magic_link.html` edit — into **both**
+Magic Link and Confirm signup. Hosted Auth does not read the file
+automatically.
 
 **Brand (owner choice, 2026-10-03):** the email says `Deutsch · Sprachschule`,
 matching the native app label and the deletion page. The 2026-09-30 rename to
@@ -39,12 +52,34 @@ template lived only in the dashboard, it drifted: users sometimes got a link,
 sometimes a code. The repo copy is the source of truth; this runbook is the
 one-time (and on-change) sync into production.
 
+**Why Confirm signup gets the same body.** `signInWithOtp` does not always
+send the Magic Link template. For an address GoTrue has never confirmed, and
+while the hosted Email provider's **Confirm email** setting is on, it signs
+the address up and sends **Confirm signup** instead (supabase/auth
+`internal/api/magic_link.go`, the `isNewUser` branch). From the tester's side
+that is still "send me a sign-in code", so it gets the same subject and body.
+Nothing else differs:
+
+- `{{ .Token }}` and `{{ .ConfirmationURL }}` are available in every Auth
+  template (Supabase "Email Templates" docs).
+- The app verifies with `verifyOtp({ type: 'email' })` (`src/lib/auth.js`),
+  which GoTrue checks against the signup token first, then the magic-link
+  token (`internal/api/verify.go`).
+- Both tokens expire on the same Email OTP expiry (`otp_expiry`, 300 seconds
+  hosted), so the "five minutes" footer is true for both.
+
+Do not turn **Confirm email** off to work around this: that changes sign-up
+behaviour and is out of scope for this runbook.
+
 ## One-time / on-change: paste into the hosted dashboard
+
+Do this for **Magic Link** and for **Confirm signup**. The subject and body are
+the same for both.
 
 1. Open the production Supabase project → **Authentication** → **Email
    Templates**.
-2. Select the **Magic Link** template (used for email OTP / magic-link
-   sign-in).
+2. Select the template: **Magic Link** (sign-in for a confirmed address), then
+   repeat from here for **Confirm signup** (sign-in for a first-time address).
 3. Set the **Subject** to match `supabase/config.toml`:
 
    `Your sign-in code for Deutsch · Sprachschule`
@@ -57,7 +92,29 @@ one-time (and on-change) sync into production.
 
 5. Save.
 
-## Verify (do not skip)
+## Verify: Confirm signup (new invited tester, do not skip)
+
+A code or link is single-use, and once an address has signed in it gets Magic
+Link from then on. So checking both the code and the link of Confirm signup
+needs **two** addresses that have never signed in. Plus-addresses of a mailbox
+you control work (`you+cs1@…`, `you+cs2@…`): the allowlist matches the exact
+string.
+
+1. Invite both addresses with step 3 of `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`
+   (owner-only production write).
+2. Code: in the native app or the installed PWA, request a sign-in email for
+   the first address. The email must show the subject
+   `Your sign-in code for Deutsch · Sprachschule`, the "Deutsch · Sprachschule"
+   brand, a **6-digit code**, a link, and the **five minutes** footer. Enter the
+   code in the app: it must sign in.
+3. Link: request a sign-in email for the second address, and open its link in
+   a browser: it must sign in and land back in the app.
+4. If either email has a different subject or no code, the Confirm signup
+   paste did not save. Repeat the paste.
+5. Afterwards, remove the two test rows (`delete` line under step 3 of the
+   allowlist runbook) and handle their accounts as step 7 there describes.
+
+## Verify: Magic Link (existing account, do not skip)
 
 1. From the production app, request a sign-in email to a real inbox you
    control.
