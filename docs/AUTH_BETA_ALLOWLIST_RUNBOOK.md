@@ -229,9 +229,13 @@ allowlist was matched by role against a normalized hash and is never printed.
 
 **Pending follow-ups (not done)**
 
-- The Confirm signup email template has no six-digit code, and native testers
-  need the code. `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` covers only the Magic
-  Link template.
+- The hosted Confirm signup email template has no six-digit code, and native
+  testers need the code. **Repository side done 2026-10-15:**
+  `supabase/config.toml` wires Confirm signup to the same body as Magic Link,
+  and `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` now covers both. **Owner-only, not
+  done:** paste that body into the hosted Confirm signup template, then check a
+  new invited tester gets a working code and link ("Verify: Confirm signup" in
+  that runbook).
 - **BLOCKED / EXTERNAL DEPENDENCY:** the Privacy Policy must name Resend before
   any outside tester joins. That edit comes with a `PRIVACY_VERSION` bump, after
   the DPA and counsel review.

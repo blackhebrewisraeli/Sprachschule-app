@@ -249,6 +249,13 @@ otp_expiry = 300
 subject = "Your sign-in code for Deutsch · Sprachschule"
 content_path = "./supabase/templates/magic_link.html"
 
+# A first-time address gets "Confirm signup" instead of "Magic Link" whenever
+# confirmations are on (hosted), so it reuses the same subject and body: the
+# tester asked to sign in, and needs the same code + link. Same paste applies.
+[auth.email.template.confirmation]
+subject = "Your sign-in code for Deutsch · Sprachschule"
+content_path = "./supabase/templates/magic_link.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"
