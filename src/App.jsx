@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy } from 'react';
 import {
   User,
   BookOpen,
@@ -129,14 +129,19 @@ import WelcomeBackOverlay from './components/WelcomeBackOverlay';
 import { isTutorialDone } from './lib/tutorialPref';
 import { shouldWelcomeBack, welcomedThisSession, markWelcomed } from './lib/welcomeBack';
 import { Analytics } from '@vercel/analytics/react';
-import PrivacyPolicy from './components/legal/PrivacyPolicy';
-import TermsOfService from './components/legal/TermsOfService';
-import DeleteAccountPage from './components/legal/DeleteAccountPage';
+import LazyBoundary from './components/ui/LazyBoundary';
 import { currentLegalRoute } from './lib/legalRoute';
 import { SETTINGS_HASH, isUnknownHashRoute } from './lib/hashRoute';
 import NotFoundPage from './components/NotFoundPage';
 import { useWindowWidth, isMobile, isTiny, isTablet, bp } from './lib/useWindowWidth';
 import { apiUrl } from './lib/apiUrl';
+
+// Legal pages load in their own chunk: almost nobody opens them, and the
+// first-run path never does. Declared at module level so each lazy() is
+// created once. See docs/superpowers/specs/2026-10-15-vite-bundle-splitting-design.md.
+const PrivacyPolicy = lazy(() => import('./components/legal/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./components/legal/TermsOfService'));
+const DeleteAccountPage = lazy(() => import('./components/legal/DeleteAccountPage'));
 
 // A view that mounts fresh on a tab or route change fades in (.view-in in
 // injectGlobalStyles). It wraps only what is NEW on the switch: the goal
@@ -1436,26 +1441,34 @@ export default function App() {
 
   // Keyed per route: each is a ViewIn at the same root, so moving from one
   // legal page straight to another would otherwise reuse the element and skip
-  // the fade.
+  // the fade. The LazyBoundary carries the key too, so a page whose chunk
+  // failed does not leave its error state on the next legal page. It sits
+  // outside ViewIn, so the fade plays on the page, not on "Loading…".
   if (legalRoute === 'privacy') {
     return (
-      <ViewIn key="privacy">
-        <PrivacyPolicy onBack={closeLegal} />
-      </ViewIn>
+      <LazyBoundary key="privacy" minHeight="100vh">
+        <ViewIn key="privacy">
+          <PrivacyPolicy onBack={closeLegal} />
+        </ViewIn>
+      </LazyBoundary>
     );
   }
   if (legalRoute === 'terms') {
     return (
-      <ViewIn key="terms">
-        <TermsOfService onBack={closeLegal} />
-      </ViewIn>
+      <LazyBoundary key="terms" minHeight="100vh">
+        <ViewIn key="terms">
+          <TermsOfService onBack={closeLegal} />
+        </ViewIn>
+      </LazyBoundary>
     );
   }
   if (legalRoute === 'delete-account') {
     return (
-      <ViewIn key="delete-account">
-        <DeleteAccountPage onBack={closeLegal} />
-      </ViewIn>
+      <LazyBoundary key="delete-account" minHeight="100vh">
+        <ViewIn key="delete-account">
+          <DeleteAccountPage onBack={closeLegal} />
+        </ViewIn>
+      </LazyBoundary>
     );
   }
   if (notFound) {

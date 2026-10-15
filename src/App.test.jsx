@@ -1193,7 +1193,7 @@ describe('guest trial wall', () => {
       await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
       await user.click(screen.getByRole('link', { name: 'Terms of Service' }));
       expect(
-        screen.getByRole('heading', { level: 1, name: 'Terms of Service' })
+        await screen.findByRole('heading', { level: 1, name: 'Terms of Service' })
       ).toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: /back to the app/i }));
       expect(wall()).toBeInTheDocument();
@@ -3635,7 +3635,9 @@ describe('create sheet keeps its draft across the legal pages', () => {
     await userEvent.type(screen.getByLabelText('Email'), 'kept@b.co');
     await userEvent.click(screen.getByRole('checkbox', { name: /i agree/i }));
     await userEvent.click(screen.getByRole('link', { name: 'Privacy Policy' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Privacy Policy' })
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: /back to the app/i }));
     expect(await screen.findByRole('dialog', { name: /create your account/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toHaveValue('kept@b.co');
@@ -3675,26 +3677,31 @@ describe('guest mode is unchanged by the terms work', () => {
     expect(syncMock.start).not.toHaveBeenCalled();
   });
 
-  it('legal pages render on a cold load while signed out', () => {
+  it('legal pages render on a cold load while signed out', async () => {
     window.history.replaceState(null, '', '/terms');
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Terms of Service' })
+    ).toBeInTheDocument();
     window.history.replaceState(null, '', '/#/privacy');
     render(<App />);
     expect(
-      screen.getAllByRole('heading', { level: 1, name: 'Privacy Policy' }).length
+      (await screen.findAllByRole('heading', { level: 1, name: 'Privacy Policy' })).length
     ).toBeGreaterThan(0);
     window.history.replaceState(null, '', '/');
   });
 
   // Store checklist item 6: Google Play's deletion URL must work for someone
   // who is signed out and has no app — so no welcome screen in front of it.
-  it('the account-deletion page renders on a cold load while signed out', () => {
+  it('the account-deletion page renders on a cold load while signed out', async () => {
     window.history.replaceState(null, '', '/delete-account');
     try {
       render(<App />);
       expect(
-        screen.getByRole('heading', { level: 1, name: 'Delete your Deutsch Sprachschule account' })
+        await screen.findByRole('heading', {
+          level: 1,
+          name: 'Delete your Deutsch Sprachschule account',
+        })
       ).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /try it first/i })).toBeNull();
     } finally {
