@@ -165,7 +165,8 @@ name on 2026-10-05 (47 of 47 on 2026-10-15, "Closed beta and database" above),
 including AI quota (`20261006120000`), usage retention (`20261007120000`)
 and conversation history (`20261008120000`): Migration Drift is green on
 `0223fde3` (2026-10-05), and every version equalled its filename on the
-2026-10-03 read-only `list_migrations` (no migration was added since). CI, iOS
+2026-10-03 read-only `list_migrations` (no migration was added between that
+read and this 2026-10-05 audit). CI, iOS
 Simulator, Android debug APK, Xcode Cloud ("App | Default", which builds and
 uploads nothing) and Uptime are green on `main`. `/`, `/privacy`, `/terms`,
 `/delete-account` return 200 on `www.sprachschule-app.com` and the apex
