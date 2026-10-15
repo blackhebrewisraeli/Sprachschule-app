@@ -47,3 +47,13 @@ describe('auth email templates', () => {
     expect(tomlSection('auth.email').otp_expiry).toBe('300');
   });
 });
+
+// Local sign-in emails land in the CLI's mail catcher. Its section is
+// [local_smtp]; [inbucket] is the deprecated name that CI's pinned CLI
+// (2.114.0) still accepts but warns about.
+describe('local mail catcher config', () => {
+  it('uses [local_smtp] with the same values [inbucket] had', () => {
+    expect(tomlSection('inbucket')).toBeNull();
+    expect(tomlSection('local_smtp')).toEqual({ enabled: 'true', port: '54324' });
+  });
+});
