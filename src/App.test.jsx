@@ -3525,6 +3525,45 @@ describe('terms acceptance gate', () => {
     expect(legalMock.accept).toHaveBeenCalledTimes(1);
   });
 
+  // A brand-new account is owed the gate AND the first-run tour. Both are
+  // aria-modal focus traps, and the tour marks itself seen the moment it
+  // paints, so mounting it behind the gate stacked two modals and spent the
+  // tour where nobody could follow it.
+  it('a fresh account meets the gate alone, and the tour only after accepting', async () => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    legalMock.status = 'required';
+    legalMock.hasPrior = false;
+    legalMock.accept.mockImplementationOnce(async () => {
+      legalMock.status = 'accepted';
+      return { ok: true };
+    });
+    render(<App />);
+
+    const gate = await screen.findByRole('alertdialog', { name: 'One more step' });
+    // `hidden: true` also finds an aria-hidden tour: absent means not mounted.
+    expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0);
+    expect(screen.queryByTestId('tutorial-bubble')).toBeNull();
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
+
+    await userEvent.click(within(gate).getByRole('checkbox', { name: /i agree/i }));
+    await userEvent.click(within(gate).getByRole('button', { name: 'Continue' }));
+
+    expect(await screen.findByRole('dialog', { name: /tutorial/i })).toBeInTheDocument();
+    expect(screen.queryByRole('alertdialog', { hidden: true })).toBeNull();
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBe('true');
+  });
+
+  // No gate yet, but no acceptance either: a tour painted now would mark
+  // itself seen and then vanish under the gate when the check says `required`.
+  it.each(['checking', 'unknown'])('holds the tour while acceptance is %s', async (status) => {
+    localStorage.removeItem(TUTORIAL_KEY);
+    legalMock.status = status;
+    render(<App />);
+    await screen.findByRole('navigation');
+    expect(screen.queryAllByRole('dialog', { hidden: true })).toHaveLength(0);
+    expect(localStorage.getItem(TUTORIAL_KEY)).toBeNull();
+  });
+
   it('declining on a device that never synced keeps guest progress', async () => {
     legalMock.status = 'required';
     localStorage.setItem('deutsch-app-state-v1', JSON.stringify({ srs: { k: { box: 2 } } }));
