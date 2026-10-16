@@ -470,6 +470,10 @@ export default function App() {
     authStatus = legalAccepted ? 'authenticated' : 'loading';
   }
   const acceptanceGateUp = Boolean(rawAuth.user) && legal.status === 'required';
+  // The tour waits for the terms, not just for the gate: it marks itself seen
+  // on first paint, so mounting it while the check is still in flight would
+  // spend it a frame before the gate covers it.
+  const tutorialAllowed = !rawAuth.user || legalAccepted;
   const adminSession = useAdminSession(user);
   const isAdmin = Boolean(user && adminSession.me?.isAdmin);
   useEffect(() => {
@@ -2024,8 +2028,10 @@ export default function App() {
 
           {/* Only reachable past the entry gate, which early-returns above — so a
           brand-new account meets the gate first and the tour on the frame after
-          it, never both at once. */}
-          <TutorialOverlay anchors={tutorialAnchors} />
+          it, never both at once. The acceptance gate does NOT early-return (it
+          is an overlay on this tree), so the tour is also held until the terms
+          are accepted and mounts fresh afterwards. */}
+          {tutorialAllowed && <TutorialOverlay anchors={tutorialAnchors} />}
 
           {welcomeOpen && (
             <WelcomeBackOverlay
