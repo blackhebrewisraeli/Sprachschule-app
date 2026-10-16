@@ -149,7 +149,7 @@ export default function VocabTab({
     setDeckComplete(false);
   };
   // SRS-derived queue: due first, then new, then over-review.
-  const srsQueue = () => getDueCards((loadState() ?? {}).srs ?? {}, activeDeck, deckId, Date.now());
+  const srsQueue = () => getDueCards(loadState()?.srs ?? {}, activeDeck, deckId, Date.now());
 
   // Deck changes must not keep the previous queue. React applies the id write
   // before the reset effect, so one render can pair a new (smaller) deck with
@@ -423,7 +423,8 @@ export default function VocabTab({
   // library, its selected mode tab — so a keyboard or screen-reader user is
   // not dropped at <body> when the control they pressed unmounts. The first
   // render is skipped: arriving on the tab is the app's focus to manage.
-  const stage = !inSession ? 'library' : deckComplete ? 'complete' : 'session';
+  let stage = 'library';
+  if (inSession) stage = deckComplete ? 'complete' : 'session';
   const headingId = useId();
   const shownStage = useRef(stage);
   useEffect(() => {
