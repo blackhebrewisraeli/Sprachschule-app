@@ -78,7 +78,6 @@ export const SESSION_SPLASH_MAX_MS = 3500;
 import { fetchMyProfile, profileName, ANONYMOUS_NAME } from './lib/profile';
 import { useTokenBalance } from './lib/useTokenBalance';
 import { useEntitlement } from './lib/useEntitlement';
-import ChatTab from './components/ChatTab';
 import AlphabetTab from './components/AlphabetTab';
 import VocabTab from './components/VocabTab';
 import TranslateTab from './components/TranslateTab';
@@ -145,6 +144,9 @@ const DeleteAccountPage = lazy(() => import('./components/legal/DeleteAccountPag
 // else's download. useAdminSession and the nav badge stay eager: they decide
 // whether the tab exists at all.
 const AdminTab = lazy(() => import('./components/admin/AdminTab'));
+// Chat is not on the first-Vocab path. The coach mark's chatAnchorRef sits on
+// the nav button, not in this chunk, so the tutorial never waits for it.
+const ChatTab = lazy(() => import('./components/ChatTab'));
 
 // A view that mounts fresh on a tab or route change fades in (.view-in in
 // injectGlobalStyles). It wraps only what is NEW on the switch: the goal
@@ -1894,20 +1896,22 @@ export default function App() {
                 own content moves into the lane's collapsible. */}
                 <PracticeLane level={level} tab={tab}>
                   {tab === 'chat' && (
-                    <ViewIn>
-                      <ChatTab
-                        level={level}
-                        mobile={mobile}
-                        wide={width >= bp.wide}
-                        learnedWords={learnedWords}
-                        learnedByDeck={learnedByDeck}
-                        enabledInterests={enabledInterests}
-                        preferredModel={preferredModel}
-                        onPreferredModelChange={handlePreferredModelChange}
-                        user={user}
-                        onSignIn={requestSignIn}
-                      />
-                    </ViewIn>
+                    <LazyBoundary>
+                      <ViewIn>
+                        <ChatTab
+                          level={level}
+                          mobile={mobile}
+                          wide={width >= bp.wide}
+                          learnedWords={learnedWords}
+                          learnedByDeck={learnedByDeck}
+                          enabledInterests={enabledInterests}
+                          preferredModel={preferredModel}
+                          onPreferredModelChange={handlePreferredModelChange}
+                          user={user}
+                          onSignIn={requestSignIn}
+                        />
+                      </ViewIn>
+                    </LazyBoundary>
                   )}
                   {tab === 'alphabet' && (
                     <ViewIn>

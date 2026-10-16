@@ -962,7 +962,14 @@ describe('guest trial wall', () => {
     const views = [];
     for (const name of ['Alphabet', 'Vocab', 'Translate', 'Chat']) {
       await goToTab(user, name);
-      views.push(document.querySelector('main .view-in'));
+      // Chat is lazy: its view mounts once its chunk resolves.
+      views.push(
+        await waitFor(() => {
+          const view = document.querySelector('main .view-in');
+          expect(view).not.toBeNull();
+          return view;
+        })
+      );
       expect(wall()).toBe(shared);
     }
     expect(views.every(Boolean)).toBe(true);

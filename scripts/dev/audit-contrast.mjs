@@ -1433,6 +1433,13 @@ async function main() {
       for (const tab of TABS) {
         combinations += 1;
         await openTab(page, tab);
+        // Chat is lazy-loaded, and openTab's fixed delay does not wait for
+        // its chunk. Wait for the model trigger so the pass measures Chat,
+        // not its "Loading…" fallback. On a timeout, fall through: the
+        // popover audit below still reports a missing trigger.
+        if (tab === 'Chat') {
+          await page.waitForSelector(MODEL_TRIGGER, { timeout: 10000 }).catch(() => {});
+        }
         const bad = await page.evaluate(collectFindings, tab);
         for (const f of bad) {
           findings.push({ ...f, mode, viewport: vp.width });

@@ -19,6 +19,10 @@
  *      takes control, opens a legal page whose A-chunk is gone. It must show
  *      the page or the recoverable alert, never a blank screen, and Reload
  *      must land on build B.
+ *   6. Chat (PR 3): with the worker in control it opens online, then opens
+ *      OFFLINE in a fresh document, its chunk served from the precache. Its
+ *      "Loading…" fallback and failure alert fit inside the app shell at
+ *      320px and 375px, with the nav still usable.
  *
  * Builds A and B go to a temporary directory, never the working tree. B is
  * the same source with a marker export appended to each legal page module,
@@ -42,6 +46,7 @@ const PORT = Number(process.env.AUDIT_PORT ?? 5296);
 const BASE = `http://localhost:${PORT}`;
 const WORK = mkdtempSync(join(tmpdir(), 'smoke-lazy-chunks-'));
 const LEGAL = /\/assets\/(PrivacyPolicy|TermsOfService|DeleteAccountPage|LegalPage)-[^/]+\.js$/;
+const CHAT = /\/assets\/ChatTab-[^/]+\.js$/;
 const HEADINGS = {
   '/privacy': 'Privacy Policy',
   '/terms': 'Terms of Service',
@@ -256,6 +261,90 @@ async function scenarioOffline(browser) {
   await context.close();
 }
 
+async function scenarioChat(browser) {
+  const chatInput = (page) => page.getByRole('textbox', { name: 'Chat message in German' });
+  const openChat = (page) =>
+    page.getByRole('navigation').getByRole('button', { name: 'Chat', exact: true }).click();
+  const shows = (locator) =>
+    locator
+      .waitFor({ timeout: 15000 })
+      .then(() => true)
+      .catch(() => false);
+
+  {
+    const context = await browser.newContext({ viewport: { width: 375, height: 800 } });
+    const page = await context.newPage();
+    await stubApi(page);
+    await page.goto(BASE, { waitUntil: 'load' });
+    await enterAsGuest(page);
+    await waitForController(page);
+    await openChat(page);
+    check('6a Chat opens online with the worker in control', await shows(chatInput(page)));
+
+    // A fresh document offline: the Chat chunk can only come from the precache.
+    await context.setOffline(true);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await enterAsGuest(page);
+    await openChat(page);
+    const offline = await shows(chatInput(page));
+    const fromPage = await page.evaluate(() =>
+      performance
+        .getEntriesByType('resource')
+        .map((e) => new URL(e.name).pathname)
+        .filter((p) => p.includes('/assets/ChatTab-'))
+    );
+    check(
+      '6b Chat opens offline after the worker installs',
+      offline && fromPage.length > 0,
+      `rendered=${offline} chunk=${fromPage.join(',') || 'none'}`
+    );
+    await context.setOffline(false);
+    await context.close();
+  }
+
+  // Fallback, then failure, inside the app shell (not a full-page route).
+  const context = await browser.newContext({
+    viewport: { width: 320, height: 800 },
+    serviceWorkers: 'block',
+  });
+  const page = await context.newPage();
+  await stubApi(page);
+  let release;
+  const held = new Promise((r) => {
+    release = r;
+  });
+  await page.route(CHAT, async (route) => {
+    await held;
+    await route.fulfill({ status: 404, body: 'gone' });
+  });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await enterAsGuest(page);
+  await openChat(page);
+  const loading = await shows(page.getByRole('status').filter({ hasText: 'Loading…' }));
+  const fb320 = await overflowX(page);
+  await page.setViewportSize({ width: 375, height: 800 });
+  const fb375 = await overflowX(page);
+  release();
+  const alert = await shows(page.getByRole('alert').filter({ hasText: /could not load/i }));
+  const reload = await page
+    .getByRole('button', { name: 'Reload' })
+    .isVisible()
+    .catch(() => false);
+  const nav = await page
+    .getByRole('navigation')
+    .isVisible()
+    .catch(() => false);
+  const er375 = await overflowX(page);
+  await page.setViewportSize({ width: 320, height: 800 });
+  const er320 = await overflowX(page);
+  check(
+    '6c Chat fallback and failure UI fit in the shell at 320/375px',
+    loading && alert && reload && nav && fb320 <= 0 && fb375 <= 0 && er320 <= 0 && er375 <= 0,
+    `fallback=${loading} overflow320=${fb320} overflow375=${fb375} alert=${alert} reload=${reload} nav=${nav} overflow320=${er320} overflow375=${er375}`
+  );
+  await context.close();
+}
+
 async function scenarioFailedChunk(browser, dirA) {
   // Fallback first: hold the chunk so "Loading…" stays up long enough to measure.
   {
@@ -449,6 +538,7 @@ async function main() {
     await scenarioDirect(browser);
     await scenarioInApp(browser);
     await scenarioOffline(browser);
+    await scenarioChat(browser);
     await scenarioFailedChunk(browser, dirA);
     await scenarioUpgrade(browser, dirA, dirB);
   } finally {
