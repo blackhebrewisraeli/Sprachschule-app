@@ -366,13 +366,16 @@ describe('App navigation a11y', () => {
     expect(screen.getByText('1 card is due')).toBeInTheDocument();
   });
 
-  it('deep-links #/settings onto the Profile tab Settings view', () => {
+  it('deep-links #/settings onto the Profile tab Settings view', async () => {
     setViewportWidth(1280);
     window.location.hash = '#/settings';
     renderPastEntry(<App />);
     const nav = within(screen.getByRole('navigation'));
     expect(nav.getByRole('button', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('heading', { name: /einstellungen/i })).toBeInTheDocument();
+    // Profile is a lazy chunk: a fallback may show first.
+    expect(await screen.findByRole('heading', { name: /einstellungen/i })).toBeInTheDocument();
+    expect(window.location.hash).toBe('#/settings');
+    expect(nav.getByRole('button', { name: 'Profile' })).toHaveAttribute('aria-current', 'page');
     window.location.hash = '';
   });
 
@@ -567,7 +570,7 @@ describe('header and daily-goal surfaces', () => {
     await userEvent.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    expect(screen.getByText(/STREAK 3/)).toBeInTheDocument();
+    expect(await screen.findByText(/STREAK 3/)).toBeInTheDocument();
   });
 
   describe.each([1280, 375, 320])('daily-goal surfaces at %ipx', (width) => {
@@ -834,7 +837,7 @@ describe('in-app AuthSheet', () => {
     // The Profile page's own sign-in — scoped to <main>, because the header's
     // account chip carries a "Sign in" of its own.
     const main = screen.getByRole('main');
-    expect(within(main).getAllByRole('button', { name: /sign in/i })).toHaveLength(1);
+    expect(await within(main).findAllByRole('button', { name: /sign in/i })).toHaveLength(1);
     await user.click(within(main).getByRole('button', { name: /^sign in$/i }));
 
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
@@ -1640,7 +1643,7 @@ describe('entry gate', () => {
     await userEvent.click(nav.getByRole('button', { name: 'Profile' }));
     await userEvent.click(screen.getByRole('button', { name: /account/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Edit Profile' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Learning' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Learning' }));
     await userEvent.click(screen.getByText(/override classification/i));
     await userEvent.click(screen.getByRole('radio', { name: /A1/ }));
     await userEvent.click(nav.getByRole('button', { name: 'Vocab' }));
@@ -1718,7 +1721,7 @@ describe('placement suggestion after 500 XP', () => {
     await userEvent.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Settings' }));
     await userEvent.click(screen.getByRole('button', { name: 'Learning' }));
     await userEvent.click(screen.getByRole('button', { name: /retake placement/i }));
     expect(screen.getByRole('heading', { name: /find your level/i })).toBeInTheDocument();
@@ -1805,7 +1808,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Learning' }));
     await user.click(screen.getByText(/override classification/i));
     await user.click(screen.getByRole('radio', { name: /B1/ }));
@@ -1835,7 +1838,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Learning' }));
     expect(screen.queryByRole('radiogroup', { name: /level/i })).not.toBeInTheDocument();
     expect(screen.getByText(/override classification/i)).toBeInTheDocument();
@@ -1930,7 +1933,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
     );
-    await user.click(screen.getByRole('button', { name: 'Settings' }));
+    await user.click(await screen.findByRole('button', { name: 'Settings' }));
     await user.click(screen.getByRole('button', { name: 'Learning' }));
     await user.click(screen.getByText(/override classification/i));
     await user.click(screen.getByRole('radio', { name: /A2/ }));
@@ -2352,7 +2355,7 @@ describe('account deletion wiring', () => {
     // chip rather than sitting inside the Stats tab.
     await userEvent.click(screen.getByRole('button', { name: /account/i }));
     await userEvent.click(screen.getByRole('button', { name: /open settings/i }));
-    await userEvent.click(screen.getByRole('button', { name: /delete account/i }));
+    await userEvent.click(await screen.findByRole('button', { name: /delete account/i }));
     await userEvent.type(
       screen.getByRole('textbox', { name: /type delete to confirm/i }),
       'DELETE'
@@ -3438,7 +3441,7 @@ describe('placement gate while a signed-in level is still in flight', () => {
     await user.click(screen.getByRole('button', { name: /profile/i }));
     await user.click(screen.getByRole('button', { name: /account/i }));
     await user.click(screen.getByRole('button', { name: /^edit profile$/i }));
-    await user.click(screen.getByRole('button', { name: 'Learning' }));
+    await user.click(await screen.findByRole('button', { name: 'Learning' }));
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
 
     expect(placement()).toBeInTheDocument();
