@@ -185,10 +185,6 @@ async function scenarioFirstVocab(browser, dirA) {
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   await enterAsGuest(page);
   await page.getByRole('navigation').getByRole('button', { name: 'Vocab', exact: true }).click();
-  const picker = page.locator('details:has(summary:has-text("Deck"))');
-  if ((await picker.count()) > 0 && !(await picker.evaluate((el) => el.open))) {
-    await picker.locator('summary').click();
-  }
   await page
     .getByRole('button', { name: /Greetings/i })
     .first()

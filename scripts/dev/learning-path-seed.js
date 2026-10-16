@@ -123,17 +123,26 @@ function todayStamp(date = new Date()) {
 }
 
 /**
- * Expand the Vocab deck picker if it is collapsed. On mobile widths DeckPicker
- * folds into a <details> whose summary names only the current deck, so the
- * deck rows are not visible until it opens; on wide layouts there is no
- * <details> and this is a no-op. Checks `open` first rather than clicking the
- * summary blindly, because a click on an already-open disclosure closes it.
+ * Why Vocab is NOT showing the focused session for `deckName`, or null when it
+ * is. Library, session and completion are separate screens: the session's
+ * heading names its deck, and no deck-library control may render beside it.
  *
  * @param {import('playwright').Page} page
+ * @param {string} deckName
+ * @returns {Promise<string|null>}
  */
-export async function openDeckPicker(page) {
-  const picker = page.locator('details:has(summary:has-text("Deck"))');
-  if ((await picker.count()) === 0) return;
-  if (await picker.evaluate((el) => el.open)) return;
-  await picker.locator('summary').click();
+export async function focusedSessionProblem(page, deckName) {
+  const heading = page.getByRole('heading', { level: 1, name: deckName, exact: true });
+  try {
+    await heading.waitFor({ state: 'visible', timeout: 10000 });
+  } catch {
+    return `no session heading named "${deckName}"`;
+  }
+  if ((await page.getByRole('button', { name: 'Back to decks' }).count()) !== 1) {
+    return 'no single "Back to decks" control';
+  }
+  if (await page.getByRole('tablist', { name: 'Vocabulary mode' }).count()) {
+    return 'the deck library (Practice / Browse / Custom) renders beside the session';
+  }
+  return null;
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import VocabTab from './VocabTab';
@@ -38,16 +38,29 @@ describe('reporting an issue from inside an exercise', () => {
       render(
         <VocabTab level="a1" learnedWords={{}} markLearned={() => {}} mobile={false} {...props} />
       );
+    // Vocab opens on its deck library; the report control lives on the card.
+    const renderSession = async (props = {}) => {
+      renderTab(props);
+      await userEvent.click(screen.getByRole('button', { name: /Greetings/ }));
+    };
 
-    it('offers a report control alongside the card', () => {
-      renderTab();
+    // jsdom has no scrolling; each Vocab screen change asks to start at the top.
+    beforeEach(() => {
+      vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    });
+    afterEach(() => {
+      window.scrollTo.mockRestore();
+    });
+
+    it('offers a report control alongside the card', async () => {
+      await renderSession();
       expect(screen.getByRole('button', { name: /report an issue/i })).toBeInTheDocument();
     });
 
     it('captures the card, the deck and the level the learner was on', async () => {
       const user = userEvent.setup();
       setUserLevel('a2');
-      renderTab({ level: 'a2' });
+      await renderSession({ level: 'a2' });
       // Empty SRS ⇒ the queue is the deck in order, so the first card is fixed.
       const card = DECKS.greetings[0];
 
@@ -78,7 +91,7 @@ describe('reporting an issue from inside an exercise', () => {
     // object on card one. Advancing makes them different.
     it('reports the card on screen after the learner has moved past the first', async () => {
       const user = userEvent.setup();
-      renderTab();
+      await renderSession();
       const first = DECKS.greetings[0];
       const second = DECKS.greetings[1];
 
@@ -101,8 +114,8 @@ describe('reporting an issue from inside an exercise', () => {
     // to wrap, and the report button must not sit in the dot cluster. Removing
     // either put the Vocab tab 125px past a 320px viewport. See the comment
     // above this row in VocabTab.jsx for the measurements.
-    it('keeps the report button out of the deck-progress cluster, in a row that can wrap', () => {
-      renderTab();
+    it('keeps the report button out of the deck-progress cluster, in a row that can wrap', async () => {
+      await renderSession();
       const button = screen.getByRole('button', { name: /report an issue/i });
       const dots = screen.getAllByTestId('deck-progress-dot');
       const strip = dots[0].parentElement;
@@ -119,7 +132,7 @@ describe('reporting an issue from inside an exercise', () => {
       // The word is concealed by CardFace for the drill decks — the report
       // dialog must not be the back door to it.
       const user = userEvent.setup();
-      renderTab();
+      await renderSession();
       await user.click(screen.getByRole('button', { name: /report an issue/i }));
       const dialog = screen.getByRole('dialog', { name: /report an issue/i });
       expect(dialog.textContent).not.toMatch(new RegExp(DECKS.greetings[0].de, 'i'));

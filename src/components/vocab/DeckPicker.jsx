@@ -1,5 +1,4 @@
 import { useEffect, useId, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
 import {
   BORDER,
   COLORS,
@@ -10,6 +9,7 @@ import {
   SHADOW,
   SPACE,
 } from '../../lib/theme';
+import Button from '../ui/Button';
 import SectionLabel from '../ui/SectionLabel';
 import { AUTO_DECKS, DECK_GROUPS } from '../../packs/de/autoDecks';
 import { filterCatalogByLevel } from '../../lib/levelGate';
@@ -90,25 +90,28 @@ const PRESETS = [
 ];
 
 /**
- * Practice's select-only deck list: curated decks, the learner's custom decks,
- * and lexicon-derived auto decks. Generate and trash live on Custom
+ * Practice's deck library: curated decks, the learner's custom decks, and
+ * lexicon-derived auto decks. Generate and trash live on Custom
  * (`CustomDeckManager`) — this picker only reports which deck to practise.
  *
- * Auto decks are a form-style cascade: a group <select> feeds a deck <select>
- * that lists only that group's decks. Choosing a deck calls onSelect; changing
- * the group does not. Presets stay a vertical list above the cascade.
+ * Preset and custom rows are buttons, so pressing one STARTS that deck
+ * (onStart). Auto decks are a form-style cascade: a group <select> feeds a deck
+ * <select> that lists only that group's decks, and "Start practice" submits it.
+ * Choosing a deck only selects it (onSelect); changing the group does not even
+ * do that. A select must not start the session itself — a closed one changes
+ * on a single arrow press under Windows or Firefox (WCAG 3.2.2).
  *
  * @param {{ deckId: string, onSelect: (id: string) => void,
- *           customDecks?: object, level?: string,
+ *           onStart: (id: string) => void, customDecks?: object, level?: string,
  *           interestDecks?: Array<{ id: string, name: string, count?: number }> }} props
  */
 export default function DeckPicker({
   deckId,
   onSelect,
+  onStart,
   customDecks = {},
   level = getUserLevel(),
   interestDecks = [],
-  collapsible = false,
 }) {
   const interestIds = new Set(interestDecks.map((d) => d.id));
   const groups = interestDecks.length > 0 ? [INTERESTS_GROUP, ...AUTO_GROUPS] : AUTO_GROUPS;
@@ -129,23 +132,7 @@ export default function DeckPicker({
     current === INTERESTS_GROUP ? interestDecks : allowedAuto.filter((d) => d.group === current);
   const deckValue = activeDecks.some((d) => d.id === deckId) ? deckId : '';
 
-  // Collapsed on phones: the full picker is ~270px of chrome above the card,
-  // which pushed the word being learned to the bottom edge of a 375px screen.
-  // A native <details> (as PracticeLane and ChatTab already use) is keyboard-
-  // and screen-reader-operable for free; picking a deck closes it again.
-  const [open, setOpen] = useState(false);
-  const select = (id) => {
-    setOpen(false);
-    onSelect(id);
-  };
-  const currentName =
-    PRESETS.find((d) => d.id === deckId)?.name ??
-    customDecks[deckId]?.name ??
-    interestDecks.find((d) => d.id === deckId)?.name ??
-    AUTO_DECKS.find((d) => d.id === deckId)?.name ??
-    'Choose a deck';
-
-  const body = (
+  return (
     <div
       style={{
         width: '100%',
@@ -172,7 +159,7 @@ export default function DeckPicker({
             <button
               key={d.id}
               type="button"
-              onClick={() => select(d.id)}
+              onClick={() => onStart(d.id)}
               aria-pressed={active}
               style={{
                 width: '100%',
@@ -216,7 +203,7 @@ export default function DeckPicker({
             </button>
           );
         })}
-        {/* Select-only custom rows. Generate / trash moved to Custom in P4. */}
+        {/* Custom rows start their deck. Generate / trash moved to Custom in P4. */}
         {Object.entries(customDecks).map(([id, deck]) => {
           const deckName = deck.name || 'Your Deck';
           const selected = deckId === id;
@@ -226,7 +213,7 @@ export default function DeckPicker({
             <button
               key={id}
               type="button"
-              onClick={() => select(id)}
+              onClick={() => onStart(id)}
               aria-pressed={selected}
               aria-label={`Your Deck: ${deck.name || 'unnamed'} — ${count} ${plural(count, 'card', 'cards')}`}
               style={{
@@ -273,7 +260,7 @@ export default function DeckPicker({
           gap: SPACE[3],
           width: '100%',
           minWidth: 0,
-          marginBottom: SPACE[5],
+          marginBottom: SPACE[3],
           boxSizing: 'border-box',
         }}
       >
@@ -295,7 +282,7 @@ export default function DeckPicker({
           value={deckValue}
           onChange={(e) => {
             const next = e.target.value;
-            if (next) select(next);
+            if (next) onSelect(next);
           }}
         >
           <option value="" disabled>
@@ -308,6 +295,14 @@ export default function DeckPicker({
           ))}
         </AutoSelect>
       </div>
+      <Button
+        variant="primary"
+        disabled={!deckValue}
+        onClick={() => onStart(deckValue)}
+        style={{ width: '100%', marginBottom: SPACE[5] }}
+      >
+        Start practice
+      </Button>
 
       <div
         style={{
@@ -321,59 +316,5 @@ export default function DeckPicker({
         Wikivoyage (CC BY-SA).
       </div>
     </div>
-  );
-
-  if (!collapsible) return body;
-
-  return (
-    <details
-      open={open}
-      onToggle={(e) => setOpen(e.currentTarget.open)}
-      style={{ width: '100%', minWidth: 0 }}
-    >
-      <summary
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: SPACE[2],
-          minWidth: 0,
-          padding: `${SPACE[2]}px ${SPACE[3]}px`,
-          background: COLORS.card,
-          border: BORDER.panel,
-          borderRadius: RADIUS.md,
-          cursor: 'pointer',
-          listStyle: 'none',
-        }}
-      >
-        <SectionLabel as="span" style={{ margin: 0, flexShrink: 0 }}>
-          Deck
-        </SectionLabel>
-        <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            fontFamily: FONTS.display,
-            fontSize: FONT_SIZE.md,
-            fontWeight: FONT_WEIGHT.semibold,
-            color: COLORS.ink,
-          }}
-        >
-          {currentName}
-        </span>
-        <ChevronDown
-          size={FONT_SIZE.lg}
-          aria-hidden="true"
-          style={{
-            flexShrink: 0,
-            color: COLORS.mute,
-            transform: open ? 'rotate(180deg)' : 'none',
-          }}
-        />
-      </summary>
-      <div style={{ marginTop: SPACE[3] }}>{body}</div>
-    </details>
   );
 }

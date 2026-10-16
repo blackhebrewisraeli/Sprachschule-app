@@ -123,6 +123,8 @@
 
     async vocab(job) {
       await click('Vocab');
+      // Vocab opens on the deck library; a preset row starts its session.
+      await click('Greetings', { exact: false });
       // The card's German term is on screen; its English meaning is one of the
       // choices. Pick the choice the pack says is right.
       const pick = await waitFor(() => {

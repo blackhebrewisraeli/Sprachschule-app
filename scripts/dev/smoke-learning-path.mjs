@@ -4,9 +4,11 @@
  *   Recommendation → Practice → Finish → refresh → progress retained
  *
  * Proves, in a real Chromium page against a production build:
- *   1. A Home recommendation that names a deck opens Vocab on that deck (#277).
+ *   1. A Home recommendation that names a deck opens Vocab on that deck (#277),
+ *      as the focused session — no deck library beside it.
  *   2. Completing the last card in the queue shows DeckCompleteBanner (#276),
- *      not the empty "Select a deck to start." state.
+ *      not the empty "Select a deck to start." state, and not over the library;
+ *      Back to decks then returns to the library.
  *   3. After a full reload, the same `deutsch-app-state-v1` blob still holds
  *      learnedByDeck + SRS rows for that practice. No new persistence.
  *
@@ -33,8 +35,8 @@ import { fileURLToPath } from 'node:url';
 import {
   DECK_ID,
   STATE_KEY,
+  focusedSessionProblem,
   learningPathSeed,
-  openDeckPicker,
   srsKey,
 } from './learning-path-seed.js';
 
@@ -346,18 +348,11 @@ async function walkViewport(page, vp, seed) {
   await rec.click();
 
   await assertNavTab(page, 'Vocab', true);
-  await openDeckPicker(page);
-  const food = page.getByRole('button', { name: /Food & Drink/i });
-  const greetings = page.getByRole('button', { name: /Greetings/i });
-  await food.waitFor({ state: 'visible', timeout: 8000 });
-  if ((await food.getAttribute('aria-pressed')) !== 'true') {
+  const handoff = await focusedSessionProblem(page, 'Food & Drink');
+  if (handoff) {
+    await dumpPage(page, `${label} vocab-handoff`);
     throw new Error(
-      'smoke-learning-path: recommendation did not select Food & Drink (#277)'
-    );
-  }
-  if ((await greetings.getAttribute('aria-pressed')) !== 'false') {
-    throw new Error(
-      'smoke-learning-path: Greetings stayed selected after a Food & Drink handoff (#277)'
+      `smoke-learning-path: recommendation did not open a Food & Drink session (#277): ${handoff}`
     );
   }
   await assertNoOverflow(page, `${label} vocab-handoff`);
@@ -369,6 +364,9 @@ async function walkViewport(page, vp, seed) {
   if (await page.getByText('Select a deck to start.').isVisible().catch(() => false)) {
     throw new Error('smoke-learning-path: finish surface and empty state both showing');
   }
+  if (await page.getByRole('tablist', { name: 'Vocabulary mode' }).count()) {
+    throw new Error('smoke-learning-path: the deck library renders under the completion screen');
+  }
   await assertNoOverflow(page, `${label} deck-complete`);
 
   const afterPractice = await page.evaluate(
@@ -376,6 +374,18 @@ async function walkViewport(page, vp, seed) {
     STATE_KEY
   );
   assertPersistedProgress(afterPractice, seed);
+
+  await page.getByRole('button', { name: 'Back to decks' }).click();
+  try {
+    await page
+      .getByRole('tablist', { name: 'Vocabulary mode' })
+      .waitFor({ state: 'visible', timeout: 8000 });
+  } catch (err) {
+    throw new Error(
+      `smoke-learning-path: Back to decks did not return to the library: ${err.message}`
+    );
+  }
+  await assertNoOverflow(page, `${label} back-to-decks`);
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(400);

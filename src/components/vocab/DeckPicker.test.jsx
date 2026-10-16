@@ -9,6 +9,7 @@ const AUTO_GROUPS = DECK_GROUPS.filter((g) => g !== 'Curated');
 const props = {
   deckId: 'greetings',
   onSelect: () => {},
+  onStart: () => {},
   customDecks: {},
 };
 
@@ -93,11 +94,13 @@ describe('DeckPicker', () => {
     });
   });
 
-  it('reports the deck the user picked', async () => {
+  it('starts the preset the user picked', async () => {
     const onSelect = vi.fn();
-    render(<DeckPicker {...props} onSelect={onSelect} />);
+    const onStart = vi.fn();
+    render(<DeckPicker {...props} onSelect={onSelect} onStart={onStart} />);
     await userEvent.click(screen.getByRole('button', { name: /Numbers/ }));
-    expect(onSelect).toHaveBeenCalledWith('numbers');
+    expect(onStart).toHaveBeenCalledWith('numbers');
+    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('does not render generate or custom-deck trash — those live on Custom', () => {
@@ -129,11 +132,11 @@ describe('DeckPicker with a collection', () => {
     expect(screen.getAllByRole('button', { name: /Your Deck/ })).toHaveLength(2);
   });
 
-  it('reports the deck id that was picked, not a literal', () => {
-    const onSelect = vi.fn();
-    render(<DeckPicker {...props} customDecks={two} onSelect={onSelect} />);
+  it('starts the deck id that was picked, not a literal', () => {
+    const onStart = vi.fn();
+    render(<DeckPicker {...props} customDecks={two} onStart={onStart} />);
     screen.getAllByRole('button', { name: /Your Deck/ })[1].click();
-    expect(onSelect).toHaveBeenCalledWith('custom-b');
+    expect(onStart).toHaveBeenCalledWith('custom-b');
   });
 
   it('shows each deck its own card count, singular where it should be', () => {
@@ -251,12 +254,29 @@ describe('DeckPicker auto-deck cascade', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('reports the auto deck the user picked', async () => {
+  // A closed <select> changes on a single arrow press under Windows or Firefox,
+  // so a change only selects. Starting is the explicit button (WCAG 3.2.2).
+  it('selects the auto deck the user picked without starting it', async () => {
     const onSelect = vi.fn();
-    render(<DeckPicker {...props} onSelect={onSelect} />);
+    const onStart = vi.fn();
+    render(<DeckPicker {...props} onSelect={onSelect} onStart={onStart} />);
     await userEvent.selectOptions(groupSelect(), 'Topics');
     await userEvent.selectOptions(deckSelect(), 'tag-lifestyle');
     expect(onSelect).toHaveBeenCalledWith('tag-lifestyle');
+    expect(onStart).not.toHaveBeenCalled();
+  });
+
+  it('starts the selected auto deck from Start practice', async () => {
+    const onStart = vi.fn();
+    render(<DeckPicker {...props} deckId="tag-lifestyle" onStart={onStart} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Start practice' }));
+    expect(onStart).toHaveBeenCalledWith('tag-lifestyle');
+  });
+
+  it('keeps Start practice disabled until the open group has a deck selected', () => {
+    render(<DeckPicker {...props} />);
+    expect(deckSelect()).toHaveValue('');
+    expect(screen.getByRole('button', { name: 'Start practice' })).toBeDisabled();
   });
 
   it('opens the group that contains the current auto deck', () => {
@@ -342,27 +362,5 @@ describe('DeckPicker — interest decks', () => {
     render(<DeckPicker {...props} level="a1" interestDecks={sport} />);
     await userEvent.selectOptions(groupSelect(), 'Interests');
     expect(screen.getByRole('option', { name: /Sport/ })).toHaveValue('interest-sport');
-  });
-});
-
-describe('DeckPicker — collapsible (mobile)', () => {
-  it('starts closed showing only the current deck, and closes again after a pick', async () => {
-    const onSelect = vi.fn();
-    const { container } = render(<DeckPicker {...props} onSelect={onSelect} collapsible />);
-    const details = container.querySelector('details');
-    expect(details.open).toBe(false);
-    expect(container.querySelector('summary')).toHaveTextContent('Greetings');
-
-    await userEvent.click(container.querySelector('summary'));
-    expect(details.open).toBe(true);
-
-    await userEvent.click(screen.getByRole('button', { name: /Travel 10/ }));
-    expect(onSelect).toHaveBeenCalledWith('travel');
-    expect(details.open).toBe(false);
-  });
-
-  it('renders no disclosure on wide layouts', () => {
-    const { container } = render(<DeckPicker {...props} />);
-    expect(container.querySelector('details')).toBeNull();
   });
 });
