@@ -81,7 +81,6 @@ import { useEntitlement } from './lib/useEntitlement';
 import AlphabetTab from './components/AlphabetTab';
 import VocabTab from './components/VocabTab';
 import TranslateTab from './components/TranslateTab';
-import StatsTab from './components/StatsTab';
 import PracticeLane from './components/PracticeLane';
 import WelcomeGate from './components/WelcomeGate';
 import AdSlot from './components/ads/AdSlot';
@@ -147,6 +146,10 @@ const AdminTab = lazy(() => import('./components/admin/AdminTab'));
 // Chat is not on the first-Vocab path. The coach mark's chatAnchorRef sits on
 // the nav button, not in this chunk, so the tutorial never waits for it.
 const ChatTab = lazy(() => import('./components/ChatTab'));
+// Profile is not on the first-Vocab path. settingsPanel is still built here and
+// handed to StatsTab. SettingsRoute itself stays eager: making it lazy too made
+// the bundler split shared modules into extra preloaded files.
+const StatsTab = lazy(() => import('./components/StatsTab'));
 
 // A view that mounts fresh on a tab or route change fades in (.view-in in
 // injectGlobalStyles). It wraps only what is NEW on the switch: the goal
@@ -1983,17 +1986,19 @@ export default function App() {
               </div>
             )}
             {tab === 'stats' && (
-              <StatsTab
-                mobile={mobile}
-                onReview={handleReview}
-                user={user}
-                profile={profile}
-                tokens={tokens}
-                onSignIn={requestSignIn}
-                view={profileView}
-                onViewChange={handleProfileView}
-                settingsPanel={settingsPanel}
-              />
+              <LazyBoundary>
+                <StatsTab
+                  mobile={mobile}
+                  onReview={handleReview}
+                  user={user}
+                  profile={profile}
+                  tokens={tokens}
+                  onSignIn={requestSignIn}
+                  view={profileView}
+                  onViewChange={handleProfileView}
+                  settingsPanel={settingsPanel}
+                />
+              </LazyBoundary>
             )}
             {tab === 'stats' && <AdSlot placement="profile" tier={tier} />}
             {tab === 'admin' && isAdmin && (
