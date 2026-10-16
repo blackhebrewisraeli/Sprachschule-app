@@ -1803,6 +1803,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
+    await screen.findByTestId('translate-level');
     expectTranslate('A1', 'Word tiles');
 
     await user.click(
@@ -1827,6 +1828,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
+    await screen.findByTestId('translate-level');
     expectTranslate('A1', 'Word tiles');
     expect(screen.queryByTestId('translate-level')).not.toHaveTextContent('B1');
     expect(screen.queryByRole('textbox')).toBeNull();
@@ -1852,7 +1854,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    await user.click(screen.getByRole('button', { name: /skip/i }));
+    await user.click(await screen.findByRole('button', { name: /skip/i }));
     expect(screen.getByText(/Exercise 2 of 10/)).toBeInTheDocument();
 
     await user.click(chip());
@@ -1876,7 +1878,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    await user.click(screen.getByRole('button', { name: /skip/i }));
+    await user.click(await screen.findByRole('button', { name: /skip/i }));
 
     await user.click(chip());
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
@@ -1893,7 +1895,7 @@ describe('level coordination', () => {
     await user.click(
       within(screen.getByRole('navigation')).getByRole('button', { name: 'Translate' })
     );
-    expect(screen.getByText(/Exercise 1 of 10/)).toBeInTheDocument();
+    expect(await screen.findByText(/Exercise 1 of 10/)).toBeInTheDocument();
 
     await user.click(chip());
     await user.click(screen.getByRole('button', { name: /retake placement/i }));
@@ -1906,7 +1908,7 @@ describe('level coordination', () => {
     renderPastEntry(<App />);
     const nav = () => within(screen.getByRole('navigation'));
     await user.click(nav().getByRole('button', { name: 'Translate' }));
-    await user.click(screen.getByRole('button', { name: /skip/i }));
+    await user.click(await screen.findByRole('button', { name: /skip/i }));
     await user.click(nav().getByRole('button', { name: 'Profile' }));
 
     await user.click(chip());
