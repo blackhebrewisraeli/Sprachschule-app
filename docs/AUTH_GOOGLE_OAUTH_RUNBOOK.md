@@ -195,7 +195,7 @@ Run these against the deployed app, in a fresh browser profile.
       you can try again whenever you like."** If it says *"That link
       expired"*, the callback reason is being misclassified — report it, do
       not work around it.
-- [ ] **Email still works.** The 6-digit code flow is unchanged and still
+- [ ] **Email still works.** The one-time code flow is unchanged and still
       signs in.
 - [ ] **Flag off is clean.** With the flag off (or before the redeploy) there
       is no Google button and no stray "or" divider on any surface.

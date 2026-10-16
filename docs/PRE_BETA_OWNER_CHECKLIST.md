@@ -69,7 +69,7 @@ future template change, re-paste via `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`.
      `http://127.0.0.1:5173` (exact match, no wildcards for the local pair)
 
 Send one real magic-link email after any later template paste and confirm
-both the 6-digit code and the link still sign in.
+both the one-time code and the link still sign in.
 
 ## 4. Auth custom domain / Google OAuth branding
 

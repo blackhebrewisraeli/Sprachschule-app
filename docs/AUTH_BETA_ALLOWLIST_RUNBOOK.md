@@ -251,7 +251,7 @@ allowlist and `profiles` were not re-checked.
 
 **Pending follow-ups (not done)**
 
-- The hosted Confirm signup email template has no six-digit code, and native
+- The hosted Confirm signup email template has no one-time code, and native
   testers need the code. **Repository side done by #472 (merged as `719792ed`,
   2026-10-15):** `supabase/config.toml` wires Confirm signup to the same body
   as Magic Link, and `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` now covers both. **Owner-only, not
