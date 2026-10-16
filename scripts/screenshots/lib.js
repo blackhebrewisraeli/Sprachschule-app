@@ -26,6 +26,21 @@ export function parseArgs(argv) {
 export const DRIVER_MARK = 'data-shots-driver';
 
 /**
+ * Android demo-mode broadcasts, in order: a clean 9:41 status bar, full
+ * battery and signal, no icons. Each is `[command, extras]`.
+ */
+export const ANDROID_DEMO = [
+  ['enter'],
+  ['clock', ['-e', 'hhmm', '0941']],
+  ['battery', ['-e', 'level', '100', '-e', 'plugged', 'false']],
+  // Wi-Fi only: demo mode's mobile icon reads "3G", which dates the image.
+  // Without `fully true` the icon carries Android's "no internet" "!".
+  ['network', ['-e', 'wifi', 'show', '-e', 'level', '4', '-e', 'fully', 'true']],
+  ['network', ['-e', 'mobile', 'hide']],
+  ['notifications', ['-e', 'visible', 'false']],
+];
+
+/**
  * Puts the driver into a copied bundle's index.html, just before </body>.
  * Idempotent: a second call replaces the first injection rather than
  * stacking two drivers.
