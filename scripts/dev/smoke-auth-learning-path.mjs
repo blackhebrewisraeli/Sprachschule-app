@@ -43,7 +43,12 @@ import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DECK_ID, STATE_KEY, learningPathSeed, openDeckPicker } from './learning-path-seed.js';
+import {
+  DECK_ID,
+  STATE_KEY,
+  focusedSessionProblem,
+  learningPathSeed,
+} from './learning-path-seed.js';
 // The SAME pure module LeaderboardSection and the settle endpoint both use, so
 // the zone dividers this smoke expects can never drift from the ones the app
 // draws. Importing it beats hardcoding 7/5 here.
@@ -1495,7 +1500,7 @@ async function stepViewportChecks(page, label, { expectNav = true } = {}) {
   await assertNavLabelPolicy(page, label, expectNav);
 }
 
-/** Navigate to Vocab and select the seeded deck. */
+/** Navigate to Vocab and start the seeded deck. */
 async function openSeededDeck(page) {
   const nav = page.getByRole('navigation');
   const vocab = nav.getByRole('button', { name: 'Vocab', exact: true });
@@ -1505,18 +1510,13 @@ async function openSeededDeck(page) {
     throw new Error('smoke-auth-learning-path: Vocab did not become the active tab.');
   }
 
-  await openDeckPicker(page);
+  // Vocab opens on the deck library; picking a deck there starts it.
   const food = page.getByRole('button', { name: /Food & Drink/i });
   await food.waitFor({ state: 'visible', timeout: 10000 });
-  if ((await food.getAttribute('aria-pressed')) !== 'true') {
-    await food.click();
-    await page.waitForTimeout(300);
-    // Picking a deck closes the mobile drawer, which takes the rows out of
-    // the accessibility tree; reopen it so the check below can see them.
-    await openDeckPicker(page);
-  }
-  if ((await food.getAttribute('aria-pressed')) !== 'true') {
-    throw new Error('smoke-auth-learning-path: Food & Drink never became the selected deck.');
+  await food.click();
+  const problem = await focusedSessionProblem(page, 'Food & Drink');
+  if (problem) {
+    throw new Error(`smoke-auth-learning-path: Food & Drink did not open a session: ${problem}`);
   }
 }
 

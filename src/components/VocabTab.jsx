@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useId } from 'react';
 import { COLORS, FONTS, FONT_SIZE, LETTER_SPACING, SPACE, BUTTON } from '../lib/theme';
 import { callClaude, QuotaExhaustedError } from '../lib/claude';
 import { resetTimeText } from '../lib/quotaReset';
@@ -16,6 +16,8 @@ const DEFAULT_DECK_ID = 'greetings';
 import { AlertTriangle } from 'lucide-react';
 import StatusNote from './ui/StatusNote';
 import { Hero } from './UI';
+import Button from './ui/Button';
+import Heading from './ui/Heading';
 import { shuffle } from '../lib/utils';
 import { exactMatch, bestGlossMatch } from '../lib/matching';
 import { ANSWER } from '../lib/textRules';
@@ -47,6 +49,10 @@ import { interestPickerDecks, isEnabledInterestDeck } from '../lib/interests';
 // not show them, since that would print the answer above the question.
 const glossList = (card) => (card.glosses?.length ? card.glosses.join(' · ') : card.en);
 
+// The card column's width beside the 448px deck picker on a desktop, kept now
+// that a session has the row to itself: wider only spreads the card thinner.
+const SESSION_MAX_WIDTH = 720;
+
 export default function VocabTab({
   level,
   learnedWords,
@@ -60,18 +66,28 @@ export default function VocabTab({
   onDeckDeleted,
   enabledInterests = [],
 }) {
-  // Stats review and Home "continue this deck" both arrive as reviewTarget.
-  // Honour the named deck on first paint so the picker matches DeckPicker
-  // from the start, rather than flashing the default greetings deck.
-  const [deckId, setDeckIdRaw] = useState(
-    typeof reviewTarget?.context === 'string' && reviewTarget.context
-      ? reviewTarget.context
-      : DEFAULT_DECK_ID
-  );
+  // Covers a deck deleted here AND one tombstoned on another device and pulled
+  // in by a sync: either way the id stops resolving.
+  const isKnownDeck = (id) =>
+    Boolean(customDecks?.[id]) ||
+    AUTO_DECKS.some((d) => d.id === id) ||
+    Object.hasOwn(PRESET_DECKS, id ?? '') ||
+    Object.hasOwn(PHRASE_DECKS, id ?? '') ||
+    isEnabledInterestDeck(id, interestTopics, enabledInterests);
+
+  // Stats review and Home "continue this deck" both arrive as reviewTarget,
+  // and both mean "start this deck" — so they open the session on first paint
+  // rather than flashing the library or the default greetings deck.
+  const handoffDeck =
+    typeof reviewTarget?.context === 'string' && reviewTarget.context ? reviewTarget.context : null;
+  const [deckId, setDeckIdRaw] = useState(handoffDeck ?? DEFAULT_DECK_ID);
+  // Three screens that never render together: the library (!inSession), the
+  // focused session, and completion (inSession && deckComplete).
+  const [inSession, setInSession] = useState(() => isKnownDeck(handoffDeck));
   const [mode, setMode] = useState('practice');
   // Snapshot once per mount so Browse/Custom never call Date.now() or loadState
-  // in their own render. Refresh when the learner leaves Practice — that is
-  // when a new SRS row may have been written.
+  // in their own render. Refresh whenever Browse or Custom comes back on screen
+  // — after a session, a new SRS row may have been written.
   const [browseNow] = useState(() => Date.now());
   const [browseSrs, setBrowseSrs] = useState(() => (loadState() ?? {}).srs ?? {});
   // customCards is a PROP, not state: this component unmounts on every tab
@@ -91,10 +107,10 @@ export default function VocabTab({
   } = useAutoDeck(deckId);
 
   useEffect(() => {
-    if (mode === 'browse' || mode === 'custom') {
+    if (!inSession && (mode === 'browse' || mode === 'custom')) {
       setBrowseSrs((loadState() ?? {}).srs ?? {});
     }
-  }, [mode]);
+  }, [mode, inSession]);
 
   const [answered, setAnswered] = useState(false);
   const [result, setResult] = useState(null); // 'correct' | 'almost' | 'wrong'
@@ -123,48 +139,66 @@ export default function VocabTab({
       : (PRESET_DECKS[deckId] ?? PHRASE_DECKS[deckId] ?? interestCards ?? []));
   const practiceLevel = clampMode(level, getUserLevel());
 
+  // The one way a queue starts: a fresh run never inherits the previous card's
+  // answer, typed text or completion.
+  const startQueue = (q) => {
+    setQueue(q);
+    setAnswered(false);
+    setResult(null);
+    setTypedAnswer('');
+    setDeckComplete(false);
+  };
+  // SRS-derived queue: due first, then new, then over-review.
+  const srsQueue = () => getDueCards((loadState() ?? {}).srs ?? {}, activeDeck, deckId, Date.now());
+
   // Deck changes must not keep the previous queue. React applies the id write
   // before the reset effect, so one render can pair a new (smaller) deck with
   // a leftover high index — getChoices then reads deck[cardIdx].en off the end.
   // Every UI path must go through selectDeck; it is the only writer.
   const selectDeck = (nextId) => {
     if (nextId === deckId) return;
-    setQueue([]);
-    setAnswered(false);
-    setResult(null);
-    setTypedAnswer('');
-    setDeckComplete(false);
+    startQueue([]);
     setDeckIdRaw(nextId);
   };
 
-  // The custom deck can disappear while it is the SELECTED one — deleted here,
-  // or tombstoned on another device and pulled in by a sync. There is no
-  // PRESET_DECKS.custom to fall back on, so without this the learner is left
-  // staring at an empty deck.
+  // Picking a deck in the library STARTS it. Picking the same deck again is a
+  // fresh run rather than a resume, and selectDeck skips a same-id pick, so
+  // that queue is rebuilt here.
+  const startDeck = (nextId) => {
+    if (nextId === deckId) startQueue(srsQueue());
+    else selectDeck(nextId);
+    setInSession(true);
+  };
+
+  // Leaving moves screens only. Every answer was graded and saved when it was
+  // given, so there is nothing to commit and nothing to undo.
+  const backToDecks = () => {
+    setInSession(false);
+    setDeckComplete(false);
+  };
+
+  // The selected deck can disappear — deleted here, or tombstoned on another
+  // device and pulled in by a sync. There is no PRESET_DECKS.custom to fall
+  // back on, so without this the learner is left staring at an empty deck. A
+  // session on a deck that no longer exists has nothing left to show either.
   useEffect(() => {
-    // Covers a deck deleted here AND one tombstoned on another device and
-    // pulled in by a sync: either way the selected id stops resolving.
-    const isKnown =
-      customDecks?.[deckId] ||
-      isAuto ||
-      Object.hasOwn(PRESET_DECKS, deckId ?? '') ||
-      Object.hasOwn(PHRASE_DECKS, deckId ?? '') ||
-      isEnabledInterestDeck(deckId, interestTopics, enabledInterests);
-    if (!isKnown) selectDeck(DEFAULT_DECK_ID);
+    if (!isKnownDeck(deckId)) {
+      selectDeck(DEFAULT_DECK_ID);
+      setInSession(false);
+    }
   }, [deckId, customDecks, isAuto, enabledInterests]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const def = AUTO_DECKS.find((d) => d.id === deckId);
     if (def && !isDeckAllowedForLevel(def, practiceLevel)) {
       selectDeck(DEFAULT_DECK_ID);
+      setInSession(false);
     }
   }, [deckId, practiceLevel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const target = pendingReviewRef.current;
-    const srs = (loadState() ?? {}).srs ?? {};
-    // SRS-derived queue: due first, then new, then over-review.
-    let q = getDueCards(srs, activeDeck, deckId, Date.now());
+    let q = srsQueue();
     if (target) {
       const idx = activeDeck.findIndex((c) => c.id === target);
       if (idx >= 0) {
@@ -172,11 +206,7 @@ export default function VocabTab({
       }
       pendingReviewRef.current = null;
     }
-    setQueue(q);
-    setAnswered(false);
-    setResult(null);
-    setTypedAnswer('');
-    setDeckComplete(false);
+    startQueue(q);
     // activeDeck is derived from deckId+customCards+asyncDeck which are in deps — safe to omit
   }, [deckId, customCards, asyncDeck, level]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -208,11 +238,7 @@ export default function VocabTab({
       // manually re-run the same queue-with-target build here.
       const idx = activeDeck.findIndex((c) => c.id === reviewTarget.label);
       if (idx >= 0) {
-        const rest = activeDeck.map((_, i) => i).filter((i) => i !== idx);
-        setQueue([idx, ...rest]);
-        setAnswered(false);
-        setResult(null);
-        setTypedAnswer('');
+        startQueue([idx, ...activeDeck.map((_, i) => i).filter((i) => i !== idx)]);
         pendingReviewRef.current = null;
       }
     } else if (reviewTarget.context) {
@@ -385,18 +411,29 @@ export default function VocabTab({
     activePack.content.interestDeckDefs?.[deckId]?.name ||
     deckId;
 
+  // Starts the session on that row's card. `mode` is left alone, so Back to
+  // decks returns to the Browse or Custom view the row was picked from.
   const practiseRow = (row) => {
     const idx = activeDeck.findIndex((c) => c.id === row.id);
-    if (idx >= 0) {
-      const rest = activeDeck.map((_, i) => i).filter((i) => i !== idx);
-      setQueue([idx, ...rest]);
-      setAnswered(false);
-      setResult(null);
-      setTypedAnswer('');
-      setDeckComplete(false);
-    }
-    setMode('practice');
+    if (idx >= 0) startQueue([idx, ...activeDeck.map((_, i) => i).filter((i) => i !== idx)]);
+    setInSession(true);
   };
+
+  // Each screen change puts focus on the new screen's heading — or, for the
+  // library, its selected mode tab — so a keyboard or screen-reader user is
+  // not dropped at <body> when the control they pressed unmounts. The first
+  // render is skipped: arriving on the tab is the app's focus to manage.
+  const stage = !inSession ? 'library' : deckComplete ? 'complete' : 'session';
+  const headingId = useId();
+  const shownStage = useRef(stage);
+  useEffect(() => {
+    if (shownStage.current === stage) return;
+    shownStage.current = stage;
+    // The library is long and a session is short: start each at the top.
+    window.scrollTo(0, 0);
+    const target = stage === 'library' ? vocabTabId(mode) : headingId;
+    document.getElementById(target)?.focus({ preventScroll: true });
+  }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const browseProps = {
     title: deckTitle,
@@ -411,6 +448,260 @@ export default function VocabTab({
     level: practiceLevel,
     interestDecks: interestPicker,
   };
+
+  if (inSession) {
+    return (
+      <section
+        aria-labelledby={headingId}
+        style={{
+          width: '100%',
+          maxWidth: SESSION_MAX_WIDTH,
+          marginInline: 'auto',
+          marginTop: mobile ? SPACE[4] : SPACE[8],
+        }}
+      >
+        {deckComplete ? (
+          <DeckCompleteBanner
+            headingId={headingId}
+            learnedCount={learnedInDeck({ learnedByDeck, learnedWords, deckId, cards: activeDeck })}
+            onPracticeAgain={() => startQueue(srsQueue())}
+            onBack={backToDecks}
+          />
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: SPACE[3],
+                marginBottom: mobile ? SPACE[4] : SPACE[6],
+              }}
+            >
+              <Button variant="secondary" onClick={backToDecks}>
+                <span aria-hidden="true">←</span> Back to decks
+              </Button>
+              {/* The screen's h1 now that the Wortschatz hero steps aside; the
+                  size stays the h2 it looks like. */}
+              <Heading
+                level={1}
+                size="xl"
+                id={headingId}
+                tabIndex={-1}
+                style={{ minWidth: 0, overflowWrap: 'anywhere' }}
+              >
+                {deckTitle}
+              </Heading>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                textAlign: 'center',
+                width: '100%',
+                minWidth: 0,
+              }}
+            >
+              {isAuto && deckLoading && (
+                <div
+                  style={{
+                    padding: SPACE[8],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    fontFamily: FONTS.mono,
+                    color: COLORS.mute,
+                    width: '100%',
+                  }}
+                >
+                  Loading deck…
+                </div>
+              )}
+              {isAuto && deckError && (
+                <StatusNote
+                  tone="error"
+                  icon={AlertTriangle}
+                  action={{ label: 'Retry', onClick: retry }}
+                >
+                  Could not load this deck.
+                </StatusNote>
+              )}
+              {card && (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'stretch',
+                    width: '100%',
+                    minWidth: 0,
+                  }}
+                >
+                  {/* Progress bar */}
+                  {/* `flexWrap` is load-bearing, and it fixes a bug that predates
+                the report button. Measured in Chrome at 320px:
+
+                  before this change, no button ...... 73px sideways scroll
+                  report button in the dots cluster .. 125px
+                  this layout ........................ 0px
+
+                DeckProgress's dots are `flex: 0 1 26px`, so they can shrink —
+                but sharing a line with the "N cards remaining" label left them
+                too little room to shrink into, and the strip stood at 305px in
+                a 304px row. Giving the row `flexWrap` drops the strip onto its
+                own line, where that shrink finally has somewhere to go: 288px
+                at both 10 dots and 12, which is DOT_THRESHOLD and therefore the
+                widest the strip can ever be. The report button then sits in the
+                remaining-count group, where it costs the row nothing.
+
+                So: do not remove flexWrap, and do not move the button back in
+                beside the dots. Verified in a browser because jsdom computes no
+                layout — the test below pins the property, not the pixels. */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: SPACE[2],
+                      marginBottom: SPACE[4],
+                      width: '100%',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: SPACE[2],
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: FONTS.mono,
+                          fontSize: FONT_SIZE.tag,
+                          letterSpacing: LETTER_SPACING.caps,
+                          color: COLORS.mute,
+                        }}
+                      >
+                        {queue.length} card{queue.length !== 1 ? 's' : ''} remaining
+                      </div>
+                      {/* itemLabel is card.de — the very thing CardFace conceals on
+                    the Hören and Artikel decks. Captured for triage, never
+                    rendered; see FeedbackDialog. */}
+                      <FeedbackButton
+                        context={{
+                          surface: 'vocab',
+                          level: practiceLevel,
+                          deckId,
+                          itemId: card.id,
+                          itemLabel: card.de ?? null,
+                        }}
+                      />
+                    </div>
+                    <DeckProgress
+                      cards={activeDeck}
+                      learnedWords={learnedWords}
+                      learnedByDeck={learnedByDeck}
+                      deckId={deckId}
+                    />
+                  </div>
+
+                  <CardFace
+                    card={card}
+                    display={drill?.display?.(card)}
+                    conceal={drill?.conceal}
+                    learned={isLearned({ learnedByDeck, learnedWords, deckId, cardId: card.id })}
+                    mobile={mobile}
+                  />
+
+                  {drill?.kind === 'choice' && !answered && (
+                    <ArticleChoice
+                      articles={drill.options(activePack.grammar)}
+                      onChoose={answerDrill}
+                    />
+                  )}
+
+                  {drill?.speak && !answered && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        speak(drill.speak(card));
+                        setPlayedCardId(card.id);
+                      }}
+                      aria-label={played ? 'Play the word again' : 'Play the word'}
+                      // BUTTON.go, not BUTTON.tile. On a Hören card the audio IS
+                      // the question, and nothing plays it but this — so until it
+                      // has been pressed it is the primary action on the card, not
+                      // a neutral one sitting quietly above the answer field.
+                      style={{
+                        ...(played ? BUTTON.tile : BUTTON.go),
+                        width: '100%',
+                        marginBottom: SPACE[3],
+                      }}
+                    >
+                      {played ? 'PLAY AGAIN' : 'PLAY'}
+                    </button>
+                  )}
+
+                  {drill?.kind === 'typed' && !answered && (
+                    <TypedAnswer
+                      value={typedAnswer}
+                      onChange={setTypedAnswer}
+                      onSubmit={() => typedAnswer.trim() && answerDrill(typedAnswer)}
+                      label={drill.label(activePack.grammar)}
+                      placeholder={drill.placeholder(activePack.grammar)}
+                    />
+                  )}
+
+                  {showChoices && !answered && (
+                    <ChoiceGrid choices={choices} onChoose={chooseOption} />
+                  )}
+
+                  {showTyped && !answered && (
+                    <TypedAnswer
+                      value={typedAnswer}
+                      onChange={setTypedAnswer}
+                      onSubmit={submitTyped}
+                    />
+                  )}
+
+                  {answered && (
+                    <VerdictPanel
+                      // The gender drill asked for the article, so the answer it
+                      // owes back is the full form "das Jahr" — not the English
+                      // gloss, which was never the question.
+                      result={result}
+                      answer={drill ? drill.answer(card, activePack.grammar) : glossList(card)}
+                      onVerdict={handleSrsVerdict}
+                    />
+                  )}
+                </div>
+              )}
+              {!card && !deckComplete && (
+                <div
+                  style={{
+                    padding: SPACE[8],
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    textAlign: 'center',
+                    fontFamily: FONTS.mono,
+                    fontSize: FONT_SIZE.base,
+                    color: COLORS.mute,
+                    width: '100%',
+                  }}
+                >
+                  Select a deck to start.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </section>
+    );
+  }
 
   return (
     <div>
@@ -479,247 +770,16 @@ export default function VocabTab({
           role="tabpanel"
           id={vocabPanelId('practice')}
           aria-labelledby={vocabTabId('practice')}
-          style={{
-            display: 'grid',
-            // minmax(0, 1fr) rather than 1fr: a bare 1fr track keeps min-width
-            // auto, so it refuses to shrink below its content's min-content width
-            // and pushes past the viewport instead (377px inside 337px at 375px
-            // wide). minmax(0, …) lets the track shrink and the content reflow.
-            gridTemplateColumns: mobile ? 'minmax(0, 1fr)' : 'minmax(0, 448px) minmax(0, 1fr)',
-            gap: mobile ? SPACE[4] : SPACE[8],
-            marginTop: mobile ? SPACE[4] : SPACE[8],
-          }}
+          style={{ marginTop: mobile ? SPACE[4] : SPACE[8] }}
         >
           <DeckPicker
-            collapsible={mobile}
             deckId={deckId}
             onSelect={selectDeck}
+            onStart={startDeck}
             customDecks={customDecks}
             level={practiceLevel}
             interestDecks={interestPicker}
           />
-
-          {/* ── Right column: active recall UI ── */}
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch',
-              textAlign: 'center',
-              width: '100%',
-              minWidth: 0,
-            }}
-          >
-            {isAuto && deckLoading && (
-              <div
-                style={{
-                  padding: SPACE[8],
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  fontFamily: FONTS.mono,
-                  color: COLORS.mute,
-                  width: '100%',
-                }}
-              >
-                Loading deck…
-              </div>
-            )}
-            {isAuto && deckError && (
-              <StatusNote
-                tone="error"
-                icon={AlertTriangle}
-                action={{ label: 'Retry', onClick: retry }}
-              >
-                Could not load this deck.
-              </StatusNote>
-            )}
-            {deckComplete && (
-              <DeckCompleteBanner
-                learnedCount={learnedInDeck({
-                  learnedByDeck,
-                  learnedWords,
-                  deckId,
-                  cards: activeDeck,
-                })}
-                onPracticeAgain={() => {
-                  setQueue(
-                    getDueCards((loadState() ?? {}).srs ?? {}, activeDeck, deckId, Date.now())
-                  );
-                  setDeckComplete(false);
-                }}
-              />
-            )}
-            {card && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'stretch',
-                  width: '100%',
-                  minWidth: 0,
-                }}
-              >
-                {/* Progress bar */}
-                {/* `flexWrap` is load-bearing, and it fixes a bug that predates
-                the report button. Measured in Chrome at 320px:
-
-                  before this change, no button ...... 73px sideways scroll
-                  report button in the dots cluster .. 125px
-                  this layout ........................ 0px
-
-                DeckProgress's dots are `flex: 0 1 26px`, so they can shrink —
-                but sharing a line with the "N cards remaining" label left them
-                too little room to shrink into, and the strip stood at 305px in
-                a 304px row. Giving the row `flexWrap` drops the strip onto its
-                own line, where that shrink finally has somewhere to go: 288px
-                at both 10 dots and 12, which is DOT_THRESHOLD and therefore the
-                widest the strip can ever be. The report button then sits in the
-                remaining-count group, where it costs the row nothing.
-
-                So: do not remove flexWrap, and do not move the button back in
-                beside the dots. Verified in a browser because jsdom computes no
-                layout — the test below pins the property, not the pixels. */}
-                <div
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: SPACE[2],
-                    marginBottom: SPACE[4],
-                    width: '100%',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: SPACE[2],
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontFamily: FONTS.mono,
-                        fontSize: FONT_SIZE.tag,
-                        letterSpacing: LETTER_SPACING.caps,
-                        color: COLORS.mute,
-                      }}
-                    >
-                      {queue.length} card{queue.length !== 1 ? 's' : ''} remaining
-                    </div>
-                    {/* itemLabel is card.de — the very thing CardFace conceals on
-                    the Hören and Artikel decks. Captured for triage, never
-                    rendered; see FeedbackDialog. */}
-                    <FeedbackButton
-                      context={{
-                        surface: 'vocab',
-                        level: practiceLevel,
-                        deckId,
-                        itemId: card.id,
-                        itemLabel: card.de ?? null,
-                      }}
-                    />
-                  </div>
-                  <DeckProgress
-                    cards={activeDeck}
-                    learnedWords={learnedWords}
-                    learnedByDeck={learnedByDeck}
-                    deckId={deckId}
-                  />
-                </div>
-
-                <CardFace
-                  card={card}
-                  display={drill?.display?.(card)}
-                  conceal={drill?.conceal}
-                  learned={isLearned({ learnedByDeck, learnedWords, deckId, cardId: card.id })}
-                  mobile={mobile}
-                />
-
-                {drill?.kind === 'choice' && !answered && (
-                  <ArticleChoice
-                    articles={drill.options(activePack.grammar)}
-                    onChoose={answerDrill}
-                  />
-                )}
-
-                {drill?.speak && !answered && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      speak(drill.speak(card));
-                      setPlayedCardId(card.id);
-                    }}
-                    aria-label={played ? 'Play the word again' : 'Play the word'}
-                    // BUTTON.go, not BUTTON.tile. On a Hören card the audio IS
-                    // the question, and nothing plays it but this — so until it
-                    // has been pressed it is the primary action on the card, not
-                    // a neutral one sitting quietly above the answer field.
-                    style={{
-                      ...(played ? BUTTON.tile : BUTTON.go),
-                      width: '100%',
-                      marginBottom: SPACE[3],
-                    }}
-                  >
-                    {played ? 'PLAY AGAIN' : 'PLAY'}
-                  </button>
-                )}
-
-                {drill?.kind === 'typed' && !answered && (
-                  <TypedAnswer
-                    value={typedAnswer}
-                    onChange={setTypedAnswer}
-                    onSubmit={() => typedAnswer.trim() && answerDrill(typedAnswer)}
-                    label={drill.label(activePack.grammar)}
-                    placeholder={drill.placeholder(activePack.grammar)}
-                  />
-                )}
-
-                {showChoices && !answered && (
-                  <ChoiceGrid choices={choices} onChoose={chooseOption} />
-                )}
-
-                {showTyped && !answered && (
-                  <TypedAnswer
-                    value={typedAnswer}
-                    onChange={setTypedAnswer}
-                    onSubmit={submitTyped}
-                  />
-                )}
-
-                {answered && (
-                  <VerdictPanel
-                    // The gender drill asked for the article, so the answer it
-                    // owes back is the full form "das Jahr" — not the English
-                    // gloss, which was never the question.
-                    result={result}
-                    answer={drill ? drill.answer(card, activePack.grammar) : glossList(card)}
-                    onVerdict={handleSrsVerdict}
-                  />
-                )}
-              </div>
-            )}
-            {!card && !deckComplete && (
-              <div
-                style={{
-                  padding: SPACE[8],
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  fontFamily: FONTS.mono,
-                  fontSize: FONT_SIZE.base,
-                  color: COLORS.mute,
-                  width: '100%',
-                }}
-              >
-                Select a deck to start.
-              </div>
-            )}
-          </div>
         </div>
       )}
     </div>

@@ -2401,6 +2401,7 @@ describe('account deletion wiring', () => {
 describe('Home missions fed from real data', () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'a1');
@@ -2439,16 +2440,46 @@ describe('Home missions fed from real data', () => {
 
     const nav = within(screen.getByRole('navigation'));
     expect(nav.getByRole('button', { name: 'Vocab' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('button', { name: /Food & Drink/i })).toHaveAttribute(
-      'aria-pressed',
-      'true'
-    );
-    expect(screen.getByRole('button', { name: /Greetings/i })).toHaveAttribute(
-      'aria-pressed',
-      'false'
-    );
+    // "Continue this deck" starts it: the focused session, not the library.
+    expect(screen.getByRole('heading', { level: 1, name: 'Food & Drink' })).toBeInTheDocument();
     expect(screen.getByText(firstCard.de)).toBeInTheDocument();
+    expect(screen.queryByRole('tablist', { name: 'Vocabulary mode' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Greetings/i })).toBeNull();
   });
+
+  it.each([
+    ['a guest', 'anonymous'],
+    ['a signed-in learner', 'authenticated'],
+  ])(
+    'gives %s the library first, then a focused session, then the library again',
+    async (_, status) => {
+      authMock.status = status;
+      seedStartedDeck(1);
+      renderPastEntry(<App />);
+      await screen.findByRole('button', { name: /left in your deck/i });
+      await userEvent.click(
+        within(screen.getByRole('navigation')).getByRole('button', { name: 'Vocab' })
+      );
+
+      expect(screen.getByRole('tablist', { name: 'Vocabulary mode' })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Back to decks' })).toBeNull();
+
+      await userEvent.click(screen.getByRole('button', { name: /Food & Drink/i }));
+      expect(screen.getByRole('heading', { level: 1, name: 'Food & Drink' })).toBeInTheDocument();
+      expect(screen.queryByRole('tablist', { name: 'Vocabulary mode' })).toBeNull();
+      // The app's own navigation stays: only the Vocab library steps aside.
+      expect(
+        within(screen.getByRole('navigation')).getByRole('button', { name: 'Home' })
+      ).toBeVisible();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Back to decks' }));
+      expect(screen.getByRole('tablist', { name: 'Vocabulary mode' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Food & Drink/i })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    }
+  );
 
   it('leaves the default Greetings deck selected when Vocab is opened from the nav', async () => {
     seedStartedDeck(1);
@@ -2532,6 +2563,7 @@ describe('custom decks survive the component that made them', () => {
 
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'a1');
@@ -2649,6 +2681,7 @@ describe('a generated deck tells the sync engine there is something to push', ()
 
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'a1');
@@ -2702,6 +2735,7 @@ describe('deleting a custom deck writes a tombstone', () => {
 
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'a1');
@@ -2800,6 +2834,7 @@ describe('deleting a custom deck writes a tombstone', () => {
     renderPastEntry(<App />);
     await openVocab();
     await userEvent.click(screen.getByRole('button', { name: /Your Deck/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back to decks' }));
     await userEvent.click(screen.getByRole('tab', { name: 'Custom' }));
     await removeDeck();
     await userEvent.click(screen.getByRole('tab', { name: 'Practice' }));
@@ -2846,6 +2881,7 @@ describe('deleting a custom deck writes a tombstone', () => {
 describe('markLearned sets rather than toggles', () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     // b1 → typed answer, so a one-card deck works (multiple choice needs four).
@@ -2869,6 +2905,12 @@ describe('markLearned sets rather than toggles', () => {
   const selectCustom = async () =>
     userEvent.click(await screen.findByRole('button', { name: /Your Deck/ }));
 
+  // Out of the session (or its completion screen) and into another deck.
+  const leaveTo = async (deck) => {
+    await userEvent.click(screen.getByRole('button', { name: 'Back to decks' }));
+    await userEvent.click(screen.getByRole('button', { name: deck }));
+  };
+
   const answerCorrectly = async () => {
     const input = screen.getByRole('textbox', { name: 'Type the English meaning' });
     await userEvent.type(input, 'the sun');
@@ -2889,8 +2931,8 @@ describe('markLearned sets rather than toggles', () => {
     await userEvent.click(screen.getByRole('button', { name: 'GOOD' }));
 
     // Rebuild the queue: away to a preset deck and back.
-    await userEvent.click(screen.getByRole('button', { name: /Greetings/ }));
-    await selectCustom();
+    await leaveTo(/Greetings/);
+    await leaveTo(/Your Deck/);
 
     await answerCorrectly();
     expect(screen.getByText('✓ LEARNED')).toBeInTheDocument();
@@ -2906,8 +2948,8 @@ describe('markLearned sets rather than toggles', () => {
 
     await answerCorrectly();
     await userEvent.click(screen.getByRole('button', { name: 'GOOD' }));
-    await userEvent.click(screen.getByRole('button', { name: /Greetings/ }));
-    await selectCustom();
+    await leaveTo(/Greetings/);
+    await leaveTo(/Your Deck/);
     await answerCorrectly();
 
     await waitFor(() => expect(loadState()?.learnedWords).toBeTruthy());
@@ -2918,6 +2960,7 @@ describe('markLearned sets rather than toggles', () => {
 describe('mastery is recorded where it was earned', () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'b1');
@@ -3014,6 +3057,7 @@ describe('mastery is recorded where it was earned', () => {
     await answer('the sun');
     await waitFor(() => expect(loadState()?.learnedByDeck?.custom).toBeTruthy());
 
+    await userEvent.click(screen.getByRole('button', { name: 'Back to decks' }));
     await userEvent.click(screen.getByRole('tab', { name: 'Custom' }));
     await userEvent.click(screen.getByRole('button', { name: /^Remove / }));
     await userEvent.click(screen.getByRole('button', { name: /permanently$/ }));
@@ -3128,6 +3172,7 @@ describe('a collection of custom decks', () => {
 
   beforeEach(() => {
     Element.prototype.scrollIntoView = vi.fn();
+    vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     localStorage.clear();
     asReturningLearner();
     localStorage.setItem('deutsch-level', 'a1');

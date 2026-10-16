@@ -1,18 +1,15 @@
-import {
-  COLORS,
-  FONTS,
-  FONT_SIZE,
-  FONT_WEIGHT,
-  LETTER_SPACING,
-  RADIUS,
-  SHADOW,
-} from '../../lib/theme';
+import { COLORS, FONTS, FONT_SIZE, FONT_WEIGHT, RADIUS, SHADOW, SPACE } from '../../lib/theme';
+import Button from '../ui/Button';
 import Confetti from '../ui/Confetti';
 
 /**
- * @param {{ learnedCount: number, onPracticeAgain: () => void }} props
+ * The whole completion screen, never a banner over the library: the result,
+ * then exactly two ways on — the same deck again, or back to the decks.
+ *
+ * @param {{ learnedCount: number, onPracticeAgain: () => void, onBack: () => void,
+ *           headingId?: string }} props
  */
-export default function DeckCompleteBanner({ learnedCount, onPracticeAgain }) {
+export default function DeckCompleteBanner({ learnedCount, onPracticeAgain, onBack, headingId }) {
   return (
     <div
       className="slide-up pop"
@@ -27,44 +24,42 @@ export default function DeckCompleteBanner({ learnedCount, onPracticeAgain }) {
         padding: '16px 20px',
         marginBottom: 16,
         display: 'flex',
-        flexWrap: 'wrap',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
+        gap: SPACE[4],
         textAlign: 'center',
         width: '100%',
         boxSizing: 'border-box',
       }}
     >
       <Confetti />
-      <span
+      {/* The screen's h1, and where focus lands when the last card is
+          answered — the control that was pressed has just unmounted. */}
+      <h1
+        id={headingId}
+        tabIndex={-1}
         style={{
+          margin: 0,
           fontFamily: FONTS.display,
           fontSize: FONT_SIZE.xl,
           fontWeight: FONT_WEIGHT.bold,
-          color: COLORS.ink,
+          // The fill's paired ink. COLORS.ink turns light in dark mode, which
+          // left this heading near-invisible on the gold.
+          color: COLORS.accentOn,
           textAlign: 'center',
         }}
       >
         Deck complete — {learnedCount} {learnedCount === 1 ? 'word' : 'words'} learned
-      </span>
-      <button
-        type="button"
-        onClick={onPracticeAgain}
-        style={{
-          background: 'transparent',
-          border: `1px solid ${COLORS.ink}`,
-          borderRadius: RADIUS.sm,
-          fontFamily: FONTS.mono,
-          fontSize: FONT_SIZE.tag,
-          letterSpacing: LETTER_SPACING.widest,
-          padding: '4px 10px',
-          cursor: 'pointer',
-          color: COLORS.ink,
-        }}
-      >
-        PRACTICE AGAIN
-      </button>
+      </h1>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: SPACE[3] }}>
+        <Button variant="primary" onClick={onPracticeAgain}>
+          Practice again
+        </Button>
+        <Button variant="secondary" onClick={onBack}>
+          Back to decks
+        </Button>
+      </div>
     </div>
   );
 }

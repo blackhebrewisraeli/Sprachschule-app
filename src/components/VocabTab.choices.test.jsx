@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import VocabTab from './VocabTab';
 import { shuffle } from '../lib/utils';
 
@@ -11,7 +11,15 @@ vi.mock('../lib/utils', async (importOriginal) => {
   return { ...actual, shuffle: vi.fn((arr) => [...arr]) };
 });
 
-const props = { level: 'a1', learnedWords: {}, markLearned: () => {}, mobile: false };
+// A handoff opens the session on first paint, so the options are on screen
+// without a click — and a click would itself be a re-render.
+const props = {
+  level: 'a1',
+  learnedWords: {},
+  markLearned: () => {},
+  mobile: false,
+  reviewTarget: { tab: 'vocab', context: 'greetings' },
+};
 
 describe('VocabTab multiple-choice options', () => {
   beforeEach(() => {
@@ -24,6 +32,7 @@ describe('VocabTab multiple-choice options', () => {
   // the answer buttons under the user's finger → wrong answer registered.
   it('builds the options once per card — a re-render does not reshuffle them', () => {
     const { rerender } = render(<VocabTab {...props} />);
+    expect(screen.getByRole('button', { name: 'Back to decks' })).toBeInTheDocument();
     const callsForFirstCard = shuffle.mock.calls.length;
     expect(callsForFirstCard).toBeGreaterThan(0); // options were built for the current card
 

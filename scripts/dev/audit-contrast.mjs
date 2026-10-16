@@ -1375,6 +1375,26 @@ async function applyTheme(page, mode) {
   await dismissEntryScreens(page);
 }
 
+/**
+ * Vocab opens on its deck library, so the tab pass alone never sees a card.
+ * Start the Greetings preset and report whether its session painted one.
+ */
+async function openVocabSession(page) {
+  await page.evaluate(() => {
+    // textContent runs the name into its count ("Greetings10 cards"), so a
+    // word boundary after the name never matches.
+    const b = [...document.querySelectorAll('button')].find((x) =>
+      (x.textContent || '').trim().startsWith('Greetings')
+    );
+    if (b) b.click();
+  });
+  return page
+    .getByText(/\d+ cards? remaining/)
+    .waitFor({ state: 'visible', timeout: 5000 })
+    .then(() => true)
+    .catch(() => false);
+}
+
 async function openTab(page, tab) {
   await page.evaluate((t) => {
     const b = [...document.querySelectorAll('button')].find((x) =>
@@ -1408,6 +1428,8 @@ async function main() {
   let signedInCombinations = 0;
   let chatPopoversMeasured = 0;
   let chatPopoverAttempts = 0;
+  let vocabSessionsMeasured = 0;
+  let vocabSessionAttempts = 0;
   let guestSettingsMeasured = 0;
   let signedInSettingsMeasured = 0;
 
@@ -1443,6 +1465,18 @@ async function main() {
         const bad = await page.evaluate(collectFindings, tab);
         for (const f of bad) {
           findings.push({ ...f, mode, viewport: vp.width });
+        }
+
+        // The focused session replaces the library, so it is its own pass: the
+        // card, its choices and the progress row. The next openTab unmounts it.
+        if (tab === 'Vocab') {
+          vocabSessionAttempts += 1;
+          if (await openVocabSession(page)) {
+            vocabSessionsMeasured += 1;
+            for (const f of await page.evaluate(collectFindings, 'Vocab session')) {
+              findings.push({ ...f, mode, viewport: vp.width });
+            }
+          }
         }
 
         // Chat's model popover, driven while Chat is already open — in its
@@ -1558,6 +1592,10 @@ async function main() {
       'geometry, page overflow, and the closed view carrying no choices).'
   );
   console.log(
+    `Vocab session: started and measured in ${vocabSessionsMeasured}/${vocabSessionAttempts} ` +
+      'guest combinations (card, choices, progress row).'
+  );
+  console.log(
     `Profile → Settings: ${guestSettingsMeasured}/${guestSettingsExpected} guest and ` +
       `${signedInSettingsMeasured}/${signedInSettingsExpected} signed-in measurements at ` +
       `${SETTINGS_WIDTHS.join(' / ')}px (contrast, element edges, page overflow).`
@@ -1573,6 +1611,12 @@ async function main() {
     layout.push({
       ...everywhere,
       reason: `Chat model popover measured in only ${chatPopoversMeasured}/${chatPopoverAttempts} combinations`,
+    });
+  }
+  if (vocabSessionsMeasured < vocabSessionAttempts) {
+    layout.push({
+      ...everywhere,
+      reason: `Vocab session measured in only ${vocabSessionsMeasured}/${vocabSessionAttempts} combinations`,
     });
   }
   if (guestSettingsMeasured < guestSettingsExpected) {
