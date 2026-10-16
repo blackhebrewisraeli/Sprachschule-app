@@ -43,7 +43,13 @@ import { answerKeys } from './answers.js';
 import { SCENES, TARGETS, FEATURE_GRAPHIC, capturableScenes } from './scenes.js';
 import { composeScreenshot, composeFeatureGraphic } from './compose.mjs';
 import { exportProblems, pngInfo } from './png.js';
-import { parseArgs, injectDriver, reportMarkdown, mergeEarlierExports } from './lib.js';
+import {
+  parseArgs,
+  injectDriver,
+  reportMarkdown,
+  mergeEarlierExports,
+  ANDROID_DEMO,
+} from './lib.js';
 
 const exec = promisify(execFile);
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -438,7 +444,7 @@ async function androidTarget(serial, apkPath) {
     await sleep(2000);
   await a('uninstall', APP_ID).catch(() => {});
   await a('install', '-r', apkPath);
-  // Demo mode: a clean 9:41 status bar, full battery and signal, no icons.
+  // Demo mode: see ANDROID_DEMO.
   const demo = (cmd, extra = []) =>
     a(
       'shell',
@@ -452,13 +458,7 @@ async function androidTarget(serial, apkPath) {
       ...extra
     );
   await a('shell', 'settings', 'put', 'global', 'sysui_demo_allowed', '1');
-  await demo('enter');
-  await demo('clock', ['-e', 'hhmm', '0941']);
-  await demo('battery', ['-e', 'level', '100', '-e', 'plugged', 'false']);
-  // Wi-Fi only: demo mode's mobile icon reads "3G", which dates the image.
-  await demo('network', ['-e', 'wifi', 'show', '-e', 'level', '4']);
-  await demo('network', ['-e', 'mobile', 'hide']);
-  await demo('notifications', ['-e', 'visible', 'false']);
+  for (const [cmd, extra] of ANDROID_DEMO) await demo(cmd, extra);
   await a('shell', 'cmd', 'uimode', 'night', 'no').catch(() => {});
   // `monkey` launches too, but exits non-zero on some system images; start the
   // resolved launcher activity instead.

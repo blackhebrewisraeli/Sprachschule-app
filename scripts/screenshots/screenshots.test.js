@@ -12,6 +12,7 @@ import {
   reportMarkdown,
   mergeEarlierExports,
   DRIVER_MARK,
+  ANDROID_DEMO,
 } from './lib.js';
 import { activePack } from '../../src/packs/index.js';
 
@@ -204,6 +205,13 @@ describe('parseArgs', () => {
   it('refuses unknown flags and targets instead of silently shooting everything', () => {
     expect(() => parseArgs(['--target', 'iphone'])).toThrow('unknown flag --target');
     expect(() => parseArgs(['--targets', 'android'])).toThrow('unknown target android');
+  });
+});
+
+describe('ANDROID_DEMO', () => {
+  it('shows Wi-Fi as fully connected, so its icon carries no "!"', () => {
+    const wifi = ANDROID_DEMO.find(([cmd, extra]) => cmd === 'network' && extra.includes('wifi'));
+    expect(wifi[1]).toEqual(['-e', 'wifi', 'show', '-e', 'level', '4', '-e', 'fully', 'true']);
   });
 });
 
