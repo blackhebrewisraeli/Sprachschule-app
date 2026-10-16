@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import EmailSection from './EmailSection';
 import { REAUTH_MAX_AGE_SEC } from '../../lib/authClaims.js';
@@ -38,6 +38,19 @@ const setup = (props = {}) => {
 const changeBtn = () => screen.getByRole('button', { name: /change email/i });
 const sendBtn = () => screen.getByRole('button', { name: /send codes/i });
 const confirmBtns = () => screen.getAllByRole('button', { name: /^confirm$/i });
+const codeField = (which) =>
+  screen.getByRole('textbox', { name: new RegExp(`code from your ${which} address`, 'i') });
+
+/**
+ * A button's React onClick, called directly. React drops clicks on a disabled
+ * button, so no user event reaches confirm() once Confirm is disabled; a stale
+ * handler or a console call still could. This proves the guard INSIDE confirm()
+ * holds on its own, not just the disabled attribute in front of it.
+ */
+const callOnClick = (button) => {
+  const key = Object.keys(button).find((k) => k.startsWith('__reactProps$'));
+  return button[key].onClick();
+};
 
 /** Walk from idle to the two-code stage. */
 const reachConfirming = async (over = {}) => {
@@ -190,13 +203,72 @@ describe('EmailSection', () => {
     expect(screen.getByText(/we sent a code to/i)).toBeInTheDocument();
   });
 
-  it('keeps Confirm disabled until the code is the right length', async () => {
-    await reachConfirming();
-    expect(confirmBtns()[0]).toBeDisabled();
-    await userEvent.type(screen.getAllByRole('textbox')[0], '12345');
-    expect(confirmBtns()[0]).toBeDisabled();
-    await userEvent.type(screen.getAllByRole('textbox')[0], '6');
+  it('locks Confirm while a code is being checked', async () => {
+    let settle;
+    const verify = vi.fn(() => new Promise((resolve) => (settle = resolve)));
+    await reachConfirming({ verify });
+    await userEvent.type(codeField('current'), '12345678');
+    await userEvent.type(codeField('new'), '87654321');
+    await userEvent.click(confirmBtns()[0]);
+
+    expect(verify).toHaveBeenCalledTimes(1);
+    expect(confirmBtns()[1]).toBeDisabled();
+    await act(async () => settle({ data: { user: { email: user.email } } }));
+    expect(confirmBtns()).toHaveLength(1);
     expect(confirmBtns()[0]).toBeEnabled();
+  });
+
+  // ── code length ───────────────────────────────────────────────
+  //
+  // Supabase lets a project set its email OTP anywhere from 6 to 10 digits, and
+  // this component cannot read which: production mails 8, local config 6. The
+  // client accepts the whole range and leaves the real check to verifyOtp.
+
+  it.each([
+    ['a 6-digit code (local config)', '123456'],
+    ['an 8-digit code (production)', '12345678'],
+    ['a 10-digit code (the upper bound)', '1234567890'],
+  ])('enables Confirm for %s and submits it', async (_, code) => {
+    const { verify } = await reachConfirming();
+    await userEvent.type(codeField('current'), code);
+    expect(confirmBtns()[0]).toBeEnabled();
+    await userEvent.click(confirmBtns()[0]);
+    expect(verify).toHaveBeenCalledWith('old@example.com', code);
+  });
+
+  // A change event sets the value whole. maxLength only limits typing, so this
+  // is what lets the 11-digit case reach the check at all.
+  const INVALID = [
+    ['a blank code', ''],
+    ['a whitespace-only code', '      '],
+    ['a 5-digit code', '12345'],
+    ['an 11-digit code', '12345678901'],
+    ['a letters-only code', 'abcdef'],
+    ['digits with a letter', '12345a'],
+    ['digits with an inner space', '123 45'],
+  ];
+
+  it.each(INVALID)('keeps Confirm disabled for %s', async (_, value) => {
+    await reachConfirming();
+    fireEvent.change(codeField('current'), { target: { value } });
+    expect(confirmBtns()[0]).toBeDisabled();
+  });
+
+  it.each(INVALID)('confirm() refuses %s even past the disabled button', async (_, value) => {
+    const { verify } = await reachConfirming();
+    fireEvent.change(codeField('current'), { target: { value } });
+    await act(async () => callOnClick(confirmBtns()[0]));
+    expect(verify).not.toHaveBeenCalled();
+  });
+
+  it('labels both code fields and marks them numeric, 6–10 digits, with no length in the copy', async () => {
+    await reachConfirming();
+    for (const field of [codeField('current'), codeField('new')]) {
+      expect(field).toHaveAttribute('inputmode', 'numeric');
+      expect(field).toHaveAttribute('pattern', '[0-9]{6,10}');
+      expect(field).toHaveAttribute('maxlength', '10');
+    }
+    expect(screen.queryByText(/digit/i)).not.toBeInTheDocument();
   });
 
   it('abandons the whole flow on Cancel', async () => {

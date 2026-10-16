@@ -34,7 +34,14 @@ import { isRecentAuth, REAUTH_MAX_AGE_SEC } from '../../lib/authClaims.js';
 // stop the opportunistic case, and it is labelled as such rather than being
 // mistaken for a security boundary later.
 
-const CODE_LENGTH = 6;
+// Supabase lets a project set its email OTP anywhere from 6 to 10 digits, and
+// this component cannot read which (production mails 8, local config 6). Accept
+// the whole range and leave the authoritative check to verifyOtp. One pattern
+// serves the input's `pattern` attribute and the check in confirm().
+const CODE_PATTERN = '[0-9]{6,10}';
+const CODE_MAX_LENGTH = 10;
+const CODE_RE = new RegExp(`^${CODE_PATTERN}$`);
+const isCode = (value) => CODE_RE.test(value.trim());
 
 /** The two inboxes a confirmation can arrive in, in the order they are asked for. */
 const CONFIRMATIONS = [
@@ -113,7 +120,7 @@ export default function EmailSection({
 
   const confirm = async (which) => {
     const code = codes[which].trim();
-    if (code.length !== CODE_LENGTH) return;
+    if (!isCode(code)) return;
     setBusy(true);
     setError(null);
     try {
@@ -209,6 +216,8 @@ export default function EmailSection({
                 <span style={labelStyle}>{c.label}</span>
                 <input
                   inputMode="numeric"
+                  pattern={CODE_PATTERN}
+                  maxLength={CODE_MAX_LENGTH}
                   value={codes[c.key]}
                   onChange={(e) => setCodes((prev) => ({ ...prev, [c.key]: e.target.value }))}
                   disabled={done[c.key]}
@@ -222,7 +231,7 @@ export default function EmailSection({
                   <Button
                     variant="secondary"
                     onClick={() => confirm(c.key)}
-                    disabled={codes[c.key].trim().length !== CODE_LENGTH || busy}
+                    disabled={!isCode(codes[c.key]) || busy}
                   >
                     Confirm
                   </Button>
