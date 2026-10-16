@@ -28,18 +28,21 @@ describe('MagicLinkForm', () => {
     await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
     expect(signInWithMagicLink).toHaveBeenCalledWith('a@b.com');
     expect(
-      await screen.findByText(/enter the 6-digit code — or tap the link in the email/i)
+      await screen.findByText(/enter the one-time code — or tap the link in the email/i)
     ).toBeInTheDocument();
+    // The code's length is a hosted Auth setting the app does not control
+    // (production sends 8 digits, local config 6), so the copy names none.
+    expect(document.body.textContent).not.toMatch(/\b(\d+|six|eight)[- ]digit/i);
   });
 
-  it('verifies a typed 6-digit code and calls onSuccess', async () => {
+  it('verifies a typed 8-digit code untruncated and calls onSuccess', async () => {
     const onSuccess = vi.fn();
     render(<MagicLinkForm heading="Sign in" onSuccess={onSuccess} />);
     await userEvent.type(screen.getByRole('textbox', { name: /email/i }), 'a@b.com');
     await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
-    await userEvent.type(await screen.findByRole('textbox', { name: /code/i }), '123456');
+    await userEvent.type(await screen.findByRole('textbox', { name: /code/i }), '12345678');
     await userEvent.click(screen.getByRole('button', { name: /verify/i }));
-    expect(verifyCode).toHaveBeenCalledWith('a@b.com', '123456');
+    expect(verifyCode).toHaveBeenCalledWith('a@b.com', '12345678');
     await waitFor(() => expect(onSuccess).toHaveBeenCalled());
   });
 
@@ -98,7 +101,7 @@ describe('MagicLinkForm', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /email/i }), 'a@b.com');
     await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
     // Wait for inbox state
-    await screen.findByText(/enter the 6-digit code — or tap the link in the email/i);
+    await screen.findByText(/enter the one-time code — or tap the link in the email/i);
     // Resend button should be visible
     const resendBtn = screen.getByRole('button', { name: /resend/i });
     expect(resendBtn).toBeInTheDocument();
@@ -116,7 +119,7 @@ describe('MagicLinkForm', () => {
     // Reach inbox state with real timers so userEvent works normally.
     await userEvent.type(screen.getByRole('textbox', { name: /email/i }), 'a@b.com');
     await userEvent.click(screen.getByRole('button', { name: /email me a sign-in code/i }));
-    await screen.findByText(/enter the 6-digit code — or tap the link in the email/i);
+    await screen.findByText(/enter the one-time code — or tap the link in the email/i);
 
     // Install fake timers before triggering the cooldown interval.
     vi.useFakeTimers();

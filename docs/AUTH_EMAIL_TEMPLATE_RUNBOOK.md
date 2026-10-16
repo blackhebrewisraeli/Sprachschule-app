@@ -17,14 +17,19 @@ Companion to Phase C of
 
 Owner-applied 2026-09-18, body re-pasted 2026-10-03:
 
-- **Magic Link** subject + body pasted from the repo template (6-digit
+- **Magic Link** subject + body pasted from the repo template (one-time
   code + link; footer says the code expires in five minutes). The
   2026-10-03 paste carries the "Deutsch · Sprachschule" brand (#424) and
   the "…to sign in on this device" line (#423); a test email confirmed it.
+- **Email OTP length** = 8 digits hosted (owner-reported 2026-10-16); the
+  local `supabase/config.toml` `otp_length` is 6. The app does not control
+  it, so the template, the sign-in screen and these docs name no length:
+  "one-time code". The 2026-10-03 hosted body still says "Enter this 6-digit
+  code"; re-pasting the current template fixes it (owner, **not done**).
 - **Email OTP / magic-link expiry** = 300 seconds (5 minutes). Repo
   `supabase/config.toml` `[auth.email] otp_expiry` matches. JWT expiry is
   unchanged.
-- **Confirm signup**: **not pasted yet.** The hosted template has no 6-digit
+- **Confirm signup**: **not pasted yet.** The hosted template has no one-time
   code (recorded 2026-10-14), so a first-time native or installed-PWA tester
   cannot sign in. Status as of 2026-10-15:
 
@@ -47,7 +52,7 @@ which is unchanged.
 ## Why this exists
 
 B2 designed every sign-in email to carry **both** a magic link
-(`{{ .ConfirmationURL }}`) and a 6-digit code (`{{ .Token }}`). When the
+(`{{ .ConfirmationURL }}`) and a one-time code (`{{ .Token }}`). When the
 template lived only in the dashboard, it drifted: users sometimes got a link,
 sometimes a code. The repo copy is the source of truth; this runbook is the
 one-time (and on-change) sync into production.
@@ -87,7 +92,7 @@ the same for both.
 4. Replace the **Body** with the full contents of
    `supabase/templates/magic_link.html` (HTML source). Confirm both of these
    GoTrue placeholders remain:
-   - `{{ .Token }}` — 6-digit code (primary for the installed PWA)
+   - `{{ .Token }}` — one-time code (primary for the installed PWA)
    - `{{ .ConfirmationURL }}` — magic link (browser convenience)
 
 5. Save.
@@ -105,7 +110,7 @@ string.
 2. Code: in the native app or the installed PWA, request a sign-in email for
    the first address. The email must show the subject
    `Your sign-in code for Deutsch · Sprachschule`, the "Deutsch · Sprachschule"
-   brand, a **6-digit code**, a link, and the **five minutes** footer. Enter the
+   brand, a **one-time code**, a link, and the **five minutes** footer. Enter the
    code in the app: it must sign in.
 3. Link: request a sign-in email for the second address, and open its link in
    a browser: it must sign in and land back in the app.
@@ -118,7 +123,7 @@ string.
 
 1. From the production app, request a sign-in email to a real inbox you
    control.
-2. Confirm the message shows the **6-digit code** and a working **link**.
+2. Confirm the message shows the **one-time code** and a working **link**.
 3. Enter the code in the installed PWA; separately open the link in a
    browser — both should sign in.
 4. Confirm the footer says the code expires in **five minutes** (matches

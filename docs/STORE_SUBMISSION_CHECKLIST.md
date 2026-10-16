@@ -97,7 +97,7 @@ either file.
 
 - **Not done (owner-only):** paste the template into the hosted **Confirm
   signup** template, then check that a new invited tester receives a working
-  6-digit code and link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify:
+  one-time code and link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify:
   Confirm signup"). Until then, a first-time native or installed-PWA tester
   gets no code.
 - The **Continue as guest** control on the denial landing (runbook 6c).

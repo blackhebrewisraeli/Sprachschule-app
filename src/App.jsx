@@ -68,7 +68,7 @@ import { useLeagueStanding } from './lib/useLeagueStanding';
 import { useAdminSession } from './lib/useAdminSession.js';
 
 // The create-account draft App holds so it survives a trip to /terms or
-// /privacy (spec §6.6). The six-digit code is not part of it.
+// /privacy (spec §6.6). The one-time code is not part of it.
 const EMPTY_AUTH_DRAFT = { email: '', sent: false, accepted: false };
 // State-setter updater that keeps the current value when the next one is equal.
 const sameOr = (next) => (prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next);

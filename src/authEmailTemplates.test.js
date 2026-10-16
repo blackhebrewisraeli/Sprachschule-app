@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 
 // An address GoTrue has never confirmed gets the "Confirm signup" email, not
 // "Magic Link", whenever confirmations are on (the hosted project). Native and
-// installed-PWA testers can only sign in with the 6-digit code, so a first-time
+// installed-PWA testers can only sign in with the one-time code, so a first-time
 // tester is stuck unless BOTH templates carry it. Local GoTrue reads these from
 // supabase/config.toml; the hosted dashboard is a manual paste of the same file
 // (docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md).
@@ -37,6 +37,13 @@ describe('auth email templates', () => {
     expect(html).toMatch(/\{\{\s*\.ConfirmationURL\s*\}\}/);
     expect(html).toContain('Deutsch · Sprachschule');
     expect(html).toContain('This code expires in five minutes.');
+  });
+
+  // The code's length is the hosted Email OTP length, a dashboard setting the
+  // repo does not control (production sends 8 digits, local config.toml 6).
+  it.each([SIGN_IN, SIGN_UP])('[%s] never promises a code length', (name) => {
+    const html = readFileSync(tomlSection(name).content_path, 'utf8');
+    expect(html).not.toMatch(/\b(\d+|six|eight)[- ]digit/i);
   });
 
   it('Confirm signup sends exactly the Magic Link subject and body', () => {

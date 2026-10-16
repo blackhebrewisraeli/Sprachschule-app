@@ -62,12 +62,12 @@ describe('auth actions', () => {
     });
   });
 
-  it('verifyCode verifies the 6-digit email token', async () => {
+  it('verifyCode verifies the email one-time code as typed', async () => {
     const { verifyCode } = await import('./auth.js');
-    await verifyCode('a@b.com', '123456');
+    await verifyCode('a@b.com', '12345678');
     expect(mockAuth.verifyOtp).toHaveBeenCalledWith({
       email: 'a@b.com',
-      token: '123456',
+      token: '12345678',
       type: 'email',
     });
   });
