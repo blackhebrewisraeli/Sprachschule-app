@@ -1,8 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 
-// The native TTS plugin. Hoisted so the mock factory and the tests share it.
-const tts = vi.hoisted(() => ({ speak: vi.fn() }));
+// The native TTS plugin, shaped like the real one: Capacitor hands back a Proxy
+// that turns ANY property into a native call. A plain object here hid a bug on
+// the emulator: the plugin was resolved through a promise, which reads `.then`,
+// which became a native "then()" call, and the promise never settled.
+const tts = vi.hoisted(() => {
+  const methods = { speak: vi.fn() };
+  return new Proxy(methods, {
+    get: (target, prop) =>
+      prop in target
+        ? target[prop]
+        : () => Promise.reject(new Error(`"TextToSpeech.${String(prop)}()" is not implemented`)),
+  });
+});
 vi.mock('@capacitor-community/text-to-speech', () => ({ TextToSpeech: tts }));
 
 describe('speak', () => {

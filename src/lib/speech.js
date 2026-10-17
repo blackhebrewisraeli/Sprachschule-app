@@ -98,10 +98,13 @@ export function isSpeechSynthesisSupported() {
 const hasNativeTts = () =>
   isNativeApp() && window.Capacitor?.isPluginAvailable?.('TextToSpeech') === true;
 
-// Imported on first use, so the web bundle never downloads the plugin.
+// Imported on first use, so the web bundle never downloads the plugin. Caches
+// the MODULE, never the plugin: a Capacitor plugin is a Proxy that turns any
+// property into a native call, `then` included, so resolving a promise with it
+// calls "TextToSpeech.then()" natively and the promise never settles. Seen on
+// the Android emulator, 2026-10-17.
 let nativeTts = null;
-const loadNativeTts = () =>
-  (nativeTts ??= import('@capacitor-community/text-to-speech').then((m) => m.TextToSpeech));
+const loadNativeTts = () => (nativeTts ??= import('@capacitor-community/text-to-speech'));
 
 /**
  * Can this platform make a sound at all? Gate every audio-only control on it,
@@ -177,7 +180,7 @@ export const speak = (text, lang = activePack.meta.locale, rate = 0.9) => {
     // rejection (no engine, locale not installed) is dropped like a throwing
     // web driver: the text being spoken is already on screen.
     loadNativeTts()
-      .then((tts) => tts.speak({ text, lang, rate }))
+      .then(({ TextToSpeech }) => TextToSpeech.speak({ text, lang, rate }))
       .catch(() => {});
     return;
   }
