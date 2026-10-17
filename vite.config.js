@@ -85,6 +85,11 @@ export default defineConfig({
       // navigateFallback is the basic offline strategy: unknown navigations
       // (and a cold open with no network) serve the precached index.html.
       workbox: {
+        // registerType 'autoUpdate' sets these two only while the plugin injects
+        // its own register script, so `injectRegister: false` above would drop
+        // them and leave a new worker waiting until every tab closed.
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // vite-plugin-pwa follows build.sourcemap, so enabling maps for the
         // Sentry upload also emitted sw.js.map and workbox-*.js.map — and those
