@@ -9,7 +9,7 @@ import {
   RADIUS,
   SPACE,
 } from '../../lib/theme';
-import { speak } from '../../lib/speech';
+import { canSpeak, speak } from '../../lib/speech';
 
 // Cue under the learner turn that was just graded. A real fix is expandable;
 // a clean turn is one quiet line. Never an empty "Alles gut!" card.
@@ -104,25 +104,27 @@ export default function InlineCorrection({ correction }) {
           >
             Correct: {correction.fixed}
           </div>
-          <button
-            type="button"
-            data-ui="button"
-            onClick={() => speak(correction.fixed)}
-            style={{
-              background: 'transparent',
-              border: `1px solid ${COLORS.red}`,
-              color: COLORS.red,
-              padding: `${SPACE[1]}px ${SPACE[2]}px`,
-              fontFamily: FONT_MONO,
-              fontSize: FONT_SIZE.tag,
-              letterSpacing: LETTER_SPACING.wider,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: SPACE[2],
-            }}
-          >
-            <Volume2 size={12} aria-hidden="true" /> HEAR IT
-          </button>
+          {canSpeak() && (
+            <button
+              type="button"
+              data-ui="button"
+              onClick={() => speak(correction.fixed)}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${COLORS.red}`,
+                color: COLORS.red,
+                padding: `${SPACE[1]}px ${SPACE[2]}px`,
+                fontFamily: FONT_MONO,
+                fontSize: FONT_SIZE.tag,
+                letterSpacing: LETTER_SPACING.wider,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: SPACE[2],
+              }}
+            >
+              <Volume2 size={12} aria-hidden="true" /> HEAR IT
+            </button>
+          )}
           {correction.explain && (
             <p
               style={{

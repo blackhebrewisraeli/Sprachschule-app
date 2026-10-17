@@ -20,7 +20,11 @@ vi.mock('../lib/aiHistory', async (importActual) => ({
   loadConversation: vi.fn(async (id) => history.rowsById[id] ?? []),
   deleteConversation: vi.fn(async (id) => history.deleted.push(id)),
 }));
-vi.mock('../lib/speech', () => ({ speak: vi.fn(), isSpeechRecognitionSupported: () => false }));
+vi.mock('../lib/speech', () => ({
+  speak: vi.fn(),
+  canSpeak: () => true,
+  isSpeechRecognitionSupported: () => false,
+}));
 vi.mock('../lib/useAiHistoryEnabled', () => ({
   useAiHistoryEnabled: () => ({ available: true, enabled: history.enabled, loading: false }),
 }));

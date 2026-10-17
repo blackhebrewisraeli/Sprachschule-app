@@ -12,7 +12,7 @@ vi.mock('../lib/feedback', async (importOriginal) => ({
   submitFeedback,
 }));
 vi.mock('../lib/claude', () => ({ callClaude: vi.fn() }));
-vi.mock('../lib/speech', () => ({ speak: vi.fn() }));
+vi.mock('../lib/speech', () => ({ speak: vi.fn(), canSpeak: () => true }));
 
 const DECKS = activePack.content.decks;
 const BANKS = activePack.content.translateSentences;

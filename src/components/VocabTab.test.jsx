@@ -8,7 +8,7 @@ import { upsertDeck, deleteDeck, liveDecks } from '../lib/customDecks.js';
 import { markLearnedIn } from '../lib/learnedWords.js';
 import { activePack } from '../packs';
 import { callClaude, QuotaExhaustedError } from '../lib/claude';
-import { speak } from '../lib/speech';
+import { canSpeak, speak } from '../lib/speech';
 import { srsKey } from '../lib/srs';
 import indexJson from '../packs/__fixtures__/lexicon/index.json';
 import chunk0 from '../packs/__fixtures__/lexicon/chunk-00.json';
@@ -24,7 +24,7 @@ vi.mock('../lib/claude', async (importActual) => ({
 
 // jsdom has no speechSynthesis; speak() guards for that and is a no-op there.
 // Mocking it makes the listening drill's audio observable instead of silent.
-vi.mock('../lib/speech', () => ({ speak: vi.fn() }));
+vi.mock('../lib/speech', () => ({ speak: vi.fn(), canSpeak: vi.fn() }));
 
 const DECKS = activePack.content.decks;
 const STORAGE_KEY = 'deutsch-app-state-v1';
@@ -165,6 +165,7 @@ afterEach(() => {
 describe('VocabTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(canSpeak).mockReturnValue(true);
     localStorage.clear();
   });
 
@@ -1209,6 +1210,16 @@ describe('VocabTab', () => {
       await openDeck(user);
       await user.click(screen.getByRole('button', { name: 'Play the word' }));
       expect(speak).toHaveBeenCalledWith('das Haus');
+    });
+
+    // The audio is the question. With no way to play it, a PLAY button would
+    // be the only dead control on the card; say why the deck cannot run.
+    it('says audio is unavailable instead of offering a mute PLAY', async () => {
+      vi.mocked(canSpeak).mockReturnValue(false);
+      const user = userEvent.setup();
+      await openDeck(user);
+      expect(screen.queryByRole('button', { name: 'Play the word' })).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(/Audio isn.t available on this device/);
     });
 
     it('labels the play control with words, not a decorative speaker icon', async () => {

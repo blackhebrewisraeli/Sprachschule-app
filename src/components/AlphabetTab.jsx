@@ -11,7 +11,7 @@ import {
   SHADOW,
   BUTTON,
 } from '../lib/theme';
-import { speak } from '../lib/speech';
+import { canSpeak, speak } from '../lib/speech';
 import { activePack } from '../packs';
 const { alphabet: ALPHABET, alphabetQuiz: ALPHABET_QUIZ_GROUPS } = activePack.content;
 import { shuffle } from '../lib/utils';
@@ -24,11 +24,16 @@ export default function AlphabetTab({
   reviewTarget = null,
   onReviewConsumed,
 }) {
+  // The quiz is listening only. Where nothing can speak (Android's WebView in a
+  // browser, a platform with no engine) it would be four letters and a mute
+  // button, so the tab is Browse alone.
+  const audio = canSpeak();
+
   // ── Browse mode state ──────────────────────────────────────────
   const [selected, setSelected] = useState(null);
 
   // ── Quiz mode state ────────────────────────────────────────────
-  const [mode, setMode] = useState('quiz');
+  const [mode, setMode] = useState(audio ? 'quiz' : 'browse');
   const [quizRound, setQuizRound] = useState(0);
   const [quizSeed, setQuizSeed] = useState(0); // bump to force quiz re-setup
   const [quizGroup, setQuizGroup] = useState(null);
@@ -73,6 +78,10 @@ export default function AlphabetTab({
   // Pick up review targets handed in from the Stats Review feed.
   useEffect(() => {
     if (!reviewTarget) return;
+    if (!audio) {
+      onReviewConsumed?.();
+      return;
+    }
     const present = ALPHABET_QUIZ_GROUPS.some((g) => g.letters.includes(reviewTarget.label));
     if (!present) {
       onReviewConsumed?.();
@@ -82,7 +91,7 @@ export default function AlphabetTab({
     setMode('quiz');
     setQuizSeed((s) => s + 1);
     onReviewConsumed?.();
-  }, [reviewTarget, onReviewConsumed]);
+  }, [reviewTarget, onReviewConsumed, audio]);
 
   const handleModeChange = (newMode) => {
     setMode(newMode);
@@ -138,45 +147,51 @@ export default function AlphabetTab({
         align="center"
         kicker="Section 03"
         title="Das Alphabet"
-        sub="Browse all letters or test your ear — can you identify what you heard?"
+        sub={
+          audio
+            ? 'Browse all letters or test your ear — can you identify what you heard?'
+            : 'Browse all letters and their example words.'
+        }
         srOnly={mobile}
       />
 
-      {/* Mode toggle */}
-      <div
-        style={{
-          display: 'flex',
-          borderRadius: RADIUS.md,
-          boxShadow: SHADOW.card,
-          overflow: 'hidden',
-          width: 'fit-content',
-          marginLeft: 'auto',
-          marginRight: 'auto',
-          // The rhythm rule: the gap between a tab's Hero and its first
-          // content block is SPACE[8]. Alphabet was the only tab that
-          // disagreed (spec §3.5, §4.3). On phones the Hero is clipped, so
-          // the toggle sits straight under the goal strip.
-          marginTop: mobile ? 0 : SPACE[8],
-          marginBottom: mobile ? SPACE[4] : SPACE[6],
-        }}
-      >
-        <button
-          type="button"
-          style={modeToggleBtn('quiz')}
-          onClick={() => handleModeChange('quiz')}
-          aria-pressed={mode === 'quiz'}
+      {/* Mode toggle — only when there is a quiz to toggle to */}
+      {audio && (
+        <div
+          style={{
+            display: 'flex',
+            borderRadius: RADIUS.md,
+            boxShadow: SHADOW.card,
+            overflow: 'hidden',
+            width: 'fit-content',
+            marginLeft: 'auto',
+            marginRight: 'auto',
+            // The rhythm rule: the gap between a tab's Hero and its first
+            // content block is SPACE[8]. Alphabet was the only tab that
+            // disagreed (spec §3.5, §4.3). On phones the Hero is clipped, so
+            // the toggle sits straight under the goal strip.
+            marginTop: mobile ? 0 : SPACE[8],
+            marginBottom: mobile ? SPACE[4] : SPACE[6],
+          }}
         >
-          🎧 Quiz
-        </button>
-        <button
-          type="button"
-          style={modeToggleBtn('browse')}
-          onClick={() => handleModeChange('browse')}
-          aria-pressed={mode === 'browse'}
-        >
-          📋 Browse
-        </button>
-      </div>
+          <button
+            type="button"
+            style={modeToggleBtn('quiz')}
+            onClick={() => handleModeChange('quiz')}
+            aria-pressed={mode === 'quiz'}
+          >
+            🎧 Quiz
+          </button>
+          <button
+            type="button"
+            style={modeToggleBtn('browse')}
+            onClick={() => handleModeChange('browse')}
+            aria-pressed={mode === 'browse'}
+          >
+            📋 Browse
+          </button>
+        </div>
+      )}
 
       {/* ── QUIZ MODE ────────────────────────────────────────── */}
       {mode === 'quiz' && quizGroup && quizTarget && (
@@ -478,29 +493,31 @@ export default function AlphabetTab({
                   &quot;{selected.e}&quot;
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={() => speak(selected.w)}
-                aria-label={`Play pronunciation for ${selected.w}`}
-                // Sits on the ink detail card. The default ring is the same
-                // token as that plane; data-focus-on-dark uses currentColor
-                // (paper, set below).
-                data-ui="button"
-                data-focus-on-dark=""
-                style={{
-                  width: 80,
-                  height: 80,
-                  background: COLORS.red,
-                  border: 'none',
-                  color: COLORS.paper,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                }}
-              >
-                <Volume2 size={32} />
-              </button>
+              {audio && (
+                <button
+                  type="button"
+                  onClick={() => speak(selected.w)}
+                  aria-label={`Play pronunciation for ${selected.w}`}
+                  // Sits on the ink detail card. The default ring is the same
+                  // token as that plane; data-focus-on-dark uses currentColor
+                  // (paper, set below).
+                  data-ui="button"
+                  data-focus-on-dark=""
+                  style={{
+                    width: 80,
+                    height: 80,
+                    background: COLORS.red,
+                    border: 'none',
+                    color: COLORS.paper,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Volume2 size={32} />
+                </button>
+              )}
             </div>
           )}
         </>

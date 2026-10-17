@@ -1,5 +1,7 @@
-// Web Speech API: text-to-speech in the active pack's locale.
+// Text-to-speech in the active pack's locale: the OS engine inside the native
+// app, the Web Speech API in a browser.
 import { activePack } from '../packs';
+import { isNativeApp } from './nativeApp';
 
 // macOS ships a set of comedy voices in every language. They are unusable for
 // a listening drill and wrong for a tutor, and `.find` hits them first because
@@ -88,6 +90,32 @@ export function isSpeechSynthesisSupported() {
 }
 
 /**
+ * Is the native TTS plugin there? Android's WebView has no speechSynthesis at
+ * all, so inside the app speech goes to the OS engine instead. Asks the bridge
+ * by the plugin's registered name rather than importing @capacitor/core, so a
+ * browser pays nothing for the check.
+ */
+const hasNativeTts = () =>
+  isNativeApp() && window.Capacitor?.isPluginAvailable?.('TextToSpeech') === true;
+
+// Imported on first use, so the web bundle never downloads the plugin.
+let nativeTts = null;
+const loadNativeTts = () =>
+  (nativeTts ??= import('@capacitor-community/text-to-speech').then((m) => m.TextToSpeech));
+
+/**
+ * Can this platform make a sound at all? Gate every audio-only control on it,
+ * so a platform without speech never shows a button that does nothing.
+ *
+ * Per platform, not per device: a phone whose engine lacks the locale still
+ * says yes (see docs/superpowers/specs/2026-10-17-native-tts-design.md §3).
+ * @returns {boolean}
+ */
+export function canSpeak() {
+  return hasNativeTts() || isSpeechSynthesisSupported();
+}
+
+/**
  * The best available voice for the pack's language, resolving the async case.
  *
  * `getVoices()` returns `[]` on first call in Chrome — the list is populated
@@ -142,6 +170,17 @@ export function getGermanVoice(timeoutMs = 2000) {
 }
 
 export const speak = (text, lang = activePack.meta.locale, rate = 0.9) => {
+  if (hasNativeTts()) {
+    // The plugin's default queue strategy flushes whatever is still speaking,
+    // the native twin of cancel() below. The OS picks its own default voice
+    // for the locale; the novelty denylist is a Web Speech workaround. A
+    // rejection (no engine, locale not installed) is dropped like a throwing
+    // web driver: the text being spoken is already on screen.
+    loadNativeTts()
+      .then((tts) => tts.speak({ text, lang, rate }))
+      .catch(() => {});
+    return;
+  }
   // Guard window: a scheduled speak() can fire after jsdom teardown when the
   // suite is slow (unhandled ReferenceError → red hook).
   if (!isSpeechSynthesisSupported()) return;
