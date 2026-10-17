@@ -69,6 +69,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // src/lib/serviceWorker.js registers the worker in a browser and removes
+      // it in the native app. sw.js is still generated, and must stay so.
+      injectRegister: false,
       includeAssets: [
         'favicon.svg',
         'favicon-32.png',
@@ -82,6 +85,11 @@ export default defineConfig({
       // navigateFallback is the basic offline strategy: unknown navigations
       // (and a cold open with no network) serve the precached index.html.
       workbox: {
+        // registerType 'autoUpdate' sets these two only while the plugin injects
+        // its own register script, so `injectRegister: false` above would drop
+        // them and leave a new worker waiting until every tab closed.
+        skipWaiting: true,
+        clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         // vite-plugin-pwa follows build.sourcemap, so enabling maps for the
         // Sentry upload also emitted sw.js.map and workbox-*.js.map — and those
