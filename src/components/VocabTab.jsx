@@ -627,9 +627,11 @@ export default function VocabTab({
                   {drill?.speak && !answered && !canSpeak() && (
                     // The audio IS the question, and this platform has no way
                     // to play it: say so instead of offering a mute PLAY.
-                    <p
-                      role="status"
+                    // <output> carries the status role natively; it is inline
+                    // by default, hence display: block.
+                    <output
                       style={{
+                        display: 'block',
                         margin: `0 0 ${SPACE[3]}px`,
                         textAlign: 'center',
                         fontFamily: FONTS.mono,
@@ -639,7 +641,7 @@ export default function VocabTab({
                     >
                       Audio isn&apos;t available on this device, so this deck can&apos;t be played
                       here.
-                    </p>
+                    </output>
                   )}
 
                   {drill?.speak && !answered && canSpeak() && (
