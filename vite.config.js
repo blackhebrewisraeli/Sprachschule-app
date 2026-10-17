@@ -69,6 +69,9 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // src/lib/serviceWorker.js registers the worker in a browser and removes
+      // it in the native app. sw.js is still generated, and must stay so.
+      injectRegister: false,
       includeAssets: [
         'favicon.svg',
         'favicon-32.png',

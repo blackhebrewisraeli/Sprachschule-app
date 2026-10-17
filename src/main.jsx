@@ -6,9 +6,14 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import { initObservability } from './lib/observability.js';
 import { bootTheme } from './lib/themeMode.js';
 import { isNativeApp } from './lib/nativeApp.js';
+import { setupServiceWorker } from './lib/serviceWorker.js';
 
 // Resolve CSS custom properties before React mounts — no flash of wrong theme.
 bootTheme();
+
+// Production only, as the injected registerSW.js was: the dev server serves no
+// sw.js. In the native app this removes the worker instead of registering it.
+if (import.meta.env.PROD) void setupServiceWorker();
 
 // Start error monitoring before anything renders, so early errors are captured.
 // No-op unless VITE_SENTRY_DSN is set.
