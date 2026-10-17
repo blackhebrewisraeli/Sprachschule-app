@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MessageBubble from './MessageBubble';
-import { speak } from '../../lib/speech';
+import { canSpeak, speak } from '../../lib/speech';
 
 vi.mock('../../lib/speech', () => ({
   speak: vi.fn(),
+  canSpeak: vi.fn(),
 }));
 
 const annaMsg = {
@@ -20,6 +21,16 @@ const userMsg = { role: 'user', de: 'Hallo Anna' };
 describe('MessageBubble', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(canSpeak).mockReturnValue(true);
+  });
+
+  it('drops the audio button where nothing can speak', () => {
+    vi.mocked(canSpeak).mockReturnValue(false);
+    render(<MessageBubble msg={annaMsg} />);
+    expect(screen.getByText('Guten Tag!')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Play Anna response audio' })
+    ).not.toBeInTheDocument();
   });
 
   it('renders an Anna message with name tag and audio button, EN/IPA collapsed', () => {

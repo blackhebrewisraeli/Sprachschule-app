@@ -14,7 +14,11 @@ vi.mock('../lib/claude', async (importActual) => ({
   callClaude: vi.fn(),
 }));
 
-vi.mock('../lib/speech', () => ({ speak: vi.fn(), isSpeechRecognitionSupported: () => false }));
+vi.mock('../lib/speech', () => ({
+  speak: vi.fn(),
+  canSpeak: () => true,
+  isSpeechRecognitionSupported: () => false,
+}));
 
 // The scene opener the AI writes. Distinct from `reply` so a test can tell
 // "the scene opened" apart from "a turn was answered".

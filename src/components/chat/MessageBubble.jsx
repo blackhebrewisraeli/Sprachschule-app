@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
 import { Volume2 } from 'lucide-react';
 import { COLORS, FONT_MONO, FONT_BODY, FONT_SIZE, RADIUS, TEXT, SPACE } from '../../lib/theme';
-import { speak } from '../../lib/speech';
+import { canSpeak, speak } from '../../lib/speech';
 import { activePack } from '../../packs';
 import InlineCorrection from './InlineCorrection';
 
@@ -80,7 +80,7 @@ export default function MessageBubble({ msg, speaker = activePack.prompts.person
             }}
           >
             {msg.de}
-            {!isUser && (
+            {!isUser && canSpeak() && (
               <button
                 type="button"
                 data-ui="button"

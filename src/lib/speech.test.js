@@ -1,4 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+
+// The native TTS plugin, shaped like the real one: Capacitor hands back a Proxy
+// that turns ANY property into a native call. A plain object here hid a bug on
+// the emulator: the plugin was resolved through a promise, which reads `.then`,
+// which became a native "then()" call, and the promise never settled.
+const tts = vi.hoisted(() => {
+  const methods = { speak: vi.fn() };
+  return new Proxy(methods, {
+    get: (target, prop) =>
+      prop in target
+        ? target[prop]
+        : () => Promise.reject(new Error(`"TextToSpeech.${String(prop)}()" is not implemented`)),
+  });
+});
+vi.mock('@capacitor-community/text-to-speech', () => ({ TextToSpeech: tts }));
 
 describe('speak', () => {
   let cancel;
@@ -288,5 +304,119 @@ describe('speak resilience', () => {
     window.speechSynthesis = { cancel: vi.fn(), getVoices: () => undefined, speak: vi.fn() };
     const { speak } = await import('./speech');
     expect(() => speak('Hallo')).not.toThrow();
+  });
+});
+
+// Android's WebView has no speechSynthesis at all (probed 2026-10-17), so in the
+// app every speak() was silent. There it goes to the OS engine instead.
+describe('inside the native app', () => {
+  let webSpeak;
+
+  beforeEach(() => {
+    vi.resetModules();
+    tts.speak.mockReset().mockResolvedValue(undefined);
+    webSpeak = vi.fn();
+    // What Capacitor's bridge injects: the platform, and the plugins it has.
+    window.Capacitor = {
+      isNativePlatform: () => true,
+      isPluginAvailable: (name) => name === 'TextToSpeech',
+    };
+  });
+
+  afterEach(() => {
+    delete window.Capacitor;
+    delete window.speechSynthesis;
+    delete globalThis.SpeechSynthesisUtterance;
+  });
+
+  it('speaks through the OS engine in the pack locale and drill rate, with no Web Speech', async () => {
+    const { speak, canSpeak } = await import('./speech');
+    const { activePack } = await import('../packs');
+    expect(canSpeak()).toBe(true);
+    speak('Guten Tag');
+    await vi.waitFor(() =>
+      expect(tts.speak).toHaveBeenCalledWith({
+        text: 'Guten Tag',
+        lang: activePack.meta.locale,
+        rate: 0.9,
+      })
+    );
+  });
+
+  it('passes a caller-chosen language and rate through', async () => {
+    const { speak } = await import('./speech');
+    speak('Hello', 'en-US', 0.5);
+    await vi.waitFor(() =>
+      expect(tts.speak).toHaveBeenCalledWith({ text: 'Hello', lang: 'en-US', rate: 0.5 })
+    );
+  });
+
+  // iOS's WKWebView does have speechSynthesis. With the plugin there, it must
+  // not speak twice, once through each engine.
+  it('leaves speechSynthesis alone when the plugin is there', async () => {
+    window.speechSynthesis = { cancel: vi.fn(), getVoices: () => [], speak: webSpeak };
+    const { speak } = await import('./speech');
+    speak('Hallo');
+    await vi.waitFor(() => expect(tts.speak).toHaveBeenCalledTimes(1));
+    expect(webSpeak).not.toHaveBeenCalled();
+  });
+
+  // No engine, or the locale is not installed. Unhandled, this rejection would
+  // fail the run, so the test passing is the assertion.
+  it('drops an engine rejection instead of leaking it', async () => {
+    tts.speak.mockRejectedValue(new Error('This language is not supported.'));
+    const { speak } = await import('./speech');
+    expect(() => speak('Hallo')).not.toThrow();
+    await vi.waitFor(() => expect(tts.speak).toHaveBeenCalled());
+  });
+
+  it('falls back to speechSynthesis when the bridge has no TTS plugin', async () => {
+    window.Capacitor.isPluginAvailable = () => false;
+    window.speechSynthesis = { cancel: vi.fn(), getVoices: () => [], speak: webSpeak };
+    globalThis.SpeechSynthesisUtterance = vi.fn(function SpeechSynthesisUtterance(text) {
+      this.text = text;
+    });
+    const { speak, canSpeak } = await import('./speech');
+    expect(canSpeak()).toBe(true);
+    speak('Hallo');
+    expect(webSpeak).toHaveBeenCalledTimes(1);
+    expect(tts.speak).not.toHaveBeenCalled();
+  });
+
+  it('cannot speak with neither the plugin nor speechSynthesis', async () => {
+    window.Capacitor.isPluginAvailable = () => false;
+    const { canSpeak } = await import('./speech');
+    expect(canSpeak()).toBe(false);
+  });
+
+  // Written by `npx cap update`. Without these the plugin is in package.json
+  // and in no app, and the bridge reports it missing.
+  it('ships the plugin in both native projects', () => {
+    expect(readFileSync('android/capacitor.settings.gradle', 'utf8')).toContain(
+      "include ':capacitor-community-text-to-speech'"
+    );
+    expect(readFileSync('android/app/capacitor.build.gradle', 'utf8')).toContain(
+      "implementation project(':capacitor-community-text-to-speech')"
+    );
+    expect(readFileSync('ios/App/CapApp-SPM/Package.swift', 'utf8')).toContain(
+      '.product(name: "CapacitorCommunityTextToSpeech", package: "CapacitorCommunityTextToSpeech")'
+    );
+  });
+});
+
+describe('canSpeak on the web', () => {
+  afterEach(() => {
+    delete window.speechSynthesis;
+    vi.resetModules();
+  });
+
+  it('follows speechSynthesis and never loads the native plugin', async () => {
+    const { canSpeak, speak } = await import('./speech');
+    expect(canSpeak()).toBe(false);
+    speak('Hallo');
+    window.speechSynthesis = { getVoices: () => [], speak: () => {} };
+    expect(canSpeak()).toBe(true);
+    await Promise.resolve();
+    expect(tts.speak).not.toHaveBeenCalled();
   });
 });

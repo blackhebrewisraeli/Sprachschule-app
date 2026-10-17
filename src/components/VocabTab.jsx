@@ -38,7 +38,7 @@ import { vocabPanelId, vocabTabId } from './vocab/vocabModes';
 import VocabBrowse, { CUSTOM_PICK_COPY } from './vocab/VocabBrowse';
 import CustomDeckManager from './vocab/CustomDeckManager';
 import { drillFor } from './vocab/drills';
-import { speak } from '../lib/speech';
+import { canSpeak, speak } from '../lib/speech';
 import useAutoDeck from './vocab/useAutoDeck';
 import { AUTO_DECKS } from '../packs/de/autoDecks';
 import { clampMode, isDeckAllowedForLevel } from '../lib/levelGate';
@@ -624,7 +624,25 @@ export default function VocabTab({
                     />
                   )}
 
-                  {drill?.speak && !answered && (
+                  {drill?.speak && !answered && !canSpeak() && (
+                    // The audio IS the question, and this platform has no way
+                    // to play it: say so instead of offering a mute PLAY.
+                    <p
+                      role="status"
+                      style={{
+                        margin: `0 0 ${SPACE[3]}px`,
+                        textAlign: 'center',
+                        fontFamily: FONTS.mono,
+                        fontSize: FONT_SIZE.sm,
+                        color: COLORS.mute,
+                      }}
+                    >
+                      Audio isn&apos;t available on this device, so this deck can&apos;t be played
+                      here.
+                    </p>
+                  )}
+
+                  {drill?.speak && !answered && canSpeak() && (
                     <button
                       type="button"
                       onClick={() => {

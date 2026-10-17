@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AlphabetTab from './AlphabetTab';
-import { speak } from '../lib/speech';
+import { canSpeak, speak } from '../lib/speech';
 import { activePack } from '../packs';
 
-vi.mock('../lib/speech', () => ({ speak: vi.fn() }));
+vi.mock('../lib/speech', () => ({ speak: vi.fn(), canSpeak: vi.fn() }));
 
 const { alphabet: ALPHABET, alphabetQuiz: QUIZ_GROUPS } = activePack.content;
 const firstGroup = QUIZ_GROUPS[0];
@@ -13,7 +13,49 @@ const firstGroup = QUIZ_GROUPS[0];
 describe('AlphabetTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(canSpeak).mockReturnValue(true);
     localStorage.clear();
+  });
+
+  // A listening quiz with nothing to listen with is four letters and a mute
+  // button. Android's WebView, inside a browser, is such a platform.
+  describe('where nothing can speak', () => {
+    beforeEach(() => vi.mocked(canSpeak).mockReturnValue(false));
+
+    it('offers Browse alone: no quiz, no mode switch, no ear-test promise', () => {
+      render(<AlphabetTab level="a1" />);
+      expect(screen.queryByRole('button', { name: '🎧 Quiz' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: '📋 Browse' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Play the letter/ })).not.toBeInTheDocument();
+      expect(screen.queryByText(/test your ear/)).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: `Select letter ${ALPHABET[0].l} for details` })
+      ).toBeInTheDocument();
+    });
+
+    it('shows the letter detail without a play button', async () => {
+      render(<AlphabetTab level="a1" />);
+      await userEvent.click(
+        screen.getByRole('button', { name: `Select letter ${ALPHABET[0].l} for details` })
+      );
+      expect(screen.getByText('EXAMPLE WORD')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: `Play pronunciation for ${ALPHABET[0].w}` })
+      ).not.toBeInTheDocument();
+    });
+
+    it('consumes a review target instead of opening the quiz', () => {
+      const onReviewConsumed = vi.fn();
+      render(
+        <AlphabetTab
+          level="a1"
+          reviewTarget={{ label: firstGroup.letters[0] }}
+          onReviewConsumed={onReviewConsumed}
+        />
+      );
+      expect(onReviewConsumed).toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: /^Play the letter/ })).not.toBeInTheDocument();
+    });
   });
 
   // Same axis as Vocab and Translate: the title and the mode switch sit on the

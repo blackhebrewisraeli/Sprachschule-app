@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import InlineCorrection from './InlineCorrection';
-import { speak } from '../../lib/speech';
+import { canSpeak, speak } from '../../lib/speech';
 
-vi.mock('../../lib/speech', () => ({ speak: vi.fn() }));
+vi.mock('../../lib/speech', () => ({ speak: vi.fn(), canSpeak: vi.fn() }));
 
 const correction = {
   original: 'Ich habe hunger',
@@ -15,6 +15,15 @@ const correction = {
 describe('InlineCorrection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(canSpeak).mockReturnValue(true);
+  });
+
+  it('keeps the fix but drops HEAR IT where nothing can speak', async () => {
+    vi.mocked(canSpeak).mockReturnValue(false);
+    render(<InlineCorrection correction={correction} />);
+    await userEvent.click(screen.getByRole('button', { name: /Needs a fix/i }));
+    expect(screen.getByText('Correct: Ich habe Hunger')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'HEAR IT' })).not.toBeInTheDocument();
   });
 
   it('shows a collapsed cue with the fix, and hides detail until expanded', () => {
