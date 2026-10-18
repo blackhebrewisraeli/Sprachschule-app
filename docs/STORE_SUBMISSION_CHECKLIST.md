@@ -36,8 +36,8 @@ screenshots and read-only Play Console check, 2026-10-17/18)
 
 | Build                 | Local AAB SHA-256 | Internal Testing | Closed Testing – Alpha |
 | --------------------- | ----------------- | ---------------- | ---------------------- |
-| 1.0.1 (8)             | `ba655390…682bce` | superseded by 9  | active                 |
-| 1.0.1 (9) – audio fix | `633a53aa…916786` | active           | in review              |
+| 1.0.1 (8)             | `ba655390…682bce` | superseded by 9  | superseded by 9        |
+| 1.0.1 (9) – audio fix | `633a53aa…916786` | active           | active                 |
 
 - Both AABs use the same upload key (certificate SHA-256 starts
   `02:81:4D:93`). Build 8's artifact is retained under
@@ -58,23 +58,33 @@ plus a read-only console check on 2026-10-18)
 - Publishing overview has no unpublished changes and says the app was last
   published on 2026-10-17. App content says **You're all caught up**: no policy
   declaration needs attention.
-- Closed Testing is active, but its Alpha track still serves **Build 8 -
-  Internal testing**. The selected `Internal testers` email list contains two
-  users; the production-access dashboard reports **0 testers currently
-  opted-in**. The feedback field is empty.
+- Closed Testing – Alpha serves **Build 9 - audio fix**. The selected
+  `Internal testers` email list contains two users; the production-access
+  dashboard reports **0 testers currently opted-in**. The feedback field is
+  empty.
 - **2026-10-18, owner-approved in chat:** Build 9 was promoted from Internal
   to Closed Testing – Alpha. The release includes bundle 9 only, rolls out to
   100% and keeps the release notes from Internal. Its only warning is the known
   native debug symbols one. Publishing overview held exactly that one change
   and shows it as **Changes in review**. Managed publishing is off, so it goes
-  live on approval. **Approval is not yet verified:** Alpha serves Build 8
-  until then.
+  live on approval. **Approved and live the same day** (read-only check):
+  Publishing overview says last published 2026-10-18 with no pending changes,
+  and the Alpha track shows Build 9 as "Available to selected testers",
+  version code 9, released 2026-10-18 3:53 PM.
 - The production-access requirement definitely applies to this account: Play
   requires at least 12 testers opted in continuously for 14 days.
 - The local App Store Connect upload record proves that iOS 1.0.1 (7) uploaded
   successfully on 2026-10-06. The TestFlight app on this Mac shows build 7 **In
   Testing**, installed and openable, released 2026-10-06 and expiring
   2027-01-04. This does not prove an iPhone install or device pass.
+- **iOS 1.0.1 (9) uploaded 2026-10-18** (agent, owner-approved in chat). The
+  archive was built from `main` `1834c6d1`, whose code matches the Android
+  Build 9 source `a8c71353` (only docs differ). It records bundle
+  `com.sprachschule.deutsch`, 1.0.1 (9) and Team `XN53VLQT47`, and has
+  `TextToSpeechPlugin` registered. The export used `ios:upload`'s options.
+  `xcodebuild` reported `Upload succeeded`, Delivery UUID `08d759a2…b94a`,
+  with no ITMS warning. Apple processing, TestFlight availability and an
+  iPhone install are **not yet verified**.
 
 **OWNER CONFIRMATION REQUIRED** (dashboard or device only)
 
@@ -91,14 +101,14 @@ plus a read-only console check on 2026-10-18)
 
 **BLOCKED / EXTERNAL DEPENDENCY**
 
-- **Google Play production access:** Closed Testing is active, but it serves
-  Build 8 and has 0 of the required 12 opted-in testers. The 14-day clock has
-  not started.
+- **Google Play production access:** Closed Testing serves Build 9, but it
+  has 0 of the required 12 opted-in testers. The 14-day clock has not
+  started.
 - **Counsel:** review of the Privacy Policy and Terms, plus the IP-address and
   AI-text form lines (P1-1, P1-2).
-- **Apple:** build 7 processed into TestFlight without a recorded upload
-  warning, but build 9 still needs upload, iPhone installation and the current
-  privacy/listing verdicts; App Review only starts after submission.
+- **Apple:** build 9 is uploaded. It still needs processing, TestFlight
+  Internal Testing, iPhone installation and the current privacy/listing
+  verdicts. App Review only starts after submission.
 
 ## Current next actions — no-repeat queue (audited 2026-10-18)
 
@@ -110,10 +120,8 @@ are historical evidence, not permission to repeat completed work.
    In parallel, finish the Resend DPA/counsel review and add Resend to the
    Privacy Policy with a `PRIVACY_VERSION` bump. These are the two recorded
    closed-beta follow-ups, not new work.
-2. **Closed Android track:** Build 9 was sent for review on Closed Testing
-   Alpha on 2026-10-18. Wait until Alpha shows **Build 9 - audio fix** as the
-   active release. Until then it serves Build 8, whose Android audio is known
-   broken. Do not recruit the cohort onto Build 8.
+2. ✅ **Closed Android track:** Closed Testing Alpha serves **Build 9 - audio
+   fix** (approved and live 2026-10-18). Recruiting can start.
 3. **Start the Play clock:** grow the selected list from 2 to at least 12
    Google accounts. For testers who will sign in, add each sign-in address to
    the allowlist table **and** to `SIGNUP_EMAIL_ALLOWLIST`
@@ -127,10 +135,10 @@ are historical evidence, not permission to repeat completed work.
    Google, Apple (including Hide My Email), magic link, sign out/in, all six
    tabs and Delete account. Do not repeat the Android learning/progress/audio
    checks recorded below.
-5. **Bring iOS to the current candidate:** upload source build 9 to App Store
-   Connect, select it in TestFlight Internal Testing and install it on the
-   iPhone. Build 7 is proven uploaded and available in TestFlight, but it is no
-   longer the current source candidate.
+5. **Bring iOS to the current candidate:** build 9 was uploaded on
+   2026-10-18. Once Apple finishes processing it, select it in TestFlight
+   Internal Testing and install it on the iPhone. Do not upload build 9
+   again.
 6. **Store review:** complete the Apple App Privacy/listing fields, final asset
    review and counsel sign-off, then submit only after the device passes above.
 
@@ -216,8 +224,7 @@ The 2026-10-06 hold is lifted. Track state and the Build 9 device check live
 only in the 2026-10-18 release status at the top.
 
 Still open on the Play lane: confirm the release-keystore backup; finish the
-rest of the P0-4 real-device pass; put Build 9 on the Closed Testing Alpha
-track; finish the tester-readiness items above; grow the cohort from 2 listed / 0
+rest of the P0-4 real-device pass; finish the tester-readiness items above; grow the cohort from 2 listed / 0
 opted in to at least 12 opted in; keep that level for 14 continuous days; and
 review every uploaded listing asset before applying for production access.
 
@@ -238,13 +245,14 @@ device can show it, so it is not assumed either way. Needs: **code**,
 ### At a glance
 
 - **Done:** "Verified healthy" below, P0-1, the iOS build-7 upload, the Android
-  Build 9 Internal Testing upload and audio proof, Play App content/setup
+  Build 9 Internal Testing upload and audio proof, Build 9 live on Closed
+  Alpha, the iOS build-9 upload, Play App content/setup
   declarations, P1-3, P1-5, P2-3 and P2-4. Sign in with Apple is switched on in
   `build:mobile` (#442).
 - **Blocks starting the external closed-beta cohort cleanly:** hosted Confirm
-  signup template verification, the Resend privacy disclosure, Build 9 on the
-  Closed Alpha track, and at least 12 real Google accounts. The current track
-  is Build 8 with 2 listed / 0 opted-in testers.
+  signup template verification, the Resend privacy disclosure and at least
+  12 real Google accounts. Closed Alpha serves Build 9 with 2 listed / 0
+  opted-in testers.
 - **Blocks public release/store review:** the remaining device-auth and account
   deletion checks; P1-4's Apple proof; P1-1 counsel; Apple App Privacy/listing
   forms; the final screenshot review; and P1-9's 12-tester/14-day clock.
@@ -253,8 +261,8 @@ device can show it, so it is not assumed either way. Needs: **code**,
 - **Who does what:** the Needs column. The only known release-blocking repo edit
   is the Resend privacy disclosure after the DPA/counsel decision. Everything
   else is owner, dashboard, device or counsel work.
-- **Next action:** complete the tester-readiness pair, then publish Build 9 to
-  Closed Alpha before sending any cohort invite.
+- **Next action:** complete the tester-readiness pair, then invite the cohort
+  to Closed Alpha (it serves Build 9).
 
 **Verified healthy, not blockers:** production had all 39 repo migrations by
 name on 2026-10-05 (47 of 47 on 2026-10-15, "Closed beta and database" above),
@@ -280,8 +288,8 @@ has a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 | #    | Blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Owner / agent                          | Prerequisite                            | Verification                                                                                                                                                 | Needs              |
 | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
 | P0-1 | ✅ **Dashboard configured; deep links verified on both platforms.** `com.sprachschule.deutsch://login-callback` is in Supabase Redirect URLs (owner screenshot, 2026-10-03). The iOS Simulator `openurl` check (2026-10-03) and the Android emulator `adb` check on the shrunk release build (2026-10-04) both open the **Sign-in cancelled** panel.                                                                                                                                                                                                                                                                                                                                                | —                                      | —                                       | Real-device magic-link / Google return remain part of P0-4.                                                                                                  | device             |
-| P0-2 | **iOS upload works; build 7 is in TestFlight, build 9 is not.** The local `upload.log` records `Upload succeeded` for 1.0.1 (7) on 2026-10-06, and its archive records Team ID `XN53VLQT47`, bundle `com.sprachschule.deutsch` and build 7. The TestFlight app on this Mac shows 1.0.1 (7) In Testing, installed and openable. Build 7 is the first uploaded build with Apple sign-in. Source is now build 9; upload it before the final iPhone pass.                                                                                                                                                                                                                                               | Owner (upload + iPhone)                | Build 9 on `main`                       | TestFlight shows build 9 in Internal Testing; install that build on the iPhone. Build-7 upload/processing/Mac install are complete and must not be repeated. | dashboard + device |
-| P0-3 | **Android Build 9 is signed, accepted and proven in Internal Testing; backup remains.** Local release checks passed; Play serves Build 9 internally; the owner installed it on a physical Samsung phone and verified native pronunciation. Closed Alpha still serves Build 8. The release-keystore backup is the only unverified build-integrity item.                                                                                                                                                                                                                                                                                                                                              | Owner                                  | Keystore outside the repo and backed up | Owner confirms the backup; Play Closed Alpha serves Build 9. Internal upload and audio proof are complete.                                                   | dashboard + device |
+| P0-2 | **iOS build 9 uploaded 2026-10-18 (Delivery UUID `08d759a2…b94a`); processing and TestFlight not yet verified.** The local `upload.log` records `Upload succeeded` for 1.0.1 (7) on 2026-10-06, and its archive records Team ID `XN53VLQT47`, bundle `com.sprachschule.deutsch` and build 7. The TestFlight app on this Mac shows 1.0.1 (7) In Testing, installed and openable. Build 7 is the first uploaded build with Apple sign-in. Build 9 was uploaded from `main` `1834c6d1` on 2026-10-18 (see the release status).                                                                                                                                                                         | Owner (upload + iPhone)                | Build 9 on `main`                       | TestFlight shows build 9 in Internal Testing; install that build on the iPhone. Build-7 upload/processing/Mac install are complete and must not be repeated. | dashboard + device |
+| P0-3 | **Android Build 9 is signed, accepted and proven in Internal Testing; backup remains.** Local release checks passed; Play serves Build 9 internally; the owner installed it on a physical Samsung phone and verified native pronunciation. Closed Alpha serves Build 9 (live 2026-10-18). The release-keystore backup is the only unverified build-integrity item.                                                                                                                                                                                                                                                                                                                                  | Owner                                  | Keystore outside the repo and backed up | Owner confirms the backup; Play Closed Alpha serves Build 9. Internal upload and audio proof are complete.                                                   | dashboard + device |
 | P0-4 | **Real-device pass in progress; do not restart it.** Android physical-device learning/progress/persistence and Build 9 audio are complete (details in "Completed manual checks"). Emulator coverage includes all six tabs, offline and narrow layouts. Still open on Android: Google and magic-link return, sign out/in, Chat send, home-screen label and in-app Delete account on a throwaway user. On iOS, an earlier Xcode install proved magic-link return; the current candidate still needs TestFlight build 9, Google, Apple/Hide My Email, all six tabs, sign out/in, label and Delete account. An unlisted tester is refused by P1-8: test as a guest or add the address to the allowlist. | Owner, with an agent for the checklist | P0-2 (build 9); P0-3 for Android        | Run only the remaining checks named here and the Apple runbook §Verify; do not repeat the recorded Android learning/progress/audio pass.                     | device             |
 
 ### P1 — blocks public beta or store review
@@ -296,7 +304,7 @@ has a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 | P1-6 | **Play assets were submitted; final visual review and Apple assets remain.** The 2026-10-17 Play setup submission included the filled store listing. #487 fixed the Wi-Fi demo indicator and regenerated the Play set. The pipeline produces the required iPhone, iPad and Play sizes plus the feature graphic and byte-checks them; scene 5 still needs the fictional signed-in account. The owner must visually confirm exactly which generated/manual files are uploaded in each store.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Agent (pipeline), owner (review, scene 5, upload) | Current generated sets; fictional account for scene 5                         | Uploaded store previews match the current files; no focus ring, cropped quest, personal data or stale Wi-Fi indicator.                                                                      | dashboard + device           |
 | P1-7 | **Play listing and policy fields are published; App Store state is unverified.** Play has no unpublished changes and App content is all caught up. The Privacy Policy and deletion routes validate there. Apple category, support contact, listing text and URLs still need a dashboard check. The three compliance routes return crawlable static HTML; see `scripts/lib/legalShells.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Owner                                             | P1-3                                                                          | Play remains published with no pending setup; App Store fields match the tracked listing and `/delete-account` validates signed out.                                                        | dashboard                    |
 | P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. Review still needs a posture: list the reviewer's sign-in address (and each Hide My Email relay address), or disable the hook to open signup. _prod-read, 2026-10-18_: the table holds five rows, but `SIGNUP_EMAIL_ALLOWLIST` was last changed 2026-10-14, so a tester must be added to both (runbook "Adding beta testers"). Google Auth Platform shows **In production**, External, with no sensitive scopes, so Google runs the OAuth flow for any Google account. Getting an account still requires the address to be on the allowlist, because the before-user-created hook refuses unlisted ones. The consent screen still names `xcnnlczvxmuwcqwychox.supabase.co`. | Owner                                             | Runbook steps 2–7; decide review posture; Google Cloud → OAuth consent screen | A listed reviewer/tester account signs in on the iPhone and can delete itself; an unlisted one is refused with no account created. Google publishing status: **In production** (2026-10-18) | dashboard                    |
-| P1-9 | **Play Console closed-testing rule applies and is not yet counting.** The dashboard requires at least 12 testers continuously opted in for 14 days. Closed Alpha is active on Build 8, the selected list has 2 users, and the dashboard says 0 testers currently opted in. Publish Build 9 there before recruitment, then reach and retain 12+.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Owner                                             | Tester-readiness items; Build 9 on Closed Alpha                               | Dashboard shows 12+ opted in and the 14-day requirement complete; then the production-access button enables.                                                                                | dashboard                    |
+| P1-9 | **Play Console closed-testing rule applies and is not yet counting.** The dashboard requires at least 12 testers continuously opted in for 14 days. Closed Alpha serves Build 9 (live 2026-10-18), the selected list has 2 users, and the dashboard says 0 testers currently opted in. Reach and retain 12+.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Owner                                             | Tester-readiness items; Build 9 on Closed Alpha                               | Dashboard shows 12+ opted in and the 14-day requirement complete; then the production-access button enables.                                                                                | dashboard                    |
 
 ### P2 — post-launch polish
 
@@ -335,8 +343,7 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
 
 3. ✅ **Internal candidate:** Build 9 is active in Internal Testing, installed
    on a Samsung phone and its audio fix is proven.
-4. **Owner:** Build 9 was sent for review on Closed Testing Alpha on
-   2026-10-18. Do not invite the cohort until Alpha serves Build 9.
+4. ✅ **Closed Alpha:** Build 9 approved and live on 2026-10-18.
 5. **Owner:** expand the selected tester list from 2 to at least 12 Google
    accounts. Allowlist each sign-in address in both places (runbook "Adding
    beta testers"). Then set the feedback address, send the existing web opt-in
@@ -350,9 +357,9 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
 
 **iOS beta and store review, in parallel**
 
-8. **Owner:** upload source build 9 to App Store Connect, select it for
-   TestFlight Internal Testing and install it on the iPhone. Build 7 is already
-   uploaded, processed and openable on this Mac; do not repeat that upload.
+8. **Owner:** build 9 was uploaded on 2026-10-18; do not upload it again.
+   After Apple processes it, select it for TestFlight Internal Testing and
+   install it on the iPhone.
 9. **Owner, on the iPhone:** run only the remaining P0-4 and P1-4 checks,
    including Apple/Hide My Email and account deletion.
 10. **Owner + counsel:** finish Apple App Privacy/listing fields, uploaded-asset
