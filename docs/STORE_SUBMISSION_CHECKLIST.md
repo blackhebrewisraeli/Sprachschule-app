@@ -197,13 +197,10 @@ either file.
   edit comes with a `PRIVACY_VERSION` bump, after the DPA and counsel review
   (item 2 under "Before merging the terms-acceptance PR").
 
-## Play Console — INTERNAL TESTING ACTIVE (2026-10-18)
+## Play Console — hold lifted (2026-10-18)
 
-The 2026-10-06 hold is lifted. Google Play accepted version 1.0.1
-(`versionCode` 9), **Build 9 - audio fix**, and the Internal Testing track is
-active. The owner installed it from its Internal Early Access Play listing on a
-physical Samsung Android device and confirmed that pronunciation works in both
-Vokabeln and Alphabet after a full close and reopen.
+The 2026-10-06 hold is lifted. Track state and the Build 9 device check live
+only in the 2026-10-18 release status at the top.
 
 Still open on the Play lane: confirm the release-keystore backup; finish the
 rest of the P0-4 real-device pass; put Build 9 on the Closed Testing Alpha
