@@ -226,7 +226,7 @@ deletion review, step 7's query returns no rows. Then delete
 on, adding a tester is step 2 alone. Do not unset the variable while any
 unlisted account can still sign in: the bans lapse on 2026-11-13.
 
-**Google sign-in needs nothing per tester.** As of 2026-10-18 (read-only
+**Google needs nothing per tester beyond the allowlist.** As of 2026-10-18 (read-only
 check), the Google Auth Platform project `sprachschule` shows **In production**
 with user type **External**. It declares no sensitive or restricted scopes and
 no logo, so the test-user list, the 100-user cap and verification do not
