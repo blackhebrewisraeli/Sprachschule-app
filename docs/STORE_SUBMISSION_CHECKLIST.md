@@ -8,49 +8,116 @@
 Code alone does not make the app compliant. Each item below needs an account or
 a judgement only the owner has. Tick them in order: several gate the next.
 
-## Release status — 2026-10-09 (main `3aaf364c`)
+## Release status — 2026-10-18 (main `a8c71353`)
 
 The build number in the source says what the next upload will be called, not
 that it was uploaded. Anything not under the first label is unproven.
 
 **VERIFIED IN REPO** (tree, Git history, GitHub checks)
 
-- Source version **1.0.1, build 7**: `package.json`, `android/app/build.gradle`
+- Source version **1.0.1, build 9**: `package.json`, `android/app/build.gradle`
   (`versionName` / `versionCode`) and the iOS project (`MARKETING_VERSION` /
   `CURRENT_PROJECT_VERSION`); `scripts/release/version.test.js` fails on drift.
-- Merged: #442 turned Apple sign-in on in `build:mobile` (2026-10-04); #447
-  bumped to build 7 (2026-10-06); #448 put the Play lane on hold; #449 and #450
-  landed the store-ready Terms and Privacy Policy, Apple copy included
-  (`TERMS_VERSION` and `PRIVACY_VERSION` `2026-10-06`).
+- Merged: #488 routes native pronunciation through the OS text-to-speech
+  engine; #489 improves the no-audio notice; #490 bumps the shared build number
+  to 9; #491 prevents the native app from serving an older cached web build.
 - `build:mobile` pins push, saved tutor conversations and the Sentry DSN off.
-- Every check on `main` `3aaf364c` is green, including the iOS Simulator and
-  Android debug builds. Neither is a store build.
-- Re-checked 2026-10-15 on `main` `719792ed` (#472): the source is still
-  1.0.1 (7), and every check is green, including Lint · Test · Build, RLS
-  Policy Tests, Build for iOS Simulator and Build debug APK. Since 2026-10-09
-  the repository has gained no record of a build-7 upload, store-dashboard
-  state, a device pass or counsel review, so the items below are unchanged.
+- Re-checked locally on 2026-10-18 from `a8c71353`: 5,230 Vitest tests, ESLint,
+  Prettier, the Vite production build, Android unit tests, Android release lint
+  and `:app:bundleRelease` all passed. The signed AAB manifest reports package
+  `com.sprachschule.deutsch`, version `1.0.1` and `versionCode` 9.
+
+**VERIFIED IN PLAY CONSOLE / ON DEVICE** (owner screenshots and confirmation,
+plus a read-only console check on 2026-10-18)
+
+- Google Play Internal Testing shows **Build 9 - audio fix** as active and
+  available to internal testers. The Play Store displays the Internal Early
+  Access listing, the release notes and an installed **Open** state.
+- Build 9 is installed on a physical Samsung Android device. After fully
+  closing and reopening the app, the owner confirmed audible pronunciation in
+  both **Vokabeln** and **Alphabet**. The Android audio regression is closed.
+- Publishing overview has no unpublished changes and says the app was last
+  published on 2026-10-17. App content says **You're all caught up**: no policy
+  declaration needs attention.
+- Closed Testing is active, but its Alpha track still serves **Build 8 -
+  Internal testing**. The selected `Internal testers` email list contains two
+  users; the production-access dashboard reports **0 testers currently
+  opted-in**. The feedback field is empty.
+- The production-access requirement definitely applies to this account: Play
+  requires at least 12 testers opted in continuously for 14 days.
+- The local App Store Connect upload record proves that iOS 1.0.1 (7) uploaded
+  successfully on 2026-10-06. The TestFlight app on this Mac shows build 7 **In
+  Testing**, installed and openable, released 2026-10-06 and expiring
+  2027-01-04. This does not prove an iPhone install or device pass.
 
 **OWNER CONFIRMATION REQUIRED** (dashboard or device only)
 
-- Whether 1.0.1 (7) was uploaded to App Store Connect, processed, and installs
-  from TestFlight Internal Testing. The repo records uploads of (2)–(6) from
-  the owner's local logs (P0-2); it holds no record of (7).
-- Whether a signed build-7 `.aab` exists and the keystore is backed up (P0-3).
-- The device pass on build 7 (P0-4) and the Apple §Verify run (P1-4).
-- Console state: App Privacy (P1-2), listing fields (P1-7), screenshot review
-  (P1-6), Google OAuth publishing status and the sign-up posture (P1-8), and
-  the Apple Services ID, key and client-secret renewal date (P1-4).
+- Whether the Android release keystore is backed up (P0-3).
+- The remaining Android auth/account checks, an iPhone install of the current
+  release candidate, the iOS device pass and the Apple §Verify run (P0-4,
+  P1-4). The previously recorded Android learning/progress checks must not be
+  repeated; see "Completed manual checks" below.
+- Apple App Privacy and App Store listing state, the final screenshot review,
+  Google OAuth publishing status and the sign-up posture (P1-8), and the Apple
+  Services ID, key and client-secret renewal date (P1-4).
 
 **BLOCKED / EXTERNAL DEPENDENCY**
 
-- **Google Play:** every Play Console step (upload, Internal and Closed
-  Testing, Data Safety, listing, P1-9's 14-day closed test) waits for Play
-  developer-account verification (on hold since 2026-10-06, below).
+- **Google Play production access:** Closed Testing is active, but it serves
+  Build 8 and has 0 of the required 12 opted-in testers. The 14-day clock has
+  not started.
 - **Counsel:** review of the Privacy Policy and Terms, plus the IP-address and
   AI-text form lines (P1-1, P1-2).
-- **Apple:** processing, export-compliance and privacy verdicts appear only
-  after an upload (P1-5); App Review only after submission.
+- **Apple:** build 7 processed into TestFlight without a recorded upload
+  warning, but build 9 still needs upload, iPhone installation and the current
+  privacy/listing verdicts; App Review only starts after submission.
+
+## Current next actions — no-repeat queue (audited 2026-10-18)
+
+This is the canonical short queue. Earlier build-7/build-8 instructions below
+are historical evidence, not permission to repeat completed work.
+
+1. **Before inviting outside testers:** paste the hosted Confirm signup email
+   template and verify one new invited account receives both a code and a link.
+   In parallel, finish the Resend DPA/counsel review and add Resend to the
+   Privacy Policy with a `PRIVACY_VERSION` bump. These are the two recorded
+   closed-beta follow-ups, not new work.
+2. **Closed Android track:** publish Build 9 to Closed Testing Alpha. Internal
+   already serves Build 9; Closed still serves Build 8, whose Android audio is
+   known broken. Do not recruit the cohort onto Build 8.
+3. **Start the Play clock:** grow the selected list from 2 to at least 12
+   Google accounts, add the support feedback address, send the web opt-in link
+   `https://play.google.com/apps/testing/com.sprachschule.deutsch`, and verify
+   the dashboard reaches at least 12 opted-in testers. Keep at least 12 opted
+   in continuously for 14 days, then apply for production access.
+4. **Finish only the unproven device checks:** Android Google and magic-link
+   return, sign out/in, Chat send, and Delete account on a throwaway user; iOS
+   Google, Apple (including Hide My Email), magic link, sign out/in, all six
+   tabs and Delete account. Do not repeat the Android learning/progress/audio
+   checks recorded below.
+5. **Bring iOS to the current candidate:** upload source build 9 to App Store
+   Connect, select it in TestFlight Internal Testing and install it on the
+   iPhone. Build 7 is proven uploaded and available in TestFlight, but it is no
+   longer the current source candidate.
+6. **Store review:** complete the Apple App Privacy/listing fields, final asset
+   review and counsel sign-off, then submit only after the device passes above.
+
+### Completed manual checks — do not ask for these again
+
+- Android Build 8 installed from Play and opened on a physical Samsung phone.
+  The owner completed a 10-word vocabulary deck; XP moved 835 → 1000; the
+  daily goal, streak and quests updated; leagues, achievements and activity
+  loaded; progress survived a full reopen; and bottom content cleared the
+  Android navigation bar.
+- The Build 8 Android audio failure was reproduced, fixed by #488/#491, shipped
+  in Build 9, and then verified after a full close/reopen in both Vokabeln and
+  Alphabet. It is closed.
+- Emulator coverage already includes guest onboarding and placement, all six
+  tabs, vocabulary grading and XP, restart persistence, offline grading, and
+  320px/375px layout. Repeat only a real-device item named in action 4.
+- Play's advertising-ID declaration is **No**; the 14 pending setup changes
+  were submitted and published; App content currently reports no item needing
+  attention. Do not redo the Play setup questionnaire.
 
 ## Closed beta and database — 2026-10-14, re-checked 2026-10-15 (main `719792ed`)
 
@@ -111,20 +178,19 @@ either file.
   edit comes with a `PRIVACY_VERSION` bump, after the DPA and counsel review
   (item 2 under "Before merging the terms-acceptance PR").
 
-## Play Console — ON HOLD (2026-10-06)
+## Play Console — INTERNAL TESTING ACTIVE (2026-10-18)
 
-The Google Play lane is paused at the owner's request while Play Console
-developer-account verification is incomplete. The hold covers the Play app and
-Play App Signing setup, build 7 `.aab` upload, Internal/Closed Testing, Play
-Data Safety and listing forms, screenshots, content rating, and production
-access (P0-3, the Play portions of P1-2/P1-6/P1-7, and P1-9).
+The 2026-10-06 hold is lifted. Google Play accepted version 1.0.1
+(`versionCode` 9), **Build 9 - audio fix**, and the Internal Testing track is
+active. The owner installed it from its Internal Early Access Play listing on a
+physical Samsung Android device and confirmed that pronunciation works in both
+Vokabeln and Alphabet after a full close and reopen.
 
-Resume only after Play Console reports the developer account and any required
-physical-device verification as complete. Do **not** bump or rebuild solely
-because verification is pending: build 7 (`versionCode` 7 on `main`) remains
-the release candidate. Whether a signed build-7 `.aab` already exists is not
-recorded here (owner confirmation required). TestFlight/iOS work, keystore backup, local Android builds, legal
-review, and checks that do not require Play Console are not paused.
+Still open on the Play lane: confirm the release-keystore backup; finish the
+rest of the P0-4 real-device pass; put Build 9 on the Closed Testing Alpha
+track; finish the tester-readiness items above; grow the cohort from 2 listed / 0
+opted in to at least 12 opted in; keep that level for 14 continuous days; and
+review every uploaded listing asset before applying for production access.
 
 ## Blocker matrix — audited 2026-10-05 (main `0223fde3`)
 
@@ -142,23 +208,24 @@ device can show it, so it is not assumed either way. Needs: **code**,
 
 ### At a glance
 
-- **Done:** "Verified healthy" below, and P0-1, P1-3, P1-5, P2-3, P2-4. Sign in
-  with Apple is switched on in `build:mobile` (#442).
-- **Blocks internal testing:** a confirmed TestFlight install of build 7, the
-  first build with Apple sign-in (P0-2), the Android upload (P0-3, on hold),
-  and the device pass on both (P0-4).
-- **Blocks public beta and store review:** P1-8 first (the sign-up allowlist
-  turns away reviewers, unlisted testers and every unlisted Hide My Email
-  address unless they are listed), then
-  P1-4's device proof and privacy copy, P1-1 counsel, P1-2 / P1-7 forms, P1-6
-  screenshot review and P1-9's closed-test clock.
+- **Done:** "Verified healthy" below, P0-1, the iOS build-7 upload, the Android
+  Build 9 Internal Testing upload and audio proof, Play App content/setup
+  declarations, P1-3, P1-5, P2-3 and P2-4. Sign in with Apple is switched on in
+  `build:mobile` (#442).
+- **Blocks starting the external closed-beta cohort cleanly:** hosted Confirm
+  signup template verification, the Resend privacy disclosure, Build 9 on the
+  Closed Alpha track, and at least 12 real Google accounts. The current track
+  is Build 8 with 2 listed / 0 opted-in testers.
+- **Blocks public release/store review:** the remaining device-auth and account
+  deletion checks; P1-4's Apple proof; P1-1 counsel; Apple App Privacy/listing
+  forms; the final screenshot review; and P1-9's 12-tester/14-day clock.
 - **Post-launch:** the P2 rows, and Premium and ads (Tracks B/C, `BACKLOG.md`
   owner action 14).
-- **Who does what:** the Needs column. No repo work is known to be left before
-  submission: the build-7 bump landed as #447 and the Apple privacy copy as
-  #449/#450. Counsel's edits, if any, become a new PR.
-- **Next action:** the owner confirms whether build 7 is in TestFlight, or
-  uploads it (Shortest safe path, step 2), then starts the P0-4 device pass.
+- **Who does what:** the Needs column. The only known release-blocking repo edit
+  is the Resend privacy disclosure after the DPA/counsel decision. Everything
+  else is owner, dashboard, device or counsel work.
+- **Next action:** complete the tester-readiness pair, then publish Build 9 to
+  Closed Alpha before sending any cohort invite.
 
 **Verified healthy, not blockers:** production had all 39 repo migrations by
 name on 2026-10-05 (47 of 47 on 2026-10-15, "Closed beta and database" above),
@@ -181,26 +248,26 @@ has a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 
 ### P0 — blocks internal testing (TestFlight, Play Internal Testing) or production safety
 
-| #    | Blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Owner / agent                          | Prerequisite                                                                                    | Verification                                                                                                                                                        | Needs              |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
-| P0-1 | ✅ **Dashboard configured; deep links verified on both platforms.** `com.sprachschule.deutsch://login-callback` is in Supabase Redirect URLs (owner screenshot, 2026-10-03). The iOS Simulator `openurl` check (2026-10-03) and the Android emulator `adb` check on the shrunk release build (2026-10-04) both open the **Sign-in cancelled** panel.                                                                                                                                                                                                                                                                                                                                                                       | —                                      | —                                                                                               | Real-device magic-link / Google return remain part of P0-4.                                                                                                         | device             |
-| P0-2 | **Uploads work; build 7 is the first with Sign in with Apple, and its upload is not recorded.** _local_ (recorded 2026-10-05): `npm run ios:upload` logged "Upload succeeded" for 1.0.1 (2) at 02:22 on 2026-10-04, before #431 (sync and leagues off: never give it to testers), then for (3), (4), (5) and (6). All five archives have Apple sign-in compiled **off**: (6) was uploaded at 12:57, before #442 merged at 13:46. _repo_: `main` has been 1.0.1 (7) since #447 (2026-10-06). Whether (7) was uploaded: **owner confirmation required**. The paid team kept Team ID `XN53VLQT47`.                                                                                                                            | Owner (upload)                         | ✅ #442 and #447 on `main`                                                                      | Build 7 appears in TestFlight → Internal Testing and installs on the iPhone. Upload, processing, the tester group and the install: **owner confirmation required**  | dashboard + device |
-| P0-3 | **Signed, shrunk `.aab` builds locally; backup and Play Console unverified.** Version 1.0.1; `versionCode` follows the shared build number (7 on `main` since #447). R8 shrinking is on (APK 6.8 → 3.7 MB) and the release APK was exercised on the Android 16 emulator on 2026-10-04: launch, tabs, the Google hand-off to the browser, the deep link. Gradle needs JDK 21 (`NATIVE_BUILD.md` §4). `keystore.properties` contents not read. Keystore backup and the Play upload are still open.                                                                                                                                                                                                                           | Owner (Android Studio)                 | Keystore outside the repo, backed up (`NATIVE_BUILD.md` §4); Play Console app; Play App Signing | `cd android && ./gradlew bundleRelease` writes a signed `.aab`; Play Console accepts it to Internal Testing. Backup and Play state: **owner confirmation required** | dashboard + device |
-| P0-4 | **Real-device pass in progress; finish it on build 7.** Recorded: on an iPhone with an Xcode install (2026-10-03) the magic link opens the app and signs in ✅. Owner reports fixed since: signing out and back in on the iPhone reopened the placement test (#438, in build 5); the sign-in sheet stayed open after a native Google sign-in on the iPhone 17 Simulator (#440, in build 6). Still to do on build 7 or later: Google and Apple on the iPhone, Google and the magic link on Android, all six tabs, sign out and back in, in-app Delete account on a throwaway user, the home-screen label (P1-3). An unlisted tester gets server errors once signed in (P1-8): test as a guest or add them to the allowlist. | Owner, with an agent for the checklist | P0-2 (build 7); P0-3 for Android                                                                | The `MOBILE_AUTH_SETUP.md` device steps, plus a pass through all six tabs, sign-out, and in-app **Delete account** on a throwaway user                              | device             |
+| #    | Blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Owner / agent                          | Prerequisite                            | Verification                                                                                                                                                 | Needs              |
+| ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ |
+| P0-1 | ✅ **Dashboard configured; deep links verified on both platforms.** `com.sprachschule.deutsch://login-callback` is in Supabase Redirect URLs (owner screenshot, 2026-10-03). The iOS Simulator `openurl` check (2026-10-03) and the Android emulator `adb` check on the shrunk release build (2026-10-04) both open the **Sign-in cancelled** panel.                                                                                                                                                                                                                                                                                                                                                | —                                      | —                                       | Real-device magic-link / Google return remain part of P0-4.                                                                                                  | device             |
+| P0-2 | **iOS upload works; build 7 is in TestFlight, build 9 is not.** The local `upload.log` records `Upload succeeded` for 1.0.1 (7) on 2026-10-06, and its archive records Team ID `XN53VLQT47`, bundle `com.sprachschule.deutsch` and build 7. The TestFlight app on this Mac shows 1.0.1 (7) In Testing, installed and openable. Build 7 is the first uploaded build with Apple sign-in. Source is now build 9; upload it before the final iPhone pass.                                                                                                                                                                                                                                               | Owner (upload + iPhone)                | Build 9 on `main`                       | TestFlight shows build 9 in Internal Testing; install that build on the iPhone. Build-7 upload/processing/Mac install are complete and must not be repeated. | dashboard + device |
+| P0-3 | **Android Build 9 is signed, accepted and proven in Internal Testing; backup remains.** Local release checks passed; Play serves Build 9 internally; the owner installed it on a physical Samsung phone and verified native pronunciation. Closed Alpha still serves Build 8. The release-keystore backup is the only unverified build-integrity item.                                                                                                                                                                                                                                                                                                                                              | Owner                                  | Keystore outside the repo and backed up | Owner confirms the backup; Play Closed Alpha serves Build 9. Internal upload and audio proof are complete.                                                   | dashboard + device |
+| P0-4 | **Real-device pass in progress; do not restart it.** Android physical-device learning/progress/persistence and Build 9 audio are complete (details in "Completed manual checks"). Emulator coverage includes all six tabs, offline and narrow layouts. Still open on Android: Google and magic-link return, sign out/in, Chat send, home-screen label and in-app Delete account on a throwaway user. On iOS, an earlier Xcode install proved magic-link return; the current candidate still needs TestFlight build 9, Google, Apple/Hide My Email, all six tabs, sign out/in, label and Delete account. An unlisted tester is refused by P1-8: test as a guest or add the address to the allowlist. | Owner, with an agent for the checklist | P0-2 (build 9); P0-3 for Android        | Run only the remaining checks named here and the Apple runbook §Verify; do not repeat the recorded Android learning/progress/audio pass.                     | device             |
 
 ### P1 — blocks public beta or store review
 
-| #    | Blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Owner / agent                                      | Prerequisite                                                    | Verification                                                                                                                                                                 | Needs                        |
-| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
-| P1-1 | **Counsel review of the Privacy Policy and Terms** (item 3), including international transfers, minimum age 13, the AI clause and the Apple sign-in wording P1-4 needs. The 2026-10-03 policy version added saved tutor conversations; the 2026-10-06 version (#449/#450) added Apple sign-in, the rights and Children sections, and the emailed-deletion route.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Owner + counsel                                    | Final text (`PRIVACY_VERSION` `2026-10-06`)                     | Written sign-off; any edit lands as a PR that bumps `PRIVACY_VERSION`                                                                                                        | counsel                      |
-| P1-2 | **App Privacy and Data Safety forms not filled in the consoles.** The answers are now form-ready ("Form mapping" below) and the submitted build is fixed to match: `build:mobile` pins push, saved tutor conversations and the Sentry DSN off (test-guarded). Sign in with Apple is in the build since #442; it supplies an email address (possibly an Apple private relay address) and optionally a name, which the Email and Name lines already cover. Still open: the IP-address category, the AI-text "collected vs processed" question, and entering the forms.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Owner (+ counsel on the two judgement lines)       | A submitted build from `npm run build:mobile`                   | Each form line matches the build, re-read at submission. Console state: **owner confirmation required**                                                                      | dashboard                    |
-| P1-3 | ✅ **Fixed (#414).** The installed app is labelled "Deutsch Sprachschule" like the stores; `nativeDisplayName.test.js` pins it. Device home-screen label (may truncate at ~12 characters) still to be eyeballed in P0-4.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | —                                                  | —                                                               | Home-screen label on an iPhone and an Android phone                                                                                                                          | device                       |
-| P1-4 | **Sign in with Apple (Guideline 4.8): on in `build:mobile` since #442, not yet proven.** _prod-read_: Supabase lists the Apple provider as enabled, and `APPLE_SERVICES_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID` and `APPLE_PRIVATE_KEY` exist in Vercel Production. The Apple Developer Services ID and key are owner-stated in #442; they, and a calendar date for renewing the client-secret JWT (it expires within six months), need **owner confirmation**. Still open: (a) a confirmed upload of build 7, the first build that contains it (P0-2); (b) runbook §Verify on an iPhone, including Hide My Email and the Apple ID check after Delete account, which needs P1-8 first, because a relay address can never be on the allowlist; (c) ✅ Apple copy for the Privacy Policy and the deletion page merged in #449/#450 (`PRIVACY_VERSION` `2026-10-06`); counsel's read stays under P1-1; (d) compare the button with Apple's official artwork. Submitting without it is a likely Guideline 4.8 rejection; see `store-metadata/app-review-notes.md`.                                 | Owner (device; copy with counsel), agent (copy PR) | P0-2 (build 7); P1-8; `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`        | Runbook §Verify on an iPhone, including Hide My Email and a delete-account check in Apple ID settings; Vercel logs show no `Apple token NOT revoked`                         | dashboard + device + counsel |
-| P1-5 | ✅ **Fixed (#415).** `PrivacyInfo.xcprivacy` is bundled in the App target and `ITSAppUsesNonExemptEncryption` is `false`. Apple's verdict only shows on the first TestFlight upload.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | —                                                  | —                                                               | First upload shows no ITMS privacy or export-compliance warnings                                                                                                             | device                       |
-| P1-6 | **Screenshots: automated and current (2026-10-04), owner review left.** `npm run screenshots:capture` produces the iPhone `1320×2868`, iPad `2064×2752` and Play `1080×1920` sets plus the `1024×500` feature graphic from the native release-candidate apps (Simulator / emulator), seeded with a fictional guest and verified for exact size and no alpha; see the plan's "Automated capture". Scene 5 (league) needs the fictional signed-in account and is captured by hand. IPA renders correctly on every platform since the font fix (#427).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Agent (pipeline), owner (review, scene 5, upload)  | P0-2 / Play Console for upload; fictional account for scene 5   | `store-screenshots/REPORT.md` all `ok`; owner ticks the review boxes in it                                                                                                   | device                       |
-| P1-7 | **Listing and policy fields not entered in the consoles.** Privacy URL (items 4–5), deletion URL (item 6), age/content ratings, category, support contact. The three compliance routes now return their own static HTML (title, canonical and a `<noscript>` statement of the facts), so a crawler that does not run JavaScript sees the app name, developer and deletion steps; see `scripts/lib/legalShells.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Owner                                              | P1-3                                                            | Open `/delete-account` signed out in a private window and read the app name; confirm in Play Console that the URL validates. **Owner confirmation required**                 | dashboard                    |
-| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. Review still needs a posture: list the reviewer's sign-in address (and each Hide My Email relay address), or disable the hook to open signup. Separately, the Google consent screen still shows `xcnnlczvxmuwcqwychox.supabase.co`, and if the Google OAuth app is in "Testing", only listed test users can sign in. | Owner                                              | Runbook steps 2–7; decide review posture; Google Cloud → OAuth consent screen | A listed reviewer/tester account signs in on the iPhone and can delete itself; an unlisted one is refused with no account created. Google publishing status: **owner confirmation required** | dashboard                    |
-| P1-9 | **Play Console closed-testing rule.** A personal developer account created after Nov 2023 must run a closed test with 12+ testers for 14 days before it may apply for production.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Owner                                              | Account type                                                    | **Owner confirmation required** of the account type and the Play Console release dashboard                                                                                   | dashboard                    |
+| #    | Blocker                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Owner / agent                                     | Prerequisite                                                                  | Verification                                                                                                                                                                                 | Needs                        |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| P1-1 | **Counsel review of the Privacy Policy and Terms** (item 3), including international transfers, minimum age 13, the AI clause and the Apple sign-in wording P1-4 needs. The 2026-10-03 policy version added saved tutor conversations; the 2026-10-06 version (#449/#450) added Apple sign-in, the rights and Children sections, and the emailed-deletion route.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Owner + counsel                                   | Final text (`PRIVACY_VERSION` `2026-10-06`)                                   | Written sign-off; any edit lands as a PR that bumps `PRIVACY_VERSION`                                                                                                                        | counsel                      |
+| P1-2 | **Google Data Safety is actioned; Apple App Privacy remains unverified.** Play App content reports no declaration needing attention, and the submitted setup changes were published on 2026-10-17. The answers below remain the audited source for checking each store against the submitted build. Apple still needs dashboard confirmation. Counsel must still confirm the IP-address and real-time AI-text classifications before final store review or any policy edit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Owner (+ counsel on the two judgement lines)      | A submitted build from `npm run build:mobile`                                 | Play remains all caught up; Apple App Privacy matches the build; counsel records the two classification decisions.                                                                           | dashboard + counsel          |
+| P1-3 | ✅ **Fixed (#414).** The installed app is labelled "Deutsch Sprachschule" like the stores; `nativeDisplayName.test.js` pins it. Device home-screen label (may truncate at ~12 characters) still to be eyeballed in P0-4.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | —                                                 | —                                                                             | Home-screen label on an iPhone and an Android phone                                                                                                                                          | device                       |
+| P1-4 | **Sign in with Apple (Guideline 4.8): included and uploaded, not yet proven on an iPhone.** `build:mobile` has enabled it since #442; build 7, the first such upload, is available in TestFlight. Supabase lists the provider as enabled and the four `APPLE_*` variables exist in Vercel Production. Still open: upload/select build 9; confirm the Services ID, key and client-secret renewal date; run §Verify on an iPhone including Hide My Email and the Apple ID check after Delete account; compare the button with Apple's official artwork; retain counsel review of the merged Apple privacy copy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Owner (device; copy with counsel)                 | P0-2 (build 9); P1-8; `docs/AUTH_APPLE_OAUTH_RUNBOOK.md`                      | Runbook §Verify on an iPhone; Vercel logs show no `Apple token NOT revoked`; renewal date recorded.                                                                                          | dashboard + device + counsel |
+| P1-5 | ✅ **Fixed (#415).** `PrivacyInfo.xcprivacy` is bundled in the App target and `ITSAppUsesNonExemptEncryption` is `false`. Apple's verdict only shows on the first TestFlight upload.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | —                                                 | —                                                                             | First upload shows no ITMS privacy or export-compliance warnings                                                                                                                             | device                       |
+| P1-6 | **Play assets were submitted; final visual review and Apple assets remain.** The 2026-10-17 Play setup submission included the filled store listing. #487 fixed the Wi-Fi demo indicator and regenerated the Play set. The pipeline produces the required iPhone, iPad and Play sizes plus the feature graphic and byte-checks them; scene 5 still needs the fictional signed-in account. The owner must visually confirm exactly which generated/manual files are uploaded in each store.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Agent (pipeline), owner (review, scene 5, upload) | Current generated sets; fictional account for scene 5                         | Uploaded store previews match the current files; no focus ring, cropped quest, personal data or stale Wi-Fi indicator.                                                                       | dashboard + device           |
+| P1-7 | **Play listing and policy fields are published; App Store state is unverified.** Play has no unpublished changes and App content is all caught up. The Privacy Policy and deletion routes validate there. Apple category, support contact, listing text and URLs still need a dashboard check. The three compliance routes return crawlable static HTML; see `scripts/lib/legalShells.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Owner                                             | P1-3                                                                          | Play remains published with no pending setup; App Store fields match the tracked listing and `/delete-account` validates signed out.                                                         | dashboard                    |
+| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. Review still needs a posture: list the reviewer's sign-in address (and each Hide My Email relay address), or disable the hook to open signup. Separately, the Google consent screen still shows `xcnnlczvxmuwcqwychox.supabase.co`, and if the Google OAuth app is in "Testing", only listed test users can sign in. | Owner                                             | Runbook steps 2–7; decide review posture; Google Cloud → OAuth consent screen | A listed reviewer/tester account signs in on the iPhone and can delete itself; an unlisted one is refused with no account created. Google publishing status: **owner confirmation required** | dashboard                    |
+| P1-9 | **Play Console closed-testing rule applies and is not yet counting.** The dashboard requires at least 12 testers continuously opted in for 14 days. Closed Alpha is active on Build 8, the selected list has 2 users, and the dashboard says 0 testers currently opted in. Publish Build 9 there before recruitment, then reach and retain 12+.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Owner                                             | Tester-readiness items; Build 9 on Closed Alpha                               | Dashboard shows 12+ opted in and the 14-day requirement complete; then the production-access button enables.                                                                                 | dashboard                    |
 
 ### P2 — post-launch polish
 
@@ -225,44 +292,53 @@ is the proof. Once the beta hook is enabled, an unlisted person never gets an
 account, so nothing is stranded. An unlisted account that predates the hook
 still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
 
-### Shortest safe path (ordered by dependency, 2026-10-05)
+### Shortest safe path (ordered by dependency, 2026-10-18)
 
-**Internal testing**
+**Tester readiness — do these once**
 
-1. ✅ **Agent:** `npm run release:bump` to build 7, landed as #447
-   (2026-10-06). It is the first build with Apple sign-in, and App Store
-   Connect already holds 6.
-2. **Owner:** `npm run ios:upload` from that `main`, TestFlight → Internal
-   Testing, install on the iPhone (P0-2). Not recorded in the repo: **owner
-   confirmation required**.
-3. ⏸ **Play on hold:** back up the keystore now if needed, but wait for account
-   verification before creating/configuring the Play app, Play App Signing or
-   uploading build 7's `.aab` (P0-3).
-4. **Owner, with an agent's checklist:** the P0-4 device pass on those builds.
+1. **Owner:** paste the Confirm signup template into hosted Supabase Auth and
+   verify one new invited account receives both the one-time code and link.
+2. **Owner + counsel:** finish the Resend DPA/review; an agent then adds Resend
+   to the Privacy Policy and bumps `PRIVACY_VERSION`. Do this before any
+   outside tester joins.
 
-**Public beta and store review**
+**Google Play closed beta**
 
-5. **Owner, decide now:** the P1-8 sign-up posture, and publish the Google
-   consent screen. It gates step 6, every external tester and the reviewer.
-6. **Owner, on the iPhone:** P1-4 runbook §Verify on build 7 (Hide My Email,
-   deletion revokes the token).
-7. **Owner and counsel, start today:** P1-1, including the Apple wording. It is
-   the longest wait nobody here controls. The Apple wording is already in
-   (#449/#450); an agent lands any counsel edits with a `PRIVACY_VERSION` bump.
-8. **Owner, in the consoles:** App Store forms and screenshot review may
-   continue. The Play portions of P1-2, P1-6 and P1-7, plus P1-9's 12-tester,
-   14-day closed test, stay on hold until verification completes.
-9. **Submit:** iOS may continue with `store-metadata/app-review-notes.md`;
-   Android stays on hold, then follows the P1-9 clock. Keep push, Premium, ads
-   and saved conversations out of the submitted build so the forms stay true.
+3. ✅ **Internal candidate:** Build 9 is active in Internal Testing, installed
+   on a Samsung phone and its audio fix is proven.
+4. **Owner:** publish Build 9 to the existing Closed Testing Alpha track. It
+   currently serves Build 8; do not invite the cohort until it serves 9.
+5. **Owner:** expand the selected tester list from 2 to at least 12 Google
+   accounts, set the feedback address, send the existing web opt-in link and
+   verify at least 12 actually opt in. Being listed is not enough.
+6. **Owner:** keep at least 12 testers continuously opted in for 14 days. Use
+   the waiting period for only the unproven Android device checks in P0-4.
+7. **Owner:** when Play marks the requirement complete, answer the production
+   access questions and apply. App content/Data Safety setup is already
+   actioned; do not redo it.
+
+**iOS beta and store review, in parallel**
+
+8. **Owner:** upload source build 9 to App Store Connect, select it for
+   TestFlight Internal Testing and install it on the iPhone. Build 7 is already
+   uploaded, processed and openable on this Mac; do not repeat that upload.
+9. **Owner, on the iPhone:** run only the remaining P0-4 and P1-4 checks,
+   including Apple/Hide My Email and account deletion.
+10. **Owner + counsel:** finish Apple App Privacy/listing fields, uploaded-asset
+    review and legal sign-off, then submit with
+    `store-metadata/app-review-notes.md`.
+
+Keep push, Premium, ads and saved conversations out of the submitted builds so
+the existing form answers stay true.
 
 **Post-launch:** the P2 rows; AI history after the shadow-week review (P2-2);
 Premium and ads after decisions D1 and D3–D5 and Vercel Pro (`BACKLOG.md` owner
 action 14).
 
-**Repo work left before submission:** none known. Step 1 landed as #447; a
-counsel-edit PR in step 7 only if counsel changes the text. Everything else is
-owner, dashboard, device or counsel work.
+**Repo work left before submission:** the Resend privacy disclosure and
+`PRIVACY_VERSION` bump after the DPA/counsel decision. No feature implementation
+or build-number bump is currently queued. Everything else is owner, dashboard,
+device or counsel work.
 
 ## Before merging the terms-acceptance PR
 
@@ -290,6 +366,7 @@ owner, dashboard, device or counsel work.
    **Triggered 2026-10-14, still pending:** custom SMTP through Resend is now
    live. The policy must name Resend, with a `PRIVACY_VERSION` bump, after the
    DPA and counsel review and before any outside tester joins.
+
 3. **Have qualified counsel review** the final Privacy Policy and Terms,
    including international transfers, the minimum age (Terms say 13), and
    whether the optional AI clause is wanted.
