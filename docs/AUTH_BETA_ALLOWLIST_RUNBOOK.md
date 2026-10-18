@@ -171,6 +171,69 @@ can be unset.
 2026-10-21. After that, decide whether `SIGNUP_EMAIL_ALLOWLIST` can be
 removed.
 
+## Adding beta testers
+
+Owner-only, like every step above. Repeat for each batch.
+
+**While `SIGNUP_EMAIL_ALLOWLIST` is set, a tester must be on both lists.** The
+hook admits an address that is in the table. `requireAuth` then refuses every
+`/api` call from a verified email that is not in the variable. So a tester
+listed only in the table gets an account, but profile edits, account deletion
+and export, leagues and the AI tutor all answer "This email isn't invited to
+the beta".
+
+> **Drift found 2026-10-18 (read-only check).** The table has 5 rows. The
+> variable was last changed on 2026-10-14, when the table had 3. Both addresses
+> added on 2026-10-16 have email accounts and are almost certainly missing from
+> the variable. Step 3 fixes that as a side effect.
+
+1. **Collect each tester's sign-in address.** For Google sign-in, that is the
+   Google account's address; the Google account they opted in with on Play is
+   the simplest. For the email form, it is the mailbox that receives the
+   one-time code. For Apple Hide My Email, see step 3 of the production
+   sequence.
+2. **Table** (SQL editor). Never commit the addresses:
+
+   ```sql
+   insert into private.beta_signup_allowlist (email)
+   select lower(btrim(x))
+     from unnest(array['tester1@example.com', 'tester2@example.com']) as x
+   on conflict do nothing;
+   ```
+
+3. **Variable.** It is a Vercel Secret, so its value cannot be read back.
+   Rebuild it from the table instead of editing it by hand:
+
+   ```sql
+   select string_agg(email, ',' order by added_at) from private.beta_signup_allowlist;
+   ```
+
+   In Vercel, open project `sprachschule` → **Settings → Environment
+   Variables** → `SIGNUP_EMAIL_ALLOWLIST` → **Edit**. Paste the result, keep
+   **Production** and **Preview**, and save. Then go to **Deployments**, open
+   the current Production deployment and choose **Redeploy**. Functions read
+   env only at deploy time.
+
+4. **Verify with one new tester.** They sign in, open **Edit Profile** from
+   the account menu, change their name and save. The save must succeed. "This email isn't invited" here
+   means the address is in the table but not in the variable.
+
+**Retiring the variable makes this one step.** Step 7 already allows unsetting
+the variable once no unlisted account remains. On 2026-10-18 the only unlisted
+accounts were the four banned ones. If the owner deletes them at the
+deletion review, step 7's query returns no rows. Then delete
+`SIGNUP_EMAIL_ALLOWLIST` from Production and Preview and redeploy. From then
+on, adding a tester is step 2 alone. Do not unset the variable while any
+unlisted account can still sign in: the bans lapse on 2026-11-13.
+
+**Google sign-in needs nothing per tester.** As of 2026-10-18 (read-only
+check), the Google Auth Platform project `sprachschule` shows **In production**
+with user type **External**. It declares no sensitive or restricted scopes and
+no logo, so the test-user list, the 100-user cap and verification do not
+apply. The consent screen names the Supabase domain
+(`xcnnlczvxmuwcqwychox.supabase.co`), not the app. Tell testers to expect
+that. Fixing it needs a Supabase custom domain, which is not a beta blocker.
+
 ## Production state — 2026-10-14
 
 Checked after the owner upgraded Postgres on 2026-10-14. These checks read
