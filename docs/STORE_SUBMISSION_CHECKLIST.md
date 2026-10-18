@@ -10,6 +10,49 @@ a judgement only the owner has. Tick them in order: several gate the next.
 
 ## Release status — 2026-10-18 (main `a8c71353`)
 
+Supersedes the 2026-10-09 status below for Google Play. Each Play claim names
+its source; the repository itself still cannot prove an upload.
+
+**VERIFIED IN REPO**
+
+- Source version **1.0.1, build 9** (Android `versionCode` and both iOS
+  `CURRENT_PROJECT_VERSION` lines): #486 bumped to 8, #490 to 9.
+- Build 9 carries the Android audio fix. Android's WebView has no
+  `speechSynthesis`, so build 8 and earlier are silent on every Android device;
+  #488 speaks through the OS text-to-speech engine instead. #491 stops the
+  native app registering the PWA service worker, which made the first launch
+  after a store update run the previous build's code.
+
+**GOOGLE PLAY — OWNER-REPORTED** (Play Console screenshots the owner shared on
+2026-10-18, unless noted)
+
+| Build                | AAB (local, SHA-256)                       | Internal testing                 | Closed testing – Alpha                       |
+| -------------------- | ------------------------------------------ | -------------------------------- | -------------------------------------------- |
+| 1.0.1 (8)            | `ba655390…682bce`, built 2026-10-17         | available to testers, 2026-10-17 | available to Play testers, full rollout, 2026-10-17 |
+| 1.0.1 (9) "audio fix" | `633a53aa…916786`, built 2026-10-18 from `a8c71353` | available to testers, 2026-10-18 | not promoted yet                             |
+
+- Both AABs are signed with the same upload key (certificate SHA-256 starts
+  `02:81:4D:93`). Build 8's file is kept at `android/app/release/build8/`.
+- Build 8's silence was confirmed on the owner's phone (2026-10-18). Testers
+  who update from 8 to 9 must close the app fully and reopen it once: build 8's
+  own service worker still serves the first launch. Later updates do not need
+  this.
+- The store listing, content rating, Data Safety and other app-content answers
+  went out with the first closed-testing release and show as Published in
+  Play Console's Submission activity (read 2026-10-17).
+- Production access: Play Console requires 12 testers opted in to closed
+  testing for 14 continuous days first (dashboard, read 2026-10-17: 0 opted in).
+
+**OWNER CONFIRMATION REQUIRED**
+
+- Build 9 on a phone, installed from Play: audio plays after the one restart.
+- Promoting build 9 to Closed testing – Alpha, and its review outcome.
+- iOS: whether builds 7–9 were uploaded to App Store Connect / TestFlight.
+
+## Release status — 2026-10-09 (main `3aaf364c`)
+
+History: superseded for Google Play by the 2026-10-18 status above.
+
 The build number in the source says what the next upload will be called, not
 that it was uploaded. Anything not under the first label is unproven.
 
@@ -180,11 +223,14 @@ either file.
 
 ## Play Console — INTERNAL TESTING ACTIVE (2026-10-18)
 
-The 2026-10-06 hold is lifted. Google Play accepted version 1.0.1
-(`versionCode` 9), **Build 9 - audio fix**, and the Internal Testing track is
-active. The owner installed it from its Internal Early Access Play listing on a
-physical Samsung Android device and confirmed that pronunciation works in both
-Vokabeln and Alphabet after a full close and reopen.
+> **Lifted.** Builds 8 and 9 are on Play testing tracks; see the
+> 2026-10-18 release status at the top. The text below is kept as history.
+
+The Google Play lane is paused at the owner's request while Play Console
+developer-account verification is incomplete. The hold covers the Play app and
+Play App Signing setup, build 7 `.aab` upload, Internal/Closed Testing, Play
+Data Safety and listing forms, screenshots, content rating, and production
+access (P0-3, the Play portions of P1-2/P1-6/P1-7, and P1-9).
 
 Still open on the Play lane: confirm the release-keystore backup; finish the
 rest of the P0-4 real-device pass; put Build 9 on the Closed Testing Alpha
