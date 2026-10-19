@@ -113,7 +113,7 @@ plus a read-only console check on 2026-10-18)
   Testing. It still needs iPhone installation and the current privacy/listing
   verdicts. App Review only starts after submission.
 
-## Current next actions — no-repeat queue (audited 2026-10-18)
+## Current next actions — no-repeat queue (audited 2026-10-20)
 
 This is the canonical short queue. Earlier build-7/build-8 instructions below
 are historical evidence, not permission to repeat completed work.
@@ -151,6 +151,11 @@ are historical evidence, not permission to repeat completed work.
    `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Opening sign-up at launch"). Submit
    only after the device passes above and that runbook's never-listed sign-up
    and delete check.
+7. **Optional Google account chooser:** PR #502 is in review. It adds
+   `prompt=select_account` to Google OAuth on web and native so a previous
+   Google session cannot silently choose the wrong account on a shared device.
+   This is useful for beta testing but does not replace or unblock any owner,
+   device, dashboard or counsel action above.
 
 ### Completed manual checks — do not ask for these again
 
@@ -385,8 +390,9 @@ the existing form answers stay true.
 Premium and ads after decisions D1 and D3–D5 and Vercel Pro (`BACKLOG.md` owner
 action 14).
 
-**Repo work left before submission:** none known. The Resend privacy
-disclosure shipped as #499; only a counsel-requested edit would add work, with
+**Repo work left before submission:** no blocking work is known. Optional PR
+#502 (Google account chooser) is in review. The Resend privacy disclosure
+shipped as #499; only a counsel-requested edit would add blocking work, with
 its own `PRIVACY_VERSION` bump. No feature implementation
 or build-number bump is currently queued. Everything else is owner, dashboard,
 device or counsel work.
