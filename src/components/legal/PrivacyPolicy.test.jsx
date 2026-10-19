@@ -11,9 +11,21 @@ describe('PrivacyPolicy', () => {
   });
 
   it('shows the effective date, derived from PRIVACY_VERSION', () => {
-    expect(PRIVACY_VERSION).toBe('2026-10-06');
+    expect(PRIVACY_VERSION).toBe('2026-10-19');
     render(<PrivacyPolicy />);
-    expect(screen.getByText('Last Updated: October 6, 2026')).toBeInTheDocument();
+    expect(screen.getByText('Last Updated: October 19, 2026')).toBeInTheDocument();
+  });
+
+  // Sign-in and account emails have gone out through Resend (custom SMTP in
+  // Supabase Auth) since 2026-10-14, so Supabase Auth no longer sends them.
+  it('names Resend as the email provider, with the data it receives', () => {
+    const { container } = render(<PrivacyPolicy />);
+    const provider = screen.getByText('Resend —').closest('li');
+    expect(provider).toHaveTextContent('Resend — sending sign-in and account emails');
+    expect(container.textContent).not.toMatch(/Supabase Auth —/);
+    expect(screen.getByText(/Account Information:/).closest('li')).toHaveTextContent(
+      'We send these codes and links, and other emails about your account, through our email provider, Resend, which receives your email address, the content of the message and details of its delivery.'
+    );
   });
 
   it('carries the ten numbered sections, in order', () => {

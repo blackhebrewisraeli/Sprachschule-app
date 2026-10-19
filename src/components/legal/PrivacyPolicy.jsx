@@ -22,7 +22,7 @@ const SECTIONS = [
       },
       {
         term: 'Account Information:',
-        text: 'When you create an account or sign in — with a one-time email code or link, or with Apple, Google or GitHub — we collect your email address to authenticate you and keep your progress in sync across devices. If you sign in with Google or GitHub, that service also shares the basic profile details it makes available to apps, such as your name, profile picture link and, for GitHub, your username; our authentication provider stores them with your account. If you sign in with Apple, Apple shares your email address — or, if you choose to hide it, a private relay address that forwards to you — and may share your name the first time you sign in. For security, it also records technical information about each sign-in, such as your IP address and browser or device type. We also record which versions of our Terms of Service and this Privacy Policy you accepted, and when.',
+        text: 'When you create an account or sign in — with a one-time email code or link, or with Apple, Google or GitHub — we collect your email address to authenticate you and keep your progress in sync across devices. We send these codes and links, and other emails about your account, through our email provider, Resend, which receives your email address, the content of the message and details of its delivery. If you sign in with Google or GitHub, that service also shares the basic profile details it makes available to apps, such as your name, profile picture link and, for GitHub, your username; our authentication provider stores them with your account. If you sign in with Apple, Apple shares your email address — or, if you choose to hide it, a private relay address that forwards to you — and may share your name the first time you sign in. For security, it also records technical information about each sign-in, such as your IP address and browser or device type. We also record which versions of our Terms of Service and this Privacy Policy you accepted, and when.',
       },
       {
         term: 'Profile Information:',
@@ -91,7 +91,11 @@ const SECTIONS = [
         text: 'AI tutor responses, answer checking and practice content',
       },
       { term: 'Sentry —', text: 'error reports' },
-      { term: 'Supabase Auth —', text: 'sending sign-in emails' },
+      // TODO(counsel): the Resend wording here and in "Account Information" is
+      // agent-drafted, not supplied copy. Hold the PR until counsel confirms it,
+      // the Resend DPA, whether transfers need naming, and that dropping the
+      // "Supabase Auth — sending sign-in emails" line is right.
+      { term: 'Resend —', text: 'sending sign-in and account emails' },
     ],
     after: [
       'If you choose to use them, these services also receive data under their own privacy policies: Apple, Google or GitHub (if you sign in with them), and Apple Push Notification service or Firebase Cloud Messaging by Google (if you turn on push notifications).',
