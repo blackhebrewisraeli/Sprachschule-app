@@ -12,6 +12,12 @@ step's date, environment and result in the **Evidence** table at the end. Do
 not mark anything VERIFIED without that record (`docs/security/Security
 Checklist.md`, sign-off rule).
 
+**Decision 2026-10-19 (owner, P1-8): sign-up opens at launch.** Before the
+first store submission, the owner retires both gates so that any reviewer,
+Hide My Email address included, can create and delete an account. See
+**Opening sign-up at launch** below. Not done yet: the closed beta stays
+invite-only until then.
+
 ## What the repository does
 
 | Layer | Behaviour | Where |
@@ -234,6 +240,50 @@ apply. The consent screen names the Supabase domain
 (`xcnnlczvxmuwcqwychox.supabase.co`), not the app. Tell testers to expect
 that. Fixing it needs a Supabase custom domain, which is not a beta blocker.
 
+## Opening sign-up at launch
+
+**Owner decision 2026-10-19 (P1-8).** Store reviewers sign in with their own
+accounts, so every address must be able to create an account. Do this before
+the first submission that reviewers will test: App Store review, or the Play
+production application. Any Play release reviewed before that is covered too,
+if Play Console's App access text promises any Google account. It ends the
+closed beta on web and native at once, because they share one Supabase project.
+Treat it as one-way: re-enabling the hook later stops only new sign-ups, and
+every account created in the meantime stays.
+
+**Prerequisites.** Once anyone can sign up, these stop being optional:
+
+1. The Privacy Policy names Resend, with a `PRIVACY_VERSION` bump, after the
+   DPA and counsel review.
+2. The hosted **Confirm signup** template is pasted and verified
+   (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify: Confirm signup").
+   Otherwise a first-time native user who signs up by email gets no code.
+3. The four banned accounts are deleted at the deletion review (step 7).
+   Once the variable is gone, a kept account gets full API access back when
+   its ban lapses on 2026-11-13.
+
+**Sequence.** Keep this order. If the hook goes first, accounts created before
+the redeploy are refused on every `/api` call, Delete account included.
+
+1. **Vercel:** delete `SIGNUP_EMAIL_ALLOWLIST` from Production and Preview,
+   then **Redeploy** the current Production deployment. Functions read env only
+   at deploy time. Unset means the server gate is off
+   (`src/lib/signupAllowlist.js`).
+2. **Supabase:** **Authentication → Hooks** → **Before User Created** →
+   disable `hook_restrict_signup_to_beta_allowlist`. It takes effect
+   immediately. Leave the function and the table in place: they are the record
+   of who was invited, and removing them is a separate migration PR.
+3. **Verify on the build you will submit.** Use addresses that have never been
+   listed. Sign up by email code, by Google with an unlisted Google account,
+   and by Apple with **Hide My Email**. Each one must create an account
+   without "This email isn't invited". Then **Edit Profile** saves, and **Delete
+   account** succeeds (for Apple, also the Apple ID check in
+   `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` §Verify). Record the date and result in
+   the Evidence table. Do not record the addresses.
+
+After that, "Adding beta testers" is no longer needed. Play testers still join
+through the Play opt-in link.
+
 ## Production state — 2026-10-14
 
 Checked after the owner upgraded Postgres on 2026-10-14. These checks read
@@ -357,3 +407,4 @@ Fixtures created through the admin API (the RLS suite) are not affected.
 | Postgres upgrade re-check | 2026-10-14 | Production | **VERIFIED IN PRODUCTION**: `17.11.0.003`, `ACTIVE_HEALTHY`; hook, allowlist and profiles unchanged (Production state above) |
 | Migrations and advisors re-check | 2026-10-15 | Production | **VERIFIED IN PRODUCTION**: 47 migrations, identical to the repo; Migration Drift run `38736350948` 47/47; no unindexed FK, no `auth_rls_initplan`, seven `unused_index` (re-check above) |
 | Confirm signup template | — | Production | **NOT DONE (owner-only)**: hosted paste and new-invited-tester check; the repo side is #472 |
+| Sign-up opened at launch | — | Vercel Production, Preview; Production | **NOT DONE (owner-only)**: decided 2026-10-19 (P1-8). Done means: variable deleted and redeployed, hook disabled, and never-listed email, Google and Hide My Email sign-ups each created and deleted an account ("Opening sign-up at launch") |
