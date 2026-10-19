@@ -2,8 +2,13 @@
 
 What the stores' reviewers need from us, and what must be true before pressing
 **Submit**. The app has no passwords: sign-in is a one-time email code, Google,
-or (once switched on) Apple. A reviewer cannot read our email, so the notes must
-give them a way in that does not depend on an inbox.
+GitHub or Apple. A reviewer cannot read our email, so the notes must give them
+a way in that does not depend on an inbox.
+
+**Review posture (owner decision 2026-10-19, P1-8): sign-up opens at launch.**
+Reviewers use their own Apple, Google or GitHub account. Until sign-up is open,
+that account is refused, so the notes below are true only after the
+**Sign-up is open** item in the list below.
 
 ## Before you press Submit
 
@@ -18,19 +23,28 @@ Each line is a known rejection or a broken review if skipped.
       have it off: submit 1.0.1 (7) or later, after the device check in
       `docs/AUTH_APPLE_OAUTH_RUNBOOK.md` §Verify. Submitting without it is very
       likely a 4.8 rejection.
-- [ ] **A reviewer's own account works (P1-8).** While the sign-up allowlist is
-      on, any account not on it (a reviewer's, any Hide My Email address)
-      signs in but has every server call refused, Delete account included.
-- [ ] **Google sign-in is published, not in Testing (P1-8).** While the OAuth
-      consent screen is in Testing, only listed test users can sign in, so a
-      reviewer who taps Continue with Google is blocked.
-      `docs/AUTH_GOOGLE_OAUTH_RUNBOOK.md` §1, "Publishing".
+- [ ] **Sign-up is open (P1-8).** While the closed-beta hook is on, any
+      address not on the allowlist (a reviewer's Google account, their Apple
+      ID, any Hide My Email relay address) sees "This email isn't invited" and
+      gets no account. The reviewer then cannot reach sync, leagues, the
+      profile or Delete account. Follow `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`,
+      "Opening sign-up at launch": its prerequisites, then
+      `SIGNUP_EMAIL_ALLOWLIST` before the hook, then sign up and delete
+      never-listed email, Google and Hide My Email accounts on the build you
+      submit.
+- [x] **Google sign-in is In production, not Testing.** Checked read-only on
+      2026-10-18: External, no sensitive scopes, so any Google account gets
+      through Google's side (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Adding
+      beta testers"). If it ever goes back to Testing, only listed test users
+      can sign in.
 - [ ] **The privacy answers match the build (P1-2)** and the Privacy, Terms
       and deletion URLs validate in both consoles (P1-7).
-- [ ] **A build is uploaded.** iOS: `npm run release:bump`, commit, then
-      `npm run ios:upload` (`docs/NATIVE_BUILD.md` §3). Export compliance is
-      answered by `ITSAppUsesNonExemptEncryption = false` (P1-5), so TestFlight
-      will not ask.
+- [ ] **A build is uploaded.** iOS 1.0.1 (9) is processed in TestFlight
+      (release status in `docs/STORE_SUBMISSION_CHECKLIST.md`). For a newer
+      one: `npm run release:bump`, commit, then `npm run ios:upload`
+      (`docs/NATIVE_BUILD.md` §3). Export compliance is answered by
+      `ITSAppUsesNonExemptEncryption = false` (P1-5), so TestFlight will not
+      ask.
 - [ ] **Screenshots and alt text are entered** (P1-6, `store-screenshots/REPORT.md`).
 - [ ] **The contact fields below are filled in** (yours, never in this repo).
 
@@ -49,7 +63,7 @@ Deutsch Sprachschule is a German-learning app with an AI conversation tutor.
 
 No account is needed to review the app. On the first screen tap "Try it first — free", then "Skip for now — start at A1" (or take the nine-question placement check). Every learning feature works as a guest: Home, Chat (the AI tutor), Alphabet, Vocab and Translate.
 
-An account is optional and adds sync across devices, weekly leagues and a profile. Sign-in is passwordless: Sign in with Apple, Continue with Google, or a one-time code sent by email. Please use Sign in with Apple or Google with any account; the email option needs access to that inbox.
+An account is optional and adds sync across devices, weekly leagues and a profile. Sign-up is open to anyone and passwordless: Continue with Apple (Hide My Email works), Continue with Google, Continue with GitHub, or a one-time code sent by email. Please use Apple, Google or GitHub with any account of your own; the email option needs access to that inbox. Google's sign-in screen shows our authentication provider's domain, xcnnlczvxmuwcqwychox.supabase.co.
 
 Account deletion (Guideline 5.1.1(v)): after signing in, tap the account initial at the top right → Settings → Account → Account controls → Delete account. It permanently deletes the account and its server data, and revokes the Apple token for Apple accounts. A web form for deletion requests is at https://www.sprachschule-app.com/delete-account.
 
@@ -60,8 +74,9 @@ No ads, no in-app purchases, no tracking, no push notifications in this version.
 Privacy policy: https://www.sprachschule-app.com/privacy
 ```
 
-If Sign in with Apple is not yet live when you submit, delete "Sign in with
-Apple," from the sign-in sentence, but expect the 4.8 rejection described above.
+If Sign in with Apple is not yet live when you submit, delete "Continue with
+Apple (Hide My Email works)," and change "Apple, Google or GitHub" to "Google or
+GitHub", but expect the 4.8 rejection described above.
 
 ## Google Play Console → App content → App access
 
@@ -71,15 +86,19 @@ and paste:
 ```text
 Most of the app works without an account: on the first screen tap "Try it first — free", then "Skip for now — start at A1". Home, Chat (AI tutor), Alphabet, Vocab and Translate all work as a guest.
 
-Account features (sync, weekly leagues, profile) need a sign-in. Tap SIGN IN at the top right, then Continue with Google and use any Google account. There are no passwords in the app.
+Account features (sync, weekly leagues, profile) need a sign-in, and sign-up is open to anyone. Tap SIGN IN at the top right, then Continue with Google and use any Google account. There are no passwords in the app. Google's sign-in screen shows our authentication provider's domain, xcnnlczvxmuwcqwychox.supabase.co.
 
 To delete an account: account initial at the top right → Settings → Account → Account controls → Delete account. Web deletion requests: https://www.sprachschule-app.com/delete-account
 ```
 
+This text is true only once sign-up is open (the P1-8 line above). If Play
+Console already holds it, a Play review before then can be refused at sign-in.
+
 Play may still ask for credentials it can use. If it does, create a Google
 account used only for review, sign in to the app with it once, and enter its
-email and password in the Play Console form. Those credentials live in Play
-Console only, never in this repository.
+email and password in the Play Console form. With sign-up open it needs no
+allowlist entry. Those credentials live in Play Console only, never in this
+repository.
 
 ## Keeping this true
 
