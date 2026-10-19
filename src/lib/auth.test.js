@@ -389,13 +389,16 @@ describe('signInWithGoogle', () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  it('starts the OAuth round trip with the app origin as redirectTo', async () => {
+  it('starts the OAuth round trip with the app origin and a fresh account choice', async () => {
     const { signInWithGoogle } = await import('./auth.js');
     const { error } = await signInWithGoogle();
     expect(error).toBeNull();
     expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { prompt: 'select_account' },
+      },
     });
   });
 
@@ -799,7 +802,11 @@ describe('native app (Capacitor)', () => {
       await vi.waitFor(() => expect(nativePlugins.browserOpen).toHaveBeenCalled());
       expect(mockAuth.signInWithOAuth).toHaveBeenCalledWith({
         provider: 'google',
-        options: { redirectTo: CALLBACK, skipBrowserRedirect: true },
+        options: {
+          redirectTo: CALLBACK,
+          skipBrowserRedirect: true,
+          queryParams: { prompt: 'select_account' },
+        },
       });
       expect(nativePlugins.browserOpen).toHaveBeenCalledWith({ url: AUTHORIZE });
       nativePlugins.browserFinished();

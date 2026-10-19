@@ -257,6 +257,8 @@ export async function signInWithMagicLink(email) {
  * Start the Google OAuth round trip. `redirectTo` is authRedirectUrl(), the
  * same value signInWithMagicLink passes as emailRedirectTo, so both flows need
  * one allow-list entry per environment instead of two.
+ * `prompt=select_account` keeps a previous Google session from silently
+ * choosing the wrong account on a shared device or while testing the beta.
  *
  * The flag is checked here as well as in the UI: a stale tab left open across
  * a deploy that switched Google off must not be able to start a flow into a
@@ -264,7 +266,7 @@ export async function signInWithMagicLink(email) {
  */
 export async function signInWithGoogle() {
   if (!isGoogleAuthConfigured()) return NOT_CONFIGURED;
-  return startOAuth('google');
+  return startOAuth('google', { prompt: 'select_account' });
 }
 
 /**
@@ -302,15 +304,19 @@ const BROWSER_FAILED = { error: { message: 'Could not open the sign-in page.' } 
  * re-enable its button. The session itself arrives separately, through
  * handleNativeAuthCallback.
  */
-async function startOAuth(provider) {
+async function startOAuth(provider, queryParams) {
   const c = await getClient();
   if (!c) return NOT_CONFIGURED;
+  const providerOptions = queryParams ? { queryParams } : {};
   if (!isNativeApp()) {
-    return c.auth.signInWithOAuth({ provider, options: { redirectTo: authRedirectUrl() } });
+    return c.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: authRedirectUrl(), ...providerOptions },
+    });
   }
   const { data, error } = await c.auth.signInWithOAuth({
     provider,
-    options: { redirectTo: authRedirectUrl(), skipBrowserRedirect: true },
+    options: { redirectTo: authRedirectUrl(), skipBrowserRedirect: true, ...providerOptions },
   });
   if (error) return { data, error };
   // The callback can only land if something is listening for it.
