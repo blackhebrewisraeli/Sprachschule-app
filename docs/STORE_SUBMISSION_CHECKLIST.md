@@ -119,9 +119,10 @@ are historical evidence, not permission to repeat completed work.
 
 1. **Before inviting outside testers:** paste the hosted Confirm signup email
    template and verify one new invited account receives both a code and a link.
-   In parallel, finish the Resend DPA/counsel review and add Resend to the
-   Privacy Policy with a `PRIVACY_VERSION` bump. These are the two recorded
-   closed-beta follow-ups, not new work.
+   In parallel, finish the Resend DPA/counsel review. The policy edit and its
+   `PRIVACY_VERSION` bump are ready as draft PR #499, held until counsel
+   confirms the points listed there. These are the two recorded closed-beta
+   follow-ups, not new work.
 2. ✅ **Closed Android track:** Closed Testing Alpha serves **Build 9 - audio
    fix** (approved and live 2026-10-18). Recruiting can start.
 3. **Start the Play clock:** grow the selected list from 2 to at least 12
@@ -403,7 +404,8 @@ device or counsel work.
 
    **Triggered 2026-10-14, still pending:** custom SMTP through Resend is now
    live. The policy must name Resend, with a `PRIVACY_VERSION` bump, after the
-   DPA and counsel review and before any outside tester joins.
+   DPA and counsel review and before any outside tester joins. Draft PR #499
+   (2026-10-19) holds that edit and lists what counsel must confirm.
 
 3. **Have qualified counsel review** the final Privacy Policy and Terms,
    including international transfers, the minimum age (Terms say 13), and
