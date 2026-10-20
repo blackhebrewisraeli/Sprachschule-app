@@ -151,11 +151,13 @@ are historical evidence, not permission to repeat completed work.
    `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Opening sign-up at launch"). Submit
    only after the device passes above and that runbook's never-listed sign-up
    and delete check.
-7. **Optional Google account chooser:** PR #502 is in review. It adds
-   `prompt=select_account` to Google OAuth on web and native so a previous
-   Google session cannot silently choose the wrong account on a shared device.
-   This is useful for beta testing but does not replace or unblock any owner,
-   device, dashboard or counsel action above.
+7. ✅ **Optional Google account chooser (#502).** Merged 2026-10-19 as
+   `df8a31d3`. It adds `prompt=select_account` to Google OAuth on web and
+   native so a previous Google session cannot silently choose the wrong
+   account on a shared device. The web has it: the Production deployment of
+   `8097c924` (2026-10-20) includes it. Native Build 9 was built before it
+   merged, so the apps get it with the next native build. It does not replace
+   or unblock any owner, device, dashboard or counsel action above.
 8. ✅ **Launch hardening, non-blocking: main bundle under 500 kB (#503).**
    The web entry chunk is 483.78 kB raw / 154.33 kB gzip, down from 515.51,
    and Vite's 500 kB warning is gone. The first-Vocab path still makes 3 page
@@ -397,8 +399,8 @@ the existing form answers stay true.
 Premium and ads after decisions D1 and D3–D5 and Vercel Pro (`BACKLOG.md` owner
 action 14).
 
-**Repo work left before submission:** no blocking work is known. Optional PR
-#502 (Google account chooser) is in review. The Resend privacy disclosure
+**Repo work left before submission:** no blocking work is known. The optional
+Google account chooser shipped as #502. The Resend privacy disclosure
 shipped as #499; only a counsel-requested edit would add blocking work, with
 its own `PRIVACY_VERSION` bump. No feature implementation
 or build-number bump is currently queued. Everything else is owner, dashboard,
