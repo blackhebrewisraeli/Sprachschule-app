@@ -1,7 +1,9 @@
 import { describe, it, expect, afterEach } from 'vitest';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { BUDGET_BYTES, checkBundleBudget } from './bundle-budget.mjs';
 
 const dirs = [];
@@ -58,5 +60,22 @@ describe('checkBundleBudget', () => {
   it('throws when index.html has no entry script', () => {
     const dir = dist('assets/main.js', { 'assets/main.js': 10 });
     expect(() => checkBundleBudget(dir)).toThrow(/no assets\/index-\*\.js entry script/);
+  });
+});
+
+describe('bundle-budget CLI', () => {
+  // A checkout path with a space or `#` is percent-encoded in import.meta.url
+  // but not in argv. A naive entry check then skips the run and exits 0, which
+  // would pass CI without measuring anything.
+  it('still fails an over-budget build when run from a path with a space and #', () => {
+    const home = mkdtempSync(join(tmpdir(), 'bundle budget #'));
+    dirs.push(home);
+    const script = join(home, 'bundle-budget.mjs');
+    copyFileSync(join(dirname(fileURLToPath(import.meta.url)), 'bundle-budget.mjs'), script);
+    const over = dist('assets/index-a1.js', { 'assets/index-a1.js': BUDGET_BYTES });
+
+    const run = spawnSync(process.execPath, [script, over], { encoding: 'utf8' });
+    expect(run.status).toBe(1);
+    expect(run.stderr).toContain('OVER BUDGET: assets/index-a1.js is 500000 bytes');
   });
 });

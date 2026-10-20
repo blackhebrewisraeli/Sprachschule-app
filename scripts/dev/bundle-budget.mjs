@@ -12,8 +12,9 @@
  * Usage: npm run build && npm run check:bundle-budget   (optional arg: dist dir)
  */
 
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 export const BUDGET_BYTES = 500_000;
 
@@ -36,7 +37,10 @@ export function checkBundleBudget(distDir) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Compared as real-path file URLs. import.meta.url percent-encodes a space or
+// `#` and resolves symlinks; argv does neither. A false mismatch would exit 0
+// having checked nothing.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   try {
     const { ok, message } = checkBundleBudget(resolve(process.argv[2] ?? 'dist'));
     (ok ? console.log : console.error)(`bundle-budget ${message}`);
