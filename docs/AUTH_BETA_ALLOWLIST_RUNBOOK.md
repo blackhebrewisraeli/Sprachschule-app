@@ -378,7 +378,9 @@ allowlist and `profiles` were not re-checked.
   `SIGNUP_EMAIL_ALLOWLIST` (step 7).
 - Replace the Migration Drift token before it expires, around 2027-01-12.
 - DMARC is at `p=none`.
-- Optional: show Google's account chooser at sign-in.
+- ~~Optional: show Google's account chooser at sign-in.~~ Shipped as #502
+  (`df8a31d3`, 2026-10-19); native apps get it with the next build after
+  Build 9.
 - The public mailbox addresses hardcoded in the repository need a separate
   design review.
 
