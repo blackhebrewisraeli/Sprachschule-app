@@ -13,21 +13,26 @@ describe('CACHE_TARGETS', () => {
   it('lists the regenerable caches this repo actually produces', () => {
     expect(CACHE_TARGETS).toEqual([
       'node_modules/.vite',
+      'node_modules/.vite-temp',
       '.vite',
       'dist',
       'dev-dist',
       'dist-audit',
       'dist-smoke',
+      'dist-smoke-auth',
       'coverage',
       '.playwright-mcp',
       'node_modules/.cache',
       '.cache',
+      'android/.gradle',
+      'android/build',
+      'android/app/build',
       'supabase/.temp',
       'supabase/.branches',
     ]);
   });
 
-  it('does not include secrets, source, migrations, or vercel link state', () => {
+  it('does not include secrets, source, migrations, vercel link state, or signed releases', () => {
     const forbidden = [
       '.env',
       '.env.local',
@@ -37,6 +42,9 @@ describe('CACHE_TARGETS', () => {
       'supabase',
       'supabase/migrations',
       '.vercel',
+      'android',
+      'android/app',
+      'android/app/release',
     ];
     for (const path of forbidden) {
       expect(CACHE_TARGETS).not.toContain(path);

@@ -2,8 +2,8 @@
 //
 // Allowlist only: every path here is gitignored scratch that a later
 // `npm run dev` / `build` / `test` / `audit:contrast` / `smoke:learning-path` /
-// `import:lexicon` / `supabase start` recreates. Secrets, source, and `supabase/migrations`
-// are never on this list.
+// `smoke:auth-learning-path` / `import:lexicon` / `supabase start` / Gradle build
+// recreates. Secrets, source, and `supabase/migrations` are never on this list.
 //
 // `.vercel` is deliberately absent. It is gitignored, but it is the local
 // `vercel link` project (org/project ids in `.vercel/project.json`), not a
@@ -16,17 +16,24 @@ import { isAbsolute, join, normalize } from 'node:path';
 export const CACHE_TARGETS = [
   // Vite / PWA build output
   'node_modules/.vite',
+  'node_modules/.vite-temp',
   '.vite',
   'dist',
   'dev-dist',
   'dist-audit',
   'dist-smoke',
+  'dist-smoke-auth',
   // Test / coverage / Playwright agent scratch
   'coverage',
   '.playwright-mcp',
   // Tooling + lexicon raw-download caches
   'node_modules/.cache',
   '.cache',
+  // Gradle and Android compilation output. Keep android/app/release: it holds
+  // signed store artifacts and is release evidence, not a cache.
+  'android/.gradle',
+  'android/build',
+  'android/app/build',
   // Supabase CLI local-stack scratch (see .gitignore / supabase/.gitignore)
   'supabase/.temp',
   'supabase/.branches',
