@@ -14,10 +14,22 @@ import { adminClient, anonClient, createSignedInUser } from './helpers.js';
 // overwrite their avatar. Run this suite against such a policy and that one
 // test is the only thing that fails.
 //
+// Listing is the other hole. The random filename is what keeps a public URL
+// unguessable, and a SELECT open to everyone answers storage's list call with
+// every user's folder and every filename in it.
+//
 // Requires the local stack: `supabase start` (Docker), then `npm run test:rls`.
 
 const BUCKET = 'avatars';
 const bytes = () => new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/webp' });
+
+// The app reads other learners' avatars only through the public URL
+// (src/lib/avatar.js), which a public bucket serves without consulting RLS, so
+// every "is it still there?" check below asks that URL.
+const publicStatus = async (path) => {
+  const { data } = anonClient().storage.from(BUCKET).getPublicUrl(path);
+  return (await fetch(data.publicUrl)).status;
+};
 
 let admin;
 let alice;
@@ -77,13 +89,38 @@ describe('avatars bucket configuration', () => {
   });
 });
 
-describe('reading is public', () => {
-  it('lets a signed-out visitor fetch another user’s avatar', async () => {
+describe('reading is public, listing is not', () => {
+  it('lets a signed-out visitor fetch another user’s avatar by its public URL', async () => {
     // This is the requirement that made the bucket public: leaderboards render
     // avatars for people the viewer has no relationship with.
-    const { data, error } = await anonClient().storage.from(BUCKET).download(alicePath);
+    expect(await publicStatus(alicePath)).toBe(200);
+  });
+
+  // The admin sees Alice's folder first, so an empty anonymous answer means
+  // refused, not an empty bucket.
+  it('refuses to list the bucket to a signed-out visitor', async () => {
+    const seen = await admin.storage.from(BUCKET).list('', { search: alice.id });
+    expect(seen.data.map((entry) => entry.name)).toEqual([alice.id]);
+
+    const { data, error } = await anonClient().storage.from(BUCKET).list('', { limit: 1000 });
     expect(error).toBeNull();
-    expect(data).toBeTruthy();
+    expect(data).toEqual([]);
+  });
+
+  it('refuses to list another user’s folder, signed out or signed in', async () => {
+    const seen = await admin.storage.from(BUCKET).list(alice.id);
+    expect(seen.data.map((entry) => entry.name)).toContain('first.webp');
+
+    for (const client of [anonClient(), bob.client]) {
+      const { data } = await client.storage.from(BUCKET).list(alice.id);
+      expect(data).toEqual([]);
+    }
+  });
+
+  it('still lets a user list their own folder', async () => {
+    const { data, error } = await alice.client.storage.from(BUCKET).list(alice.id);
+    expect(error).toBeNull();
+    expect(data.map((entry) => entry.name)).toContain('first.webp');
   });
 });
 
@@ -120,17 +157,18 @@ describe('writing is confined to your own folder', () => {
     await bob.client.storage.from(BUCKET).remove([alicePath]);
     // remove() can report success with an empty result set, so the proof is
     // that the object is still downloadable afterwards.
-    const { error } = await anonClient().storage.from(BUCKET).download(alicePath);
-    expect(error).toBeNull();
+    expect(await publicStatus(alicePath)).toBe(200);
   });
 
+  // remove() needs SELECT on the row as well as DELETE, so this also proves the
+  // own-folder read policy is wide enough for replacing an avatar.
   it('lets a user delete their own object', async () => {
     const path = `${bob.id}/disposable.webp`;
     await bob.client.storage.from(BUCKET).upload(path, bytes(), { contentType: 'image/webp' });
-    const { error } = await bob.client.storage.from(BUCKET).remove([path]);
+    const { data, error } = await bob.client.storage.from(BUCKET).remove([path]);
     expect(error).toBeNull();
-    const after = await anonClient().storage.from(BUCKET).download(path);
-    expect(after.error).not.toBeNull();
+    expect(data.map((entry) => entry.name)).toEqual([path]);
+    expect(await publicStatus(path)).not.toBe(200);
   });
 
   // ── THE `with check` TEST ────────────────────────────────────────
@@ -147,8 +185,7 @@ describe('writing is confined to your own folder', () => {
     expect(error, 'move into another user folder must be refused').not.toBeNull();
 
     // And nothing landed there.
-    const { error: dlErr } = await anonClient().storage.from(BUCKET).download(target);
-    expect(dlErr).not.toBeNull();
+    expect(await publicStatus(target)).not.toBe(200);
   });
 
   it('allows a rename WITHIN your own folder', async () => {
