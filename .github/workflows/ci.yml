@@ -46,6 +46,23 @@ jobs:
       - name: Build
         run: npm run build
 
+      # Vite's 500 kB chunk warning, made a failure: the entry chunk that
+      # dist/index.html loads must stay under 500,000 bytes. The budget is the
+      # warning line, not today's size; see scripts/dev/bundle-budget.mjs.
+      - name: Entry chunk under 500 kB
+        run: npm run check:bundle-budget
+
+      # After the budget, so a size regression reads first. The smoke proves
+      # the budget was not met by shifting first-paint code: the first-Vocab
+      # path still makes only its 3 page JS loads, and every lazy chunk still
+      # loads, fails recoverably and works offline. It builds into a temp dir,
+      # so `dist` above is untouched. `npx --no`: see contrast-audit below.
+      - name: Install Chromium
+        run: npx --no -- playwright install --with-deps chromium
+
+      - name: Smoke lazy chunks
+        run: npm run smoke:lazy-chunks
+
   # Its own job, not extra steps in `verify`: lint/test/build feedback must not
   # wait on a browser download, and a contrast regression should read as its own
   # red X rather than hiding inside a generic test failure.

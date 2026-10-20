@@ -27,6 +27,7 @@
     "smoke:learning-path": "node scripts/dev/smoke-learning-path.mjs",
     "smoke:auth-learning-path": "node scripts/dev/smoke-auth-learning-path.mjs",
     "smoke:lazy-chunks": "node scripts/dev/smoke-lazy-chunks.mjs",
+    "check:bundle-budget": "node scripts/dev/bundle-budget.mjs",
     "bench:perf": "node scripts/dev/bench-perf.mjs",
     "clean": "node scripts/clean.js",
     "prepare": "husky || true",
