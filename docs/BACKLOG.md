@@ -30,13 +30,49 @@ they are listed as blocked rather than "available".
 | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **AI Tutor conversation history** — optional server-side history for signed-in learners | Spec: `docs/superpowers/specs/2026-10-02-ai-tutor-conversation-history-design.md`. Plan: `docs/superpowers/plans/2026-10-02-ai-tutor-conversation-history.md`. **H1–H6 and the legal copy (H4) are merged and dark; migration applied 2026-10-02.** Neither switch exists in Vercel Production (names-only check, 2026-10-05). Waiting on the owner: the AI-quota shadow-week review (~2026-10-09), then the release steps in `docs/AI_HISTORY_RELEASE_RUNBOOK.md` (`AI_HISTORY_MODE=on` + `VITE_AI_HISTORY_ENABLED=true`, redeploy, smoke test)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **Supabase performance advisor follow-ups**                                             | Spec: `docs/superpowers/specs/2026-10-14-supabase-performance-advisor-design.md`. Plan: `docs/superpowers/plans/2026-10-14-supabase-performance-advisor.md`. The 2026-10-14 findings were one unindexed foreign key on `feedback.handled_by`, 14 RLS initplan warnings and six unused indexes. **Done and applied:** F1 (#463), P0 (#465, baseline tests, no migration), R1–R5 (#466–#470, one `ALTER POLICY` migration each on `srs_state`, `decks`, `settings`, `stats_daily` and `profiles`), and #471 (ai-history settings-upsert test). Re-checked read-only 2026-10-15: production lists all 47 repository migrations by version and name, and Migration Drift run `38736350948` passed 47/47. The live performance advisor shows no unindexed foreign key, no `auth_rls_initplan`, and seven INFO `unused_index` findings: the six above, plus the new `feedback_handled_by_idx`, which F1 expected. **Observational:** O1 re-reads index statistics no earlier than 2026-11-13; no index is dropped on post-upgrade statistics. **Blocked:** B1 (`ai_conversations_purge`) waits for the AI history release; L1 (`lessons_lookup_idx`) waits for O1 and the owner's confirmation |
-| **Main bundle under 500 kB**                                                            | Spec: `docs/superpowers/specs/2026-10-15-vite-bundle-splitting-design.md`. Plan: `docs/superpowers/plans/2026-10-15-vite-bundle-splitting.md`. **Partly done; the goal is not met.** Merged: the design (#476) and lazy legal pages with `LazyBoundary` (#477), Admin (#478), Chat (#479), Profile (#480) and Translate (#481). The first-Vocab path still makes 3 page JS loads. The entry chunk went from 625.24 kB raw (`428af79d`) to **515.36 kB raw / 163.58 kB gzip** (measured on `5f5f2515`, 2026-10-19), so Vite's 500 kB warning remains. Still eager: `AlphabetTab`, rejected in #481 because making it lazy, alone or with Translate, added a preloaded chunk to the first-Vocab path, and `SettingsRoute`, imported directly by `App.jsx`. Alphabet's ~7 kB estimate would not reach 500 kB anyway. **Not started:** the plan's PR 6 CI size check, which would fail at today's size. Further cuts need a new boundary that the spec does not yet design                                                                                                                                                                                                                   |
 
 ## In review
 
 Nothing in review.
 
 ## Recently shipped
+
+### Main bundle under 500 kB
+
+**Complete: the design (#476), five boundaries (#477–#481) and #503.**
+
+- #477–#481 made legal, Admin, Chat, Profile and Translate lazy.
+- #503 moved Settings into the lazy Profile chunk and added the CI guard.
+
+Spec: `docs/superpowers/specs/2026-10-15-vite-bundle-splitting-design.md`
+(§12 holds the final measurements and every rejected candidate). Plan:
+`docs/superpowers/plans/2026-10-15-vite-bundle-splitting.md`.
+
+**Result.**
+
+- **Entry:** 625.24 kB raw (`428af79d`) → 515.51 / 163.69 kB (`df8a31d3`) →
+  **483.78 kB raw / 154.33 kB gzip** (483,784 bytes). Vite no longer prints
+  the 500 kB warning.
+- **First-Vocab path:** still exactly 3 page JS loads (the entry, `react`,
+  `jsx-runtime`), with the same two `modulepreload`s.
+- **All JS:** 294.76 kB gzip, +0.42%.
+
+**How #503 did it.** It added no new `lazy()`. Each new `lazy()` candidate made
+Rolldown 1.2.9 hoist a shared atom into a new preloaded chunk (spec §12.2). So
+`App.jsx` now hands `settingsProps` to `StatsTab`, which imports
+`SettingsRoute` itself.
+
+**Guard.** `npm run check:bundle-budget` fails at ≥ 500,000 bytes. CI's
+`Lint · Test · Build` job runs it, followed by `npm run smoke:lazy-chunks`.
+Smoke check 0 caps the first-Vocab path at 3 loads; check 7 covers Settings.
+
+**Still open:**
+
+- Reserve if the entry grows again: a lazy `FeedbackDialog`, worth −4.16 kB
+  (spec §12.6).
+- `AlphabetTab` and `SearchModal` stay eager until a Rolldown upgrade is
+  re-measured.
+- Plan PR 7 (auto-reload on `vite:preloadError`) stays conditional.
 
 ### Monetization Track A — server-enforced AI quotas
 

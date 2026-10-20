@@ -156,6 +156,13 @@ are historical evidence, not permission to repeat completed work.
    Google session cannot silently choose the wrong account on a shared device.
    This is useful for beta testing but does not replace or unblock any owner,
    device, dashboard or counsel action above.
+8. ✅ **Launch hardening, non-blocking: main bundle under 500 kB (#503).**
+   The web entry chunk is 483.78 kB raw / 154.33 kB gzip, down from 515.51,
+   and Vite's 500 kB warning is gone. The first-Vocab path still makes 3 page
+   JS loads. Settings now ships in the lazy Profile chunk, and CI fails any
+   build whose entry reaches 500,000 bytes (`npm run check:bundle-budget`).
+   Repo-only and verified by build and smoke. It needs no owner, device or
+   dashboard step, and it does not change or unblock items 1–6.
 
 ### Completed manual checks — do not ask for these again
 
