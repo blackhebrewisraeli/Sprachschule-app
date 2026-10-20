@@ -1,13 +1,16 @@
 # Main bundle under 500 kB — design
 
-**Status:** Design only. No application code, Vite or service-worker
-configuration, dependency, lockfile or build script was changed. Every code
-change below is a **proposal** for a later mission.
+**Status:** Implemented. The entry chunk is under 500 kB and CI guards it.
+Legal (#477), Admin (#478), Chat (#479), Profile (#480) and Translate (#481)
+shipped as `React.lazy` boundaries. The last step moved Settings into the
+Profile chunk and added the CI budget (§12). The final numbers, the rejected
+candidates and the Rolldown behaviour behind them are in §12.
 Plan: `docs/superpowers/plans/2026-10-15-vite-bundle-splitting.md`.
 
-Audit taken against `origin/main` at `428af79d` (2026-10-15) with
-`npm run build`. Apple configuration, signing and store work were not
-inspected; they are out of scope.
+§§1–11 are the original design and audit, taken against `origin/main` at
+`428af79d` (2026-10-15) with `npm run build`. Their numbers predate the
+splits. Apple configuration, signing and store work were not inspected; they
+are out of scope.
 
 **Labels used in this document**
 
@@ -484,3 +487,178 @@ Each PR measures these, and PR 6 must meet all of them:
   `dist/sw.js` and `dist/registerSW.js`.
 - Web: react.dev/reference/react/lazy and
   developer.chrome.com/docs/workbox/modules/workbox-precaching.
+
+---
+
+## 12. Final step: Settings joins the Profile chunk (2026-10-20)
+
+Measured on `origin/main` at `df8a31d3` (#502), the same toolchain as §2
+(Vite 8.3.0, Rolldown 1.2.9). Sizes are the Vite reporter's raw / gzip kB.
+"All JS" is the sum of the reporter's rows. "First-Vocab loads" counts the
+`assets/*.js` files the page itself fetches on fresh guest → level → Home →
+Vocab → first card (§9 metric 3). `npm run smoke:lazy-chunks` check 0 counts
+them.
+
+### 12.1 Baseline after #477–#481 (MEASURED)
+
+| | Value |
+| --- | --- |
+| Entry `index-DY0IN45N.js` | **515.51 / 163.69** (515,513 bytes); the 500 kB warning is still printed |
+| `modulepreload` in `index.html` | `react-*.js` 7.03 / 2.78, `jsx-runtime-*.js` 6.09 / 2.21 |
+| First-Vocab loads | **3**: the entry, `react`, `jsx-runtime` |
+| All JS | 936.85 / 293.54 (25 files) |
+| Precache | 59 entries, 1263.93 KiB |
+| `smoke:lazy-chunks` | 17/17 (20/20 after §12.5 added check 7) |
+
+So at least 15.52 kB had to leave the entry, or about 30 kB to reach the
+485 kB target.
+
+### 12.2 Why most new `lazy()` boundaries failed: Rolldown's chunk optimizer
+
+Rolldown first gives each module a bitset of the entries that reach it. Every
+`import()` target is an entry. Modules with the same bitset share a chunk. Two
+passes under `experimental.chunkOptimization` (on by default) then fold shared
+modules back into the entry chunk:
+
+- `avoidRedundantChunkLoads` drops a dynamic entry's bit from modules its
+  importer has already loaded;
+- `mergeCommonChunks` merges common chunks into an entry chunk.
+
+Each pass runs only when the regrouped static chunk graph stays acyclic under a
+conservative cycle predictor. Source: Rolldown v1.2.9,
+`internal-docs/code-splitting/implementation.md` ("Dynamic Already-Loaded
+Analysis", "Common Module Merging") and the `ChunkOptimizationOptions` type in
+`node_modules/rolldown`.
+
+When the predictor vetoes a fold, the shared atom stays a common chunk. The
+entry imports that chunk statically, so Vite adds it as a `modulepreload`.
+`index-*.js` shrinks, but the same bytes still load before first paint. This
+is the "smaller index.js" trap that §1 rules out.
+
+New dynamic entries that reach these atoms tripped the veto in this build:
+
+- the `packs` + `storage` + `gamification` atom (`src/packs/**`,
+  `lib/storage`, `lib/settingsStamp`, `lib/gamification`, `lib/gameConfig`,
+  `lib/xpCore`, `lib/srs`; 43–49 kB);
+- the `ui/Button` atom (9.8 kB);
+- the `ui/Layout` + `ui/Text` + `lib/nativeApp` atom (3.3 kB), plus Vite's
+  `preload-helper`.
+
+Admin, Chat, Profile and Translate reach the same atoms and fold fine. This
+audit did not find which predicted edge closes the cycle for the new entries
+(UNVERIFIED). The result was the same on each rebuild, so every candidate below
+was judged on its real build output, not on module estimates.
+
+### 12.3 Candidates (MEASURED, one build each)
+
+How each was measured: a throwaway Vite config outside the repo imported
+`vite.config.js` unchanged. It added a `pre` transform that turned one static
+import into `lazy(() => import(…))`, and a `generateBundle` dump of the module
+graph. Its unmodified build reproduced `npm run build`'s entry hash.
+
+"Entry" is the entry chunk only. "New preloads" are chunks added to
+`index.html`, which load before first paint whatever the entry says.
+
+| Candidate | Entry | New preloads | Verdict |
+| --- | ---: | --- | --- |
+| `SettingsRoute` as its own `lazy()` (App) | 424.91 | `gamification` 49.18, `Button` 9.76, `preload-helper` 1.21 | ❌ first-Vocab 6 loads |
+| `SearchModal` (App; signed-in search) | 447.67 | `gamification` 47.95, `Button` 9.76, `preload-helper` 1.21 | ❌ 6 loads |
+| `WelcomeBackOverlay` (App) | 470.92 | `packs` 43.59 | ❌ 4 loads; also shown at start for returning users |
+| `AlphabetTab` (App) | 504.68 | `nativeApp` 3.33, `preload-helper` 1.21 | ❌ 5 loads, and still over 500 |
+| `GoalPicker` (inside Settings) | 467.76 | `gamification` 47.80 | ❌ 4 loads |
+| `CustomDeckManager` (inside Vocab, Custom mode) | 500.01 | `Button` 9.76, `preload-helper` 1.21 | ❌ 5 loads |
+| `FeedbackDialog` (both importers) | 511.46 | none | clean, but only −4.05 |
+| Each Settings section alone: Profile −6.83, Email −4.09, TutorHistory −2.77, Account −2.42, Notifications −2.26, OfflineCache −1.60, ModelPicker −1.13, InterestPicker −0.60 (AppearancePicker is shared: 0) | ≥ 508.68 | none | clean, each too small |
+| All eight sections | 499.64 | none (`jsx-runtime` folded back in) | ❌ 0.36 kB under the line, 9 chunks behind one screen, all-JS gzip +4.78 |
+| Eight sections + `FeedbackDialog` | 489.76 | none | ❌ 10 small chunks and 10 "Loading…" states on Settings, gzip +6.20 (+2.1%) |
+| **Move `SettingsRoute`'s import into `StatsTab`** | **483.81** | **none** | ✅ chosen (§12.4) |
+| …plus `FeedbackDialog` | 479.65 | none | held in reserve (§12.6) |
+| …plus `SearchModal` | 415.84 | `gamification`, `Button`, `preload-helper` | ❌ |
+| …plus `AlphabetTab` | 411.11 | `stats` 62.65, `nativeApp`, `preload-helper` | ❌ |
+| `AlphabetTab` + `SearchModal` | 446.97 | `gamification`, `nativeApp`, `preload-helper` | ❌ |
+
+Rejected without a build, by the first-run rule (§4) or the brief:
+
+- Home, Vocab, `WelcomeGate`, `PlacementTest`, `TrialWall`.
+- `AuthSheet` and the rest of the auth UI. Their provider code stays
+  untouched.
+- `LessonUnits` / `ExerciseViewer`. They render on their own on every practice
+  tab, Vocab included, once lessons exist for the level.
+- `Toast` / `BadgeIcon`. An achievement toast can fire during the first
+  session.
+- `PersonalHub` / `LeaderboardWidget`. They are part of Home.
+- A `codeSplitting` group or a `chunkOptimization` change. Either changes the
+  bundler, not the module graph (§5.1).
+
+### 12.4 Chosen boundary
+
+Settings already rendered only inside the Profile tab (`StatsTab`, lazy since
+#480). It was in the entry only because `App.jsx` built the
+`<SettingsRoute …/>` element and passed it down as `settingsPanel`. Now:
+
+- `App.jsx` builds a plain `settingsProps` object, with the same props and the
+  same values;
+- `StatsTab.jsx` imports `SettingsRoute` and renders
+  `<SettingsRoute {...settingsProps} />` on the settings view.
+
+This adds **no new dynamic entry**. Modules that only Settings uses get just
+the StatsTab bit and move into StatsTab's chunk. Modules Settings shares with
+the first-paint graph stay in the entry, as they already did for StatsTab. No
+cycle check is involved. `src/App.profileChunk.test.jsx` guards the graph: App
+must not evaluate `SettingsRoute`, and StatsTab must.
+
+| | Before | After |
+| --- | ---: | ---: |
+| Entry | 515.51 / 163.69 | **483.78 / 154.33** (483,784 bytes), no warning |
+| `StatsTab-*.js` | 23.69 / 6.97 | 52.76 / 15.86 |
+| New shared chunk | — | `useAiHistoryEnabled-*.js` 3.49 / 1.66 (Profile and Chat only, not preloaded) |
+| `modulepreload` | `react`, `jsx-runtime` | the same two files, same hashes |
+| First-Vocab loads | 3 | **3** |
+| All JS | 936.85 / 293.54 | 937.71 / 294.76 (gzip +1.22, +0.42%) |
+| Precache | 59 entries, 1263.93 KiB | 60 entries, 1264.79 KiB |
+
+**Behaviour:**
+
+- **When it loads.** The Profile tab, a direct `#/settings` load, and the
+  account sheet's Settings and Edit profile entries all render `StatsTab`.
+  Each fetches `StatsTab` (15.86 kB gzip, was 6.97) plus the shared
+  `useAiHistoryEnabled` chunk (1.66 kB gzip). Chat now fetches that shared
+  chunk too. The first-Vocab path fetches neither, and Settings no longer
+  costs anyone else a byte.
+- **Fallback and failure.** These are the existing `LazyBoundary` around
+  `StatsTab` in `App.jsx`: "Loading…", then `role="alert"` with Reload. The
+  header and nav stay usable. Checked by `App.profileChunk.test.jsx` and smoke
+  7c, at 320 and 375 px.
+- **Offline and the service worker.** No configuration change: `globPatterns`
+  precaches the chunk. `#/settings` renders offline once the worker is
+  installed (smoke 7b). Before install, it is the same fallback-then-alert
+  window as every other lazy tab (§6).
+- **Web and Capacitor.** Same code path. The native app loads `dist/` locally
+  (§8), so the chunk is one more local file. No native navigation, storage key,
+  auth or provider code changed.
+
+### 12.5 Guard
+
+- `npm run check:bundle-budget` (`scripts/dev/bundle-budget.mjs`) reads the
+  entry script that `dist/index.html` loads. It fails at **500,000 bytes or
+  more** on disk, which is Vite's warning line, not today's size. It prints the
+  bytes and the budget either way.
+- CI's `Lint · Test · Build` job runs it after `npm run build`, then
+  `npm run smoke:lazy-chunks`.
+- Smoke scenario 7 covers Profile and Settings: a direct `#/settings` load, the
+  same route offline from the precache, and the fallback and alert at 320 and
+  375 px.
+- Smoke check 0 now also fails above `FIRST_VOCAB_JS_LOADS` (3) page JS loads.
+  Before, it only checked "a subset of `index.html`'s eager set", so a new
+  `modulepreload` passed; #481's Alphabet attempt showed it. The budget alone
+  would not catch that, because a hoist makes the entry *smaller*.
+
+### 12.6 Reserve and next steps
+
+- If the entry nears 500 kB again, lazy-load `FeedbackDialog` from both
+  importers next: −4.16 kB on top of §12.4, no new preload. It opens from a
+  click on a Vocab or Translate exercise flag, or from Settings.
+- Re-measure §12.3 after a Rolldown upgrade. A fixed cycle predictor would
+  free `SearchModal` and `AlphabetTab`.
+- Plan PR 7 (automatic reload on `vite:preloadError`) stays conditional on
+  stale-chunk reports.

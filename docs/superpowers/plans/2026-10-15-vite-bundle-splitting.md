@@ -4,6 +4,13 @@
 Read it first; the numbers, the boundaries (B1–B6), the first-run rule (§4)
 and the loading and error UX (§7) live there.
 
+**Status (2026-10-20): complete.** PRs 1–5 merged as #477–#481. PR 4 shipped
+without Settings and PR 5 without Alphabet, because each of those boundaries
+added a preloaded chunk. The last step moved Settings into the Profile chunk
+and landed with PR 6 (the CI budget). The entry is 483.78 kB raw / 154.33 kB
+gzip. Only PR 7 remains, and it stays conditional. Spec §12 holds the
+measurements and the rejected candidates.
+
 **Goal.** Move the entry chunk from 625.24 kB to below 500 kB raw (target
 ≤ 485 kB) with `React.lazy` boundaries. Do it without changing the
 first-Vocab path, storage keys, auth and sync start-up, legal URLs, the
@@ -33,14 +40,14 @@ offline reload, the service-worker update flow or native behaviour.
 
 ## Mission map
 
-| PR | Content | Entry after (ESTIMATE) | Depends on | Status |
+| PR | Content | Entry after: ESTIMATE → MEASURED | Depends on | Status |
 | --- | --- | ---: | --- | --- |
-| 1 | `LazyBoundary` + B1 legal pages + lazy-chunk smoke | ~605 kB | — | **Ready (first mission)** |
-| 2 | B2 Admin tab | ~591 kB | 1 | Ready after 1 |
-| 3 | B3 Chat tab | ~561 kB | 1 | Ready after 1 |
-| 4 | B4 Profile tab (`StatsTab`) + `SettingsRoute` | ~503 kB | 1 | Ready after 1 |
-| 5 | B5 Translate + B6 Alphabet | **~479 kB** | 1 | Ready after 1 |
-| 6 | Size budget check + lazy smoke in CI | — | 5 | After 5 |
+| 1 | `LazyBoundary` + B1 legal pages + lazy-chunk smoke | ~605 → 597.52 kB | — | Merged, #477 |
+| 2 | B2 Admin tab | ~591 → 579.10 kB | 1 | Merged, #478 |
+| 3 | B3 Chat tab | ~561 → 550.05 kB | 1 | Merged, #479 |
+| 4 | B4 Profile tab (`StatsTab`); `SettingsRoute` held back | ~503 → 530.47 kB | 1 | Merged, #480 |
+| 5 | B5 Translate; B6 Alphabet rejected (spec §12.3) | ~479 → 514.41 kB | 1 | Merged, #481 |
+| 4b + 6 | Settings into the Profile chunk (spec §12.4), size budget, lazy smoke in CI | **483.78 kB** | 4, 5 | This PR |
 | 7 | Automatic reload on `vite:preloadError` | — | 1, plus evidence | **Conditional** |
 
 PRs 2–5 are independent of each other once PR 1 is in. Merge them in any order;
@@ -189,6 +196,12 @@ start → `findBy*`).
 **Done when:** the entry shrinks by about 55 kB, and the signed-in smoke and
 the `#settings` direct-load case are green.
 
+**Outcome.** #480 shipped `StatsTab` alone, −19.58 kB. A `lazy()` of its own
+for `SettingsRoute` made Rolldown hoist shared modules into extra preloaded
+chunks. PR 4b avoided that by moving `SettingsRoute`'s import into `StatsTab`,
+with no new dynamic entry: −31.73 kB, and the same preloads. See spec
+§12.2–§12.4.
+
 ## PR 5 — B5 Translate and B6 Alphabet (crosses 500 kB)
 
 **Branch:** `perf/lazy-translate-alphabet`. Files: `src/App.jsx` and
@@ -205,6 +218,11 @@ the `#settings` direct-load case are green.
 
 If the entry is still over 485 kB, add the spec's reserve list (§5.2) here.
 
+**Outcome.** #481 shipped Translate alone. Lazy Alphabet, alone or together
+with Translate, added a preloaded `ui/Layout` + `ui/Text` chunk: 4 first-Vocab
+loads. The reserve list fared the same way (spec §12.3), so PR 4b did the
+crossing.
+
 ## PR 6 — keep it there
 
 **Branch:** `ci/bundle-budget`.
@@ -215,6 +233,13 @@ If the entry is still over 485 kB, add the spec's reserve list (§5.2) here.
 - Run it, and `npm run smoke:lazy-chunks`, in the existing
   `Lint · Test · Build` job.
 - This is a guard, not a limit change.
+
+**Outcome (with PR 4b).**
+- `npm run check:bundle-budget` fails at ≥ 500,000 bytes and prints the bytes
+  either way. Its unit tests are in `scripts/dev/bundle-budget.test.js`.
+- CI runs it after the build, then installs Chromium and runs the smoke.
+- Smoke check 0 now also caps the first-Vocab page JS loads at 3, and the new
+  scenario 7 covers Profile and Settings.
 
 ## PR 7 — automatic reload on stale chunks (conditional)
 

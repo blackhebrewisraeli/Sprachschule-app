@@ -5,8 +5,9 @@
  * Proves, in real Chromium against production builds:
  *   0. The first-Vocab path (fresh guest → level → Home → Vocab → first card)
  *      loads no lazy chunk: every JS file the PAGE fetches is one index.html
- *      asks for up front. Service-worker precache downloads are excluded by
- *      reading the page's own resource timing.
+ *      asks for up front, and there are at most FIRST_VOCAB_JS_LOADS of them,
+ *      so a new modulepreload cannot slip in either. Service-worker precache
+ *      downloads are excluded by reading the page's own resource timing.
  *   1. /privacy, /terms and /delete-account render on a direct load.
  *   2. An in-app footer link from / renders a legal page.
  *   3. With the service worker in control, /privacy reloads OFFLINE.
@@ -23,6 +24,10 @@
  *      OFFLINE in a fresh document, its chunk served from the precache. Its
  *      "Loading…" fallback and failure alert fit inside the app shell at
  *      320px and 375px, with the nav still usable.
+ *   7. Profile + Settings (Settings ships inside the StatsTab chunk; it has no
+ *      chunk of its own): #/settings renders on a direct load and OFFLINE from
+ *      the precache, and the Profile chunk's fallback and failure alert fit in
+ *      the shell at 320px and 375px.
  *
  * Builds A and B go to a temporary directory, never the working tree. B is
  * the same source with a marker export appended to each legal page module,
@@ -47,6 +52,9 @@ const BASE = `http://localhost:${PORT}`;
 const WORK = mkdtempSync(join(tmpdir(), 'smoke-lazy-chunks-'));
 const LEGAL = /\/assets\/(PrivacyPolicy|TermsOfService|DeleteAccountPage|LegalPage)-[^/]+\.js$/;
 const CHAT = /\/assets\/ChatTab-[^/]+\.js$/;
+const PROFILE = /\/assets\/StatsTab-[^/]+\.js$/;
+// The entry plus the two chunks Rolldown splits React into (react, jsx-runtime).
+const FIRST_VOCAB_JS_LOADS = 3;
 const HEADINGS = {
   '/privacy': 'Privacy Policy',
   '/terms': 'Terms of Service',
@@ -178,6 +186,68 @@ const overflowX = (page) =>
 
 const heading = (page, name) => page.getByRole('heading', { level: 1, name });
 
+const shows = (locator) =>
+  locator
+    .waitFor({ timeout: 15000 })
+    .then(() => true)
+    .catch(() => false);
+
+const pageJsLoads = (page) =>
+  page.evaluate(() =>
+    performance
+      .getEntriesByType('resource')
+      .map((e) => new URL(e.name).pathname)
+      .filter((p) => p.startsWith('/assets/') && p.endsWith('.js'))
+  );
+
+/**
+ * A lazy surface inside the app shell (not a full-page route): its "Loading…"
+ * fallback while the chunk is held, then the failure alert once it 404s. Both
+ * must fit at 320px and 375px with the nav still usable.
+ */
+async function shellFallbackAndFailure(browser, name, chunk, open) {
+  const context = await browser.newContext({
+    viewport: { width: 320, height: 800 },
+    serviceWorkers: 'block',
+  });
+  const page = await context.newPage();
+  await stubApi(page);
+  let release;
+  const held = new Promise((r) => {
+    release = r;
+  });
+  await page.route(chunk, async (route) => {
+    await held;
+    await route.fulfill({ status: 404, body: 'gone' });
+  });
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await enterAsGuest(page);
+  await open(page);
+  const loading = await shows(page.getByRole('status').filter({ hasText: 'Loading…' }));
+  const fb320 = await overflowX(page);
+  await page.setViewportSize({ width: 375, height: 800 });
+  const fb375 = await overflowX(page);
+  release();
+  const alert = await shows(page.getByRole('alert').filter({ hasText: /could not load/i }));
+  const reload = await page
+    .getByRole('button', { name: 'Reload' })
+    .isVisible()
+    .catch(() => false);
+  const nav = await page
+    .getByRole('navigation')
+    .isVisible()
+    .catch(() => false);
+  const er375 = await overflowX(page);
+  await page.setViewportSize({ width: 320, height: 800 });
+  const er320 = await overflowX(page);
+  check(
+    `${name} fallback and failure UI fit in the shell at 320/375px`,
+    loading && alert && reload && nav && fb320 <= 0 && fb375 <= 0 && er320 <= 0 && er375 <= 0,
+    `fallback=${loading} overflow320=${fb320} overflow375=${fb375} alert=${alert} reload=${reload} nav=${nav} overflow320=${er320} overflow375=${er375}`
+  );
+  await context.close();
+}
+
 async function scenarioFirstVocab(browser, dirA) {
   const context = await browser.newContext({ viewport: { width: 375, height: 800 } });
   const page = await context.newPage();
@@ -195,17 +265,14 @@ async function scenarioFirstVocab(browser, dirA) {
     words,
     { timeout: 15000 }
   );
-  const loads = await page.evaluate(() =>
-    performance
-      .getEntriesByType('resource')
-      .map((e) => new URL(e.name).pathname)
-      .filter((p) => p.startsWith('/assets/') && p.endsWith('.js'))
-  );
+  const loads = await pageJsLoads(page);
   const eager = eagerOf(dirA);
   const extra = loads.filter((p) => !eager.has(p));
   check(
-    '0 first-Vocab path loads only what index.html requests up front',
-    extra.length === 0 && !loads.some((p) => LEGAL.test(p)),
+    `0 first-Vocab path loads only what index.html requests up front, at most ${FIRST_VOCAB_JS_LOADS} files`,
+    extra.length === 0 &&
+      loads.length <= FIRST_VOCAB_JS_LOADS &&
+      !loads.some((p) => LEGAL.test(p) || CHAT.test(p) || PROFILE.test(p)),
     `${loads.length} page JS load(s): ${loads.join(', ')}${extra.length ? `; unexpected: ${extra.join(', ')}` : ''}`
   );
   await context.close();
@@ -261,11 +328,6 @@ async function scenarioChat(browser) {
   const chatInput = (page) => page.getByRole('textbox', { name: 'Chat message in German' });
   const openChat = (page) =>
     page.getByRole('navigation').getByRole('button', { name: 'Chat', exact: true }).click();
-  const shows = (locator) =>
-    locator
-      .waitFor({ timeout: 15000 })
-      .then(() => true)
-      .catch(() => false);
 
   {
     const context = await browser.newContext({ viewport: { width: 375, height: 800 } });
@@ -298,47 +360,44 @@ async function scenarioChat(browser) {
     await context.close();
   }
 
-  // Fallback, then failure, inside the app shell (not a full-page route).
-  const context = await browser.newContext({
-    viewport: { width: 320, height: 800 },
-    serviceWorkers: 'block',
-  });
-  const page = await context.newPage();
-  await stubApi(page);
-  let release;
-  const held = new Promise((r) => {
-    release = r;
-  });
-  await page.route(CHAT, async (route) => {
-    await held;
-    await route.fulfill({ status: 404, body: 'gone' });
-  });
-  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
-  await enterAsGuest(page);
-  await openChat(page);
-  const loading = await shows(page.getByRole('status').filter({ hasText: 'Loading…' }));
-  const fb320 = await overflowX(page);
-  await page.setViewportSize({ width: 375, height: 800 });
-  const fb375 = await overflowX(page);
-  release();
-  const alert = await shows(page.getByRole('alert').filter({ hasText: /could not load/i }));
-  const reload = await page
-    .getByRole('button', { name: 'Reload' })
-    .isVisible()
-    .catch(() => false);
-  const nav = await page
-    .getByRole('navigation')
-    .isVisible()
-    .catch(() => false);
-  const er375 = await overflowX(page);
-  await page.setViewportSize({ width: 320, height: 800 });
-  const er320 = await overflowX(page);
-  check(
-    '6c Chat fallback and failure UI fit in the shell at 320/375px',
-    loading && alert && reload && nav && fb320 <= 0 && fb375 <= 0 && er320 <= 0 && er375 <= 0,
-    `fallback=${loading} overflow320=${fb320} overflow375=${fb375} alert=${alert} reload=${reload} nav=${nav} overflow320=${er320} overflow375=${er375}`
+  await shellFallbackAndFailure(browser, '6c Chat', CHAT, openChat);
+}
+
+async function scenarioProfileSettings(browser, dirA) {
+  const settingsHeading = (page) => page.getByRole('heading', { name: /Einstellungen/i });
+  const settingsChunks = assetsOf(dirA).filter((f) => /^Settings/.test(f));
+  {
+    const context = await browser.newContext({ viewport: { width: 375, height: 800 } });
+    const page = await context.newPage();
+    await stubApi(page);
+    await page.goto(BASE, { waitUntil: 'load' });
+    await enterAsGuest(page);
+    await waitForController(page);
+
+    // A fresh document that starts on the settings route. A guest meets the
+    // entry gate again on every fresh document; past it, the route holds.
+    await page.goto(`${BASE}/#/settings`, { waitUntil: 'domcontentloaded' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await enterAsGuest(page);
+    const direct = await shows(settingsHeading(page));
+    const fromPage = (await pageJsLoads(page)).filter((p) => PROFILE.test(p));
+    check(
+      '7a #/settings renders from the Profile chunk; Settings has no chunk of its own',
+      direct && fromPage.length > 0 && settingsChunks.length === 0,
+      `rendered=${direct} chunk=${fromPage.join(',') || 'none'} settingsChunks=${settingsChunks.join(',') || 'none'}`
+    );
+
+    await context.setOffline(true);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await enterAsGuest(page);
+    check('7b #/settings renders OFFLINE from the precache', await shows(settingsHeading(page)));
+    await context.setOffline(false);
+    await context.close();
+  }
+
+  await shellFallbackAndFailure(browser, '7c Profile', PROFILE, (page) =>
+    page.getByRole('navigation').getByRole('button', { name: 'Profile', exact: true }).click()
   );
-  await context.close();
 }
 
 async function scenarioFailedChunk(browser, dirA) {
@@ -535,6 +594,7 @@ async function main() {
     await scenarioInApp(browser);
     await scenarioOffline(browser);
     await scenarioChat(browser);
+    await scenarioProfileSettings(browser, dirA);
     await scenarioFailedChunk(browser, dirA);
     await scenarioUpgrade(browser, dirA, dirB);
   } finally {

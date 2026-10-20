@@ -45,7 +45,6 @@ const { decks: PRESET_DECKS, interestTopics } = activePack.content;
 import { sanitizeEnabledInterests } from './lib/interests';
 import { AUTO_MODEL, sanitizePreferredModel } from './lib/ai-routing/preference.js';
 import HomeTab from './components/HomeTab';
-import SettingsRoute from './components/settings/SettingsRoute';
 import AppFooter from './components/AppFooter';
 import { deriveMissions } from './lib/missions';
 import { deriveQuests, questHistory } from './lib/quests';
@@ -145,9 +144,10 @@ const AdminTab = lazy(() => import('./components/admin/AdminTab'));
 // Chat is not on the first-Vocab path. The coach mark's chatAnchorRef sits on
 // the nav button, not in this chunk, so the tutorial never waits for it.
 const ChatTab = lazy(() => import('./components/ChatTab'));
-// Profile is not on the first-Vocab path. settingsPanel is still built here and
-// handed to StatsTab. SettingsRoute itself stays eager: making it lazy too made
-// the bundler split shared modules into extra preloaded files.
+// Profile is not on the first-Vocab path. Settings rides in the same chunk:
+// App only builds settingsProps, and StatsTab imports and renders SettingsRoute.
+// Do not import SettingsRoute here, and do not give it a lazy() of its own: that
+// made the bundler hoist shared modules into extra preloaded files (spec §12).
 const StatsTab = lazy(() => import('./components/StatsTab'));
 // Translate is a practice tab off the first-Vocab path. Like Chat, it loads
 // inside PracticeLane, and the guest trial wall stays a sibling. AlphabetTab
@@ -1312,34 +1312,34 @@ export default function App() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [refreshEntitlement]);
 
-  const settingsPanel = (
-    <SettingsRoute
-      user={user}
-      profile={profile}
-      accountRequest={editProfileRequest}
-      adminMe={adminSession.me}
-      onProfileSaved={setProfile}
-      onToast={(title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'done' }])}
-      level={level}
-      onLevelChange={setLevel}
-      onRetakePlacement={openPlacement}
-      goal={loadState()?.gamification?.goal ?? DEFAULT_GOAL}
-      onGoalChange={handleGoalChange}
-      soundOn={loadState()?.gamification?.soundOn ?? false}
-      onSoundChange={handleSoundToggle}
-      interestTopics={interestTopics}
-      enabledInterests={enabledInterests}
-      onInterestsChange={handleInterestsChange}
-      preferredModel={preferredModel}
-      onPreferredModelChange={handlePreferredModelChange}
-      levelBoost={authStatus === 'authenticated'}
-      onSignIn={requestSignIn}
-      onSignOut={handleSignOut}
-      onExport={handleExport}
-      onDelete={handleDelete}
-      lastSyncedAt={syncStatus.lastSyncedAt}
-    />
-  );
+  // StatsTab renders SettingsRoute from these, so the Settings code ships in the
+  // lazy Profile chunk rather than the entry.
+  const settingsProps = {
+    user,
+    profile,
+    accountRequest: editProfileRequest,
+    adminMe: adminSession.me,
+    onProfileSaved: setProfile,
+    onToast: (title) => pushToasts([{ kind: 'info', title, sub: '', icon: 'done' }]),
+    level,
+    onLevelChange: setLevel,
+    onRetakePlacement: openPlacement,
+    goal: loadState()?.gamification?.goal ?? DEFAULT_GOAL,
+    onGoalChange: handleGoalChange,
+    soundOn: loadState()?.gamification?.soundOn ?? false,
+    onSoundChange: handleSoundToggle,
+    interestTopics,
+    enabledInterests,
+    onInterestsChange: handleInterestsChange,
+    preferredModel,
+    onPreferredModelChange: handlePreferredModelChange,
+    levelBoost: authStatus === 'authenticated',
+    onSignIn: requestSignIn,
+    onSignOut: handleSignOut,
+    onExport: handleExport,
+    onDelete: handleDelete,
+    lastSyncedAt: syncStatus.lastSyncedAt,
+  };
 
   // The guest trial is spent: block earning new progress, leave everything
   // else reachable. Every clause is load-bearing —
@@ -2006,7 +2006,7 @@ export default function App() {
                   onSignIn={requestSignIn}
                   view={profileView}
                   onViewChange={handleProfileView}
-                  settingsPanel={settingsPanel}
+                  settingsProps={settingsProps}
                 />
               </LazyBoundary>
             )}
