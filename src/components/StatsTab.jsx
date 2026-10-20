@@ -25,6 +25,8 @@ import ProfileCard from './stats/ProfileCard';
 import { LEAGUES_ENABLED } from '../lib/leagues.js';
 import UserProfile from './profile/UserProfile';
 import FollowListModal from './social/FollowListModal';
+// Imported here, not in App, so Settings ships in this lazy Profile chunk.
+import SettingsRoute from './settings/SettingsRoute';
 import { readLevel } from '../lib/levelPref.js';
 import { isAuthConfigured } from '../lib/auth.js';
 import Surface from './ui/Surface';
@@ -82,7 +84,8 @@ function DashboardCard({ num, title, children, full = false }) {
 //
 // Settings did NOT fold into the page. It stays a route (`#/settings`) whose
 // one door is the account sheet (#314) — this component still renders the
-// panel for that route, which is why `view` and `settingsPanel` survive.
+// panel for that route, which is why `view` and `settingsProps` survive.
+// App owns the settings state and hands it over as `settingsProps`.
 // Goal and level editing live only there, so this surface cannot drift into a
 // second copy of the same writers.
 export default function StatsTab({
@@ -94,7 +97,7 @@ export default function StatsTab({
   onSignIn,
   view,
   onViewChange,
-  settingsPanel = null,
+  settingsProps = null,
 }) {
   const [state, setState] = useState(() => loadState() ?? {});
   // Uncontrolled default. Nothing sets it: the page has no view switcher any
@@ -191,7 +194,7 @@ export default function StatsTab({
               ← Back to profile
             </Button>
           )}
-          {settingsPanel}
+          {settingsProps && <SettingsRoute {...settingsProps} />}
         </div>
       ) : (
         <div key="profile" className="view-in">

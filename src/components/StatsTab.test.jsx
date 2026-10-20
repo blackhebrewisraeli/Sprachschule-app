@@ -43,6 +43,11 @@ vi.mock('./stats/AccountSection.jsx', () => ({ default: () => <div /> }));
 vi.mock('./gamification/LevelCard.jsx', () => ({ default: () => <div /> }));
 vi.mock('./gamification/GoalPicker.jsx', () => ({ default: () => <div /> }));
 vi.mock('./gamification/BadgeGrid.jsx', () => ({ default: () => <div /> }));
+// StatsTab renders SettingsRoute itself, from the props App hands it, so the
+// Settings code ships in this lazy chunk rather than in the entry.
+vi.mock('./settings/SettingsRoute', () => ({
+  default: ({ level }) => <div>stub-settings{level ? ` ${level}` : ''}</div>,
+}));
 
 // --- Leagues-specific stubs ---
 vi.mock('./stats/LeaderboardSection.jsx', () => ({
@@ -222,15 +227,16 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
   it('still renders the settings panel on the settings route', () => {
     // Settings did not move INTO the page; it is a route reached from the
     // account sheet (#314). Removing the segmented control must not orphan it.
+    // StatsTab renders SettingsRoute from App's props, passed through as-is.
     render(
       <StatsTab
         user={USER}
         view="settings"
         onViewChange={() => {}}
-        settingsPanel={<div>stub-settings</div>}
+        settingsProps={{ level: 'b1' }}
       />
     );
-    expect(screen.getByText('stub-settings')).toBeTruthy();
+    expect(screen.getByText('stub-settings b1')).toBeTruthy();
   });
 
   it('offers a way BACK from the settings route to the profile', () => {
@@ -239,14 +245,7 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
     // it without a back affordance made Settings a dead end you could only
     // leave by switching tabs — SettingsRoute has no back control of its own.
     const onViewChange = vi.fn();
-    render(
-      <StatsTab
-        user={USER}
-        view="settings"
-        onViewChange={onViewChange}
-        settingsPanel={<div>stub-settings</div>}
-      />
-    );
+    render(<StatsTab user={USER} view="settings" onViewChange={onViewChange} settingsProps={{}} />);
     fireEvent.click(screen.getByRole('button', { name: /back to profile/i }));
     expect(onViewChange).toHaveBeenCalledWith('stats');
   });
@@ -256,14 +255,7 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
   // section came out a different width. One centred, capped column, with the
   // panel filling it and the back button at its leading edge.
   it('centres the settings route in one capped column', () => {
-    render(
-      <StatsTab
-        user={USER}
-        view="settings"
-        onViewChange={() => {}}
-        settingsPanel={<div>stub-settings</div>}
-      />
-    );
+    render(<StatsTab user={USER} view="settings" onViewChange={() => {}} settingsProps={{}} />);
     const column = screen.getByText('stub-settings').parentElement;
     expect(column).toHaveStyle({
       width: '100%',
@@ -280,7 +272,7 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
   // Profile and Settings are one tab, so the tab switch's fade never covers
   // moving between them. Each view fades in as it mounts.
   it('fades the profile and settings views in as they swap', () => {
-    const props = { user: USER, onViewChange: () => {}, settingsPanel: <div>stub-settings</div> };
+    const props = { user: USER, onViewChange: () => {}, settingsProps: {} };
     const { rerender } = render(<StatsTab {...props} view="settings" />);
     const settingsView = screen.getByText('stub-settings').closest('.view-in');
     expect(settingsView).not.toBeNull();
@@ -293,14 +285,7 @@ describe('StatsTab — one consolidated page, no sub-tabs', () => {
   });
 
   it('does not show the standings on the settings route', () => {
-    render(
-      <StatsTab
-        user={USER}
-        view="settings"
-        onViewChange={() => {}}
-        settingsPanel={<div>stub-settings</div>}
-      />
-    );
+    render(<StatsTab user={USER} view="settings" onViewChange={() => {}} settingsProps={{}} />);
     expect(screen.queryByText('stub-leaderboard')).toBeNull();
   });
 
