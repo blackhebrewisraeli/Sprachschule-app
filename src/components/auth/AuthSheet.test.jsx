@@ -108,6 +108,13 @@ describe('AuthSheet', () => {
     expect(screen.getByTestId('magic-link-form')).toHaveTextContent('Create your account');
   });
 
+  // The session already persists (supabase-js, localStorage, auto-refresh), so
+  // there is no "keep me signed in" box — the sheet says so instead.
+  it.each(['signin', 'create'])('tells the learner they stay signed in (%s)', (intent) => {
+    render(<AuthSheet open intent={intent} onClose={() => {}} onSuccess={() => {}} />);
+    expect(screen.getByRole('dialog')).toHaveTextContent('You stay signed in on this device.');
+  });
+
   // Every opener but one offered only "Sign in", so a guest had no visible way
   // to create an account by email from inside the app.
   it('offers the other intent when the opener can switch', async () => {

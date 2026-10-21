@@ -14,6 +14,7 @@ import AppleButton from './AppleButton';
 import useFocusTrap from '../../lib/useFocusTrap.js';
 import { recordIntent, clearIntent } from '../../lib/legalAcceptance.js';
 import LegalConsent from './LegalConsent';
+import { Body } from '../ui/Text';
 
 /**
  * In-app auth modal used by WelcomeGate, the trial wall, AccountChip,
@@ -307,6 +308,11 @@ export default function AuthSheet({
             ? { draft: { email: draft.email, sent: draft.sent }, onDraftChange }
             : {})}
         />
+        {/* The session persists until sign-out (persistSession + auto-refresh in
+            auth.js), so this states the default rather than offering a box. */}
+        <Body size="sm" tone="soft" style={{ textAlign: 'center', marginTop: SPACE[3] }}>
+          You stay signed in on this device.
+        </Body>
         {onSwitchIntent && (
           <div style={{ textAlign: 'center', marginTop: SPACE[3] }}>
             <button
