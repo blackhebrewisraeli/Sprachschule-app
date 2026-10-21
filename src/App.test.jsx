@@ -897,9 +897,12 @@ describe('guest trial wall', () => {
     state = EXHAUSTED,
     googleOn = false,
     gitHubOn = false,
+    googleFailure = null,
   } = {}) {
     localStorage.setItem('deutsch-app-state-v1', JSON.stringify(state));
-    signInWithGoogle = vi.fn(() => Promise.resolve({ error: null }));
+    signInWithGoogle = vi.fn(() =>
+      googleFailure ? Promise.reject(googleFailure) : Promise.resolve({ error: null })
+    );
     signInWithGitHub = vi.fn(() => Promise.resolve({ error: null }));
     vi.doMock('./lib/auth.js', () => ({
       isAuthConfigured: () => configured,
@@ -1132,6 +1135,27 @@ describe('guest trial wall', () => {
     await user.click(button);
     await user.click(button);
     expect(signInWithGoogle).toHaveBeenCalledTimes(1);
+  });
+
+  it('recovers the Google button when loading the auth chunk throws', async () => {
+    const user = userEvent.setup();
+    await renderApp({
+      googleOn: true,
+      googleFailure: new TypeError(
+        'Failed to fetch dynamically imported module: /assets/dist-old.js'
+      ),
+    });
+    await user.click(screen.getByRole('checkbox', { name: /i agree/i }));
+    const button = screen.getByRole('button', { name: 'Continue with Google' });
+    await user.click(button);
+
+    expect(await screen.findByText('Something went wrong — try again.')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Continue with Google' })).not.toHaveAttribute(
+        'aria-busy',
+        'true'
+      )
+    );
   });
 
   // The native app never navigates away. Google opens in the system browser,

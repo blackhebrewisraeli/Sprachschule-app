@@ -25,6 +25,7 @@ export default function MagicLinkForm({
   const setEmail = (value) => update({ email: value });
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
+  const [reloadSuggested, setReloadSuggested] = useState(false);
   const [busy, setBusy] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const intervalRef = useRef(null);
@@ -68,30 +69,51 @@ export default function MagicLinkForm({
     if (busy || !beforeStart()) return;
     setBusy(true);
     setError('');
-    const { error: e } = await signInWithMagicLink(email.trim());
-    setBusy(false);
-    if (e) setError(humanAuthError(e));
-    else update({ sent: true });
+    setReloadSuggested(false);
+    try {
+      const { error: e } = await signInWithMagicLink(email.trim());
+      if (e) setError(humanAuthError(e));
+      else update({ sent: true });
+    } catch (e) {
+      setError(humanAuthError(e));
+      setReloadSuggested(true);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const resend = async () => {
     if (busy || resendCooldown > 0 || !beforeStart()) return;
     setBusy(true);
     setError('');
-    const { error: e } = await signInWithMagicLink(email.trim());
-    setBusy(false);
-    if (e) setError(humanAuthError(e));
-    else startCooldown(30);
+    setReloadSuggested(false);
+    try {
+      const { error: e } = await signInWithMagicLink(email.trim());
+      if (e) setError(humanAuthError(e));
+      else startCooldown(30);
+    } catch (e) {
+      setError(humanAuthError(e));
+      setReloadSuggested(true);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const verify = async () => {
     if (busy || !beforeStart()) return;
     setBusy(true);
     setError('');
-    const { error: e } = await verifyCode(email.trim(), code.trim());
-    setBusy(false);
-    if (e) setError(humanAuthError(e));
-    else onSuccess();
+    setReloadSuggested(false);
+    try {
+      const { error: e } = await verifyCode(email.trim(), code.trim());
+      if (e) setError(humanAuthError(e));
+      else onSuccess();
+    } catch (e) {
+      setError(humanAuthError(e));
+      setReloadSuggested(true);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -146,6 +168,11 @@ export default function MagicLinkForm({
         <p role="alert" style={{ color: COLORS.red, fontSize: FONT_SIZE.tag }}>
           {error}
         </p>
+      )}
+      {reloadSuggested && (
+        <Button onClick={() => window.location.reload()} style={{ marginTop: 8 }}>
+          Reload app
+        </Button>
       )}
     </div>
   );
