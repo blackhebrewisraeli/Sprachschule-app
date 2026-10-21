@@ -61,11 +61,12 @@ row is asserted three times against a differently sized shell.
 
 | Step                       | What passing actually proves                                                                                                            |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Session restore            | the seeded session satisfies `useAuth`; the chip renders and "Sign in" does not                                                         |
+| Session restore            | the seeded session satisfies `useAuth`; the chip renders and the guest "Save" chip does not                                             |
 | Answer → sync              | **that** answer's event reaches the wire and is acked, not merely that a POST happened                                                  |
 | Reload after a local wipe  | progress is rebuilt from the server, so the reconcile lane actually ran                                                                 |
 | Profile → Leagues          | a ranked standings table with the caller highlighted and zone dividers — not the soft error line                                        |
 | Account controls, sign-out | Export and Delete are present, the sheet shows the signed-in email, and sign-out returns to the guest shell with the session key cleared |
+| Guest sign-up (once, at 375) | a fresh guest's "Save" opens Create account; no code without consent; after the code, same XP, every guest answer synced, still signed in after reload |
 | Fit, at five points in the walk | Home, Vocab, after the reload, Leagues and the signed-out shell each measured for `scrollWidth - clientWidth`, a child spilling its parent, and a nav button clipping its own label |
 
 Against a **fixture server**, so this says nothing about production PostgREST,
@@ -179,10 +180,11 @@ playback may require a direct press because browsers restrict autoplay.
   that its production backend works.
 - For a branch-side browser check, run `npm run smoke:learning-path` for guest
   practice and `npm run smoke:auth-learning-path` for the signed-in half — sync,
-  leagues, account controls, at 1280 / 375 / 320. Both run in CI and both use an
+  leagues, account controls, at 1280 / 375 / 320, plus a guest who creates an
+  account from the header "Save" chip and keeps their XP. Both run in CI and both use an
   isolated local build; neither verifies production auth or AI. Run the
-  signed-in one after any change to the masthead, the Settings route, or the
-  league table, and read its step lines rather than its exit code alone.
+  signed-in one after any change to the masthead, the Settings route, the
+  sign-in sheet, or the league table, and read its step lines rather than its exit code alone.
 - Run `npm run audit:contrast` after any change to colour tokens, type tiers,
   a popover, or the Settings route. It builds and serves its own target, so it
   needs no running dev server, and takes about two minutes. Read the coverage
