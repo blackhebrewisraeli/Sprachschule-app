@@ -364,16 +364,19 @@ allowlist and `profiles` were not re-checked.
 
 **Pending follow-ups (not done)**
 
-- The hosted Confirm signup email template has no one-time code, and native
-  testers need the code. **Repository side done by #472 (merged as `719792ed`,
-  2026-10-15):** `supabase/config.toml` wires Confirm signup to the same body
-  as Magic Link, and `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md` now covers both. **Owner-only, not
-  done:** paste that body into the hosted Confirm signup template, then check a
-  new invited tester gets a working code and link ("Verify: Confirm signup" in
-  that runbook).
-- **BLOCKED / EXTERNAL DEPENDENCY:** the Privacy Policy must name Resend before
-  any outside tester joins. That edit comes with a `PRIVACY_VERSION` bump, after
-  the DPA and counsel review.
+- The hosted Confirm signup email template must carry the one-time code,
+  because native testers need it. **Repository side done by #472 (merged as
+  `719792ed`, 2026-10-15):** `supabase/config.toml` wires Confirm signup to the
+  same body as Magic Link. **Hosted paste done:** the owner saved it on
+  2026-10-21, and on 2026-10-22 the hosted body matched the repository
+  template byte for byte. **Owner-only, not done:** check a new invited tester
+  gets a working code and link ("Verify: Confirm signup" in
+  `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`).
+- ~~The Privacy Policy must name Resend before any outside tester joins.~~
+  Done: #499 names Resend (`PRIVACY_VERSION` `2026-10-19`, live since
+  2026-10-19). **Owner decision 2026-10-21:** the Resend DPA and
+  qualified-counsel review wait until after the controlled beta and do not
+  block recruiting testers. Finish both before public store release.
 - After the banned accounts are deleted, decide whether to remove
   `SIGNUP_EMAIL_ALLOWLIST` (step 7).
 - Replace the Migration Drift token before it expires, around 2027-01-12.
@@ -408,5 +411,5 @@ Fixtures created through the admin API (the RLS suite) are not affected.
 | 7 Pre-existing accounts decided | 2026-10-14 | Production | Under way: 4 accounts banned until 2026-11-13, not deleted; deletion review around 2026-10-21 |
 | Postgres upgrade re-check | 2026-10-14 | Production | **VERIFIED IN PRODUCTION**: `17.11.0.003`, `ACTIVE_HEALTHY`; hook, allowlist and profiles unchanged (Production state above) |
 | Migrations and advisors re-check | 2026-10-15 | Production | **VERIFIED IN PRODUCTION**: 47 migrations, identical to the repo; Migration Drift run `38736350948` 47/47; no unindexed FK, no `auth_rls_initplan`, seven `unused_index` (re-check above) |
-| Confirm signup template | — | Production | **NOT DONE (owner-only)**: hosted paste and new-invited-tester check; the repo side is #472 |
+| Confirm signup template | 2026-10-21 (paste); 2026-10-22 (source checked) | Production | **Hosted paste DONE**: saved by the owner; the hosted body matched `supabase/templates/magic_link.html` byte for byte (subject not checked). **New-invited-tester check NOT DONE (owner-only)**. The repo side is #472 |
 | Sign-up opened at launch | — | Vercel Production, Preview; Production | **NOT DONE (owner-only)**: decided 2026-10-19 (P1-8). Done means: variable deleted and redeployed, hook disabled, and never-listed email, Google and Hide My Email sign-ups each created and deleted an account ("Opening sign-up at launch") |

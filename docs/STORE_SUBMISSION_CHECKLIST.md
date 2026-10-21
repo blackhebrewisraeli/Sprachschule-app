@@ -118,16 +118,19 @@ plus a read-only console check on 2026-10-18)
 This is the canonical short queue. Earlier build-7/build-8 instructions below
 are historical evidence, not permission to repeat completed work.
 
-1. **Before inviting outside testers:** paste the hosted Confirm signup email
-   template and verify one new invited account receives both a code and a link.
-   In parallel, finish the Resend DPA and counsel review. The policy already
-   names Resend: #499 merged on 2026-10-19 and the same day's Production
-   deployment serves it (`PRIVACY_VERSION` `2026-10-19`, so every signed-in
-   user re-accepts once). It shipped before the review it was meant to wait
-   for. Counsel now reviews the live wording against the seven points in
-   #499's description. Any change they ask for needs another
-   `PRIVACY_VERSION` bump and another re-accept. These are the two recorded
-   closed-beta follow-ups, not new work.
+1. **Before inviting outside testers:** verify the hosted Confirm signup
+   email template with one new invited account that has never signed in. It
+   must receive both a code and a link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`,
+   "Verify: Confirm signup"). The paste itself is done: the owner saved it on
+   2026-10-21, and on 2026-10-22 the hosted body matched the repository
+   template byte for byte. **Owner decision 2026-10-21:** the Resend DPA and
+   qualified-counsel review are deferred until after the controlled beta and
+   do not block recruiting closed-beta testers; finish both before public
+   store release. The policy already names Resend: #499 merged on 2026-10-19
+   and the same day's Production deployment serves it (`PRIVACY_VERSION`
+   `2026-10-19`, so every signed-in user re-accepts once). Counsel reviews the
+   live wording against the seven points in #499's description. Any change
+   they ask for needs another `PRIVACY_VERSION` bump and another re-accept.
 2. ✅ **Closed Android track:** Closed Testing Alpha serves **Build 9 - audio
    fix** (approved and live 2026-10-18). Recruiting can start.
 3. **Start the Play clock:** grow the selected list from 2 to at least 12
@@ -275,12 +278,14 @@ device can show it, so it is not assumed either way. Needs: **code**,
   declarations, P1-3, P1-5, P2-3 and P2-4. Sign in with Apple is switched on in
   `build:mobile` (#442).
 - **Blocks starting the external closed-beta cohort cleanly:** hosted Confirm
-  signup template verification, the Resend DPA and counsel review of the
-  already-live Resend disclosure (#499), and at least 12 real Google accounts. Closed Alpha serves Build 9 with 2 listed / 0
+  signup template verification (the paste is done) and at least 12 real
+  Google accounts. The Resend DPA and counsel review of the already-live
+  Resend disclosure (#499) moved to before public release (owner decision
+  2026-10-21). Closed Alpha serves Build 9 with 2 listed / 0
   opted-in testers.
 - **Blocks public release/store review:** opening sign-up (P1-8); the
   remaining device-auth and account deletion checks; P1-4's Apple proof; P1-1
-  counsel; Apple App Privacy/listing forms; the final screenshot review; and P1-9's 12-tester/14-day clock.
+  counsel and the Resend DPA; Apple App Privacy/listing forms; the final screenshot review; and P1-9's 12-tester/14-day clock.
 - **Post-launch:** the P2 rows, and Premium and ads (Tracks B/C, `BACKLOG.md`
   owner action 14).
 - **Who does what:** the Needs column. No release-blocking repo edit is known:
@@ -359,8 +364,9 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
 
 **Tester readiness — do these once**
 
-1. **Owner:** paste the Confirm signup template into hosted Supabase Auth and
-   verify one new invited account receives both the one-time code and link.
+1. **Owner:** verify one new invited account receives both the one-time code
+   and link from the hosted Confirm signup template. The paste is done
+   (saved 2026-10-21; source matched the repository on 2026-10-22).
 2. **Owner decision, 2026-10-21:** the Resend DPA and qualified-counsel review
    are deferred until after the controlled beta. They do not block recruiting
    closed-beta testers. Finish both before public store release; if counsel

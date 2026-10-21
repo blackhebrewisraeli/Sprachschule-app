@@ -15,7 +15,8 @@ Companion to Phase C of
 
 ## Current production (Sprachschule)
 
-Owner-applied 2026-09-18, body re-pasted 2026-10-03:
+Owner-applied 2026-09-18, body re-pasted 2026-10-03 and again after #484
+(confirmed 2026-10-22):
 
 - **Magic Link** subject + body pasted from the repo template (one-time
   code + link; footer says the code expires in five minutes). The
@@ -24,14 +25,18 @@ Owner-applied 2026-09-18, body re-pasted 2026-10-03:
 - **Email OTP length** = 8 digits hosted (owner-reported 2026-10-16); the
   local `supabase/config.toml` `otp_length` is 6. The app does not control
   it, so the template, the sign-in screen and these docs name no length:
-  "one-time code". The 2026-10-03 hosted body still says "Enter this 6-digit
-  code"; re-pasting the current template fixes it (owner, **not done**).
+  "one-time code". The hosted Magic Link body carries that wording: a
+  sign-in email to an existing account on 2026-10-22 read "Enter this
+  one-time code in the app" above an 8-digit code. The re-paste date was not
+  recorded.
 - **Email OTP / magic-link expiry** = 300 seconds (5 minutes). Repo
   `supabase/config.toml` `[auth.email] otp_expiry` matches. JWT expiry is
   unchanged.
-- **Confirm signup**: **pasted and saved by the owner on 2026-10-21.** The
-  remaining proof is a first-time address that has never had an Auth account;
-  testing an existing account exercises Magic Link instead. Status:
+- **Confirm signup**: **pasted and saved by the owner on 2026-10-21.** On
+  2026-10-22 the hosted body matched `supabase/templates/magic_link.html` byte
+  for byte; the subject was not checked. The remaining proof is a first-time
+  address that has never had an Auth account; testing an existing account
+  exercises Magic Link instead. Status:
 
   | Part                                                                                     | Who        | Status                |
   | ---------------------------------------------------------------------------------------- | ---------- | --------------------- |
