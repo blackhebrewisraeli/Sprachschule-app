@@ -55,7 +55,9 @@ function writeStatus(value) {
   }
 }
 
-// Header account affordance. Guest: a quiet "Sign in" link. Signed-in: an
+// Header account affordance. Guest: a quiet "Save" link that starts account
+// creation; the sheet still offers returning learners its Sign-in switch.
+// Signed-in: an
 // initial-in-a-circle that opens a small sheet (email · settings · sign out).
 // Full management lives in the tabbed Settings route; this is the glance +
 // escape.
@@ -147,6 +149,7 @@ function Row({ icon: Icon, label, ariaLabel, onClick, color = COLORS.ink }) {
 export default function AccountChip({
   user,
   profile = null,
+  onCreateAccount,
   onSignIn,
   onSignOut,
   onOpenSettings,
@@ -191,6 +194,7 @@ export default function AccountChip({
   if (!user && !isAuthConfigured()) return null;
 
   if (!user) {
+    const startAccount = onCreateAccount ?? onSignIn;
     return (
       <button
         type="button"
@@ -200,7 +204,8 @@ export default function AccountChip({
         // inherited from the header — the same shared attribute Toast uses.
         data-ui="button"
         data-focus-on-dark=""
-        onClick={onSignIn}
+        aria-label="Save progress"
+        onClick={startAccount}
         style={{
           background: 'none',
           border: 'none',
@@ -214,7 +219,7 @@ export default function AccountChip({
           cursor: 'pointer',
         }}
       >
-        Sign in
+        Save
       </button>
     );
   }

@@ -29,11 +29,11 @@ describe('QuotaNote', () => {
     expect(note).toHaveTextContent(time);
   });
 
-  it('offers a guest the free account and calls onSignIn', async () => {
-    const onSignIn = vi.fn();
-    render(<QuotaNote error={quotaError({ tier: 'guest' })} onSignIn={onSignIn} />);
+  it('offers a guest the free account and calls onCreateAccount', async () => {
+    const onCreateAccount = vi.fn();
+    render(<QuotaNote error={quotaError({ tier: 'guest' })} onCreateAccount={onCreateAccount} />);
     await userEvent.click(screen.getByRole('button', { name: /Create a free account/ }));
-    expect(onSignIn).toHaveBeenCalledOnce();
+    expect(onCreateAccount).toHaveBeenCalledOnce();
   });
 
   it('shows no buttons for a free learner when no callbacks are passed', () => {

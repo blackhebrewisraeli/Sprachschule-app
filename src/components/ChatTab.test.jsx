@@ -555,14 +555,14 @@ describe('ChatTab conversation-first layout', () => {
       expect(screen.getByRole('textbox', { name: 'Chat message in German' })).toBeEnabled();
     });
 
-    it('offers the guest sign-in through onSignIn', async () => {
-      const onSignIn = vi.fn();
-      await renderChat(<ChatTab onSignIn={onSignIn} />);
+    it('offers the guest a direct account-creation flow', async () => {
+      const onCreateAccount = vi.fn();
+      await renderChat(<ChatTab onCreateAccount={onCreateAccount} />);
       callClaude.mockReset();
       callClaude.mockRejectedValueOnce(denial());
       await sendHallo();
       await userEvent.click(await screen.findByRole('button', { name: /Create a free account/ }));
-      expect(onSignIn).toHaveBeenCalledOnce();
+      expect(onCreateAccount).toHaveBeenCalledOnce();
     });
 
     it('clears the note after the next successful send', async () => {

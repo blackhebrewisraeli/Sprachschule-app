@@ -10,18 +10,18 @@ import AccountChip from './AccountChip';
 vi.mock('../lib/auth.js', () => ({ isAuthConfigured: () => true }));
 
 describe('AccountChip', () => {
-  it('shows a Sign in affordance for guests', async () => {
-    const onSignIn = vi.fn();
-    render(<AccountChip user={null} onSignIn={onSignIn} onSignOut={() => {}} />);
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
-    expect(onSignIn).toHaveBeenCalled();
+  it('offers guests a direct save-progress account flow', async () => {
+    const onCreateAccount = vi.fn();
+    render(<AccountChip user={null} onCreateAccount={onCreateAccount} onSignOut={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: /save progress/i }));
+    expect(onCreateAccount).toHaveBeenCalled();
   });
 
-  // Guest Sign in sits directly on the charcoal masthead. The default ink ring
+  // Guest Save progress sits directly on the charcoal masthead. The default ink ring
   // is 1:1 there; data-focus-on-dark is the shared dark-plane opt-in.
-  it('opts the guest Sign in control into the dark-plane focus ring', () => {
-    render(<AccountChip user={null} onSignIn={() => {}} onSignOut={() => {}} />);
-    const btn = screen.getByRole('button', { name: /sign in/i });
+  it('opts the guest Save progress control into the dark-plane focus ring', () => {
+    render(<AccountChip user={null} onCreateAccount={() => {}} onSignOut={() => {}} />);
+    const btn = screen.getByRole('button', { name: /save progress/i });
     expect(btn).toHaveAttribute('data-ui', 'button');
     expect(btn).toHaveAttribute('data-focus-on-dark');
   });

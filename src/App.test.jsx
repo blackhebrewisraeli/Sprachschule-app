@@ -851,6 +851,25 @@ describe('in-app AuthSheet', () => {
     expect(screen.queryByText(/Learn German with an AI tutor/i)).not.toBeInTheDocument();
   });
 
+  it('opens account creation directly from a guest save-progress action', async () => {
+    mockAuth({ googleOn: true });
+    const { default: AppWithAuth } = await import('./App.jsx');
+    setViewportWidth(1280);
+    const user = userEvent.setup();
+    renderPastEntry(<AppWithAuth />);
+
+    await user.click(
+      within(screen.getByRole('banner')).getByRole('button', { name: 'Save progress' })
+    );
+
+    const sheet = screen.getByRole('dialog', { name: 'Create your account' });
+    expect(within(sheet).getByRole('checkbox', { name: /i agree/i })).toBeInTheDocument();
+    expect(within(sheet).getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+    expect(
+      within(sheet).getByRole('button', { name: 'Already have an account? Sign in' })
+    ).toBeInTheDocument();
+  });
+
   // A guest past the gate had only "Sign in" sheets, so creating an account by
   // email was invisible unless they ran the trial dry.
   it('lets a guest turn the sign-in sheet into the create sheet', async () => {

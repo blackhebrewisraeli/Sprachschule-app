@@ -30,6 +30,7 @@ function formatRelativeSync(ms) {
 // field", which quietly wiped the learner's handle. One writer per field.
 export default function AccountSection({
   user,
+  onCreateAccount,
   onSignIn,
   onSignOut,
   onExport,
@@ -52,9 +53,18 @@ export default function AccountSection({
         {/* A sentence, so it is set as one. This shipped as 10px mono at the
             muted ink — the label recipe, worn by prose. */}
         <Body size="sm" tone="soft">
-          Sign in to sync your progress across devices.
+          {onCreateAccount
+            ? 'Create a free account to save this progress across devices.'
+            : 'Sign in to sync your progress across devices.'}
         </Body>
-        <Button onClick={onSignIn}>Sign in to sync →</Button>
+        {onCreateAccount && (
+          <Button onClick={onCreateAccount}>Create account · save progress</Button>
+        )}
+        {onSignIn && (
+          <Button variant={onCreateAccount ? 'secondary' : 'primary'} onClick={onSignIn}>
+            Sign in
+          </Button>
+        )}
       </Stack>
     );
   }

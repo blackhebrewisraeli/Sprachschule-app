@@ -94,6 +94,7 @@ export default function StatsTab({
   user,
   profile,
   tokens = null,
+  onCreateAccount,
   onSignIn,
   view,
   onViewChange,
@@ -204,6 +205,7 @@ export default function StatsTab({
             tokens={tokens}
             // Withheld with no backend: UserProfile leaves its sign-in button out
             // rather than render one that can do nothing.
+            onCreateAccount={isAuthConfigured() ? onCreateAccount : undefined}
             onSignIn={isAuthConfigured() ? onSignIn : undefined}
             onSelectUser={setSelectedUser}
             onOpenSettings={openSettings}
