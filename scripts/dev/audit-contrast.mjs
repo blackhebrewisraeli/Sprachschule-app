@@ -89,11 +89,9 @@ const BASE = EXPLICIT_BASE ?? `http://localhost:${AUDIT_PORT}`;
 // the trial, and never landed on a callback URL, so none of the surfaces had
 // been measured in any mode.
 
-/** The guest "Sign in" affordance lives in the header. */
+/** The guest account affordance ("Save") lives in the header and opens AuthSheet. */
 function clickHeaderSignIn() {
-  const btn = [...document.querySelectorAll('header button')].find(
-    (b) => (b.textContent || '').trim().toLowerCase() === 'sign in'
-  );
+  const btn = document.querySelector('header button[aria-label="Save progress"]');
   if (!btn) return false;
   btn.click();
   return true;
@@ -246,7 +244,7 @@ const MODALS = [
     close: async (page) => {
       // Strip the callback query so the next combination does not keep the
       // overlay. applyTheme reloads the current URL; a leftover `?error=`
-      // would block header sheets and the Sign in chip.
+      // would block header sheets and the guest Save chip.
       const origin = new URL(page.url()).origin;
       await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' });
       await page.waitForTimeout(400);
