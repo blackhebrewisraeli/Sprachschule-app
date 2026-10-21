@@ -14,6 +14,10 @@
  *   4. Leagues renders a real standings table, not the soft error line.
  *   5. Account controls are present and sign-out returns to the guest shell.
  *   6. None of the above overflows or clips at 1280 / 375 / 320.
+ *   7. A guest who practises, taps the header "Save" chip and creates an
+ *      account by email code keeps that practice: same XP, every queued
+ *      answer on the sync wire under the new account, still signed in after
+ *      a reload. Once, at 375.
  *
  * ── Why this builds its own target (do not "simplify" this away) ──────────
  * The signed-in pass seeds a Supabase session into localStorage. A build
@@ -34,8 +38,8 @@
  * Same AUDIT_BASE / AUDIT_SKIP_BUILD / AUDIT_PORT contract as
  * smoke-learning-path.mjs and audit-contrast.mjs.
  *
- * Exit 0 on a clean walk of all three viewports; 1 on failure. A failing
- * viewport also writes smoke-auth-failure-<name>-<width>.png.
+ * Exit 0 on a clean walk of all three viewports and the guest sign-up; 1 on
+ * failure. A failing pass also writes smoke-auth-failure-<name>-<width>.png.
  */
 
 import { chromium } from 'playwright';
@@ -47,8 +51,10 @@ import {
   DECK_ID,
   STATE_KEY,
   focusedSessionProblem,
+  foodDeck,
   learningPathSeed,
 } from './learning-path-seed.js';
+import { xpForDay } from '../../src/lib/xpCore.js';
 // The SAME pure module LeaderboardSection and the settle endpoint both use, so
 // the zone dividers this smoke expects can never drift from the ones the app
 // draws. Importing it beats hardcoding 7/5 here.
@@ -1569,6 +1575,196 @@ async function walkViewport(context, page, vp, seed) {
   console.log(`✓ ${label}`);
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// STEP 7 — GUEST → "Save" → CREATE ACCOUNT
+//
+// Steps 1-6 start signed in. This pass starts as a brand-new visitor with no
+// seed at all and signs up through the UI, against an EMPTY server (a new
+// account owns nothing). So whatever progress the account ends up with can
+// only have come from the guest's device — which is the promise the header
+// "Save" chip makes.
+// ─────────────────────────────────────────────────────────────────────────
+const SIGNUP_VIEWPORT = { name: 'guest-signup', width: 375, height: 800 };
+const SIGNUP_EMAIL = 'new-learner@example.test';
+
+/** Local XP / learned-word / queue / session read, from the same keys the app writes. */
+async function guestProgress(page) {
+  const raw = await page.evaluate(
+    ([stateKey, queueKey]) => {
+      const state = JSON.parse(localStorage.getItem(stateKey) || 'null') ?? {};
+      return {
+        daily: state.daily ?? {},
+        learned: Object.keys(state.learnedWords ?? {}).length,
+        queued: JSON.parse(localStorage.getItem(queueKey) || '[]').length,
+        session: Object.keys(localStorage).some((k) => /^sb-.*-auth-token$/.test(k)),
+      };
+    },
+    [STATE_KEY, QUEUE_KEY]
+  );
+  const xp = Object.values(raw.daily).reduce((sum, day) => sum + xpForDay(day), 0);
+  return { ...raw, xp };
+}
+
+/** An empty project: no acceptance until the sheet's consent is recorded. */
+async function routeNewAccountServer(page) {
+  const json = (body, status = 200) => ({
+    status,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+  });
+  const wire = { otp: [], accepted: null };
+  await page.route('**/api/**', (r) => r.fulfill(json({ error: 'smoke-offline' }, 503)));
+  await page.route('**/auth/v1/**', (r) => r.fulfill(json({})));
+  await page.route('**/auth/v1/otp*', (r) => {
+    wire.otp.push(JSON.parse(r.request().postData() ?? '{}'));
+    return r.fulfill(json({}));
+  });
+  await page.route('**/auth/v1/verify*', (r) =>
+    r.fulfill(json({ ...stubSession(), user: { ...stubSession().user, email: SIGNUP_EMAIL } }))
+  );
+  await page.route('**/auth/v1/user*', (r) =>
+    r.fulfill(json({ ...stubSession().user, email: SIGNUP_EMAIL }))
+  );
+  await page.route('**/rest/v1/**', (route) => {
+    const req = route.request();
+    const url = req.url();
+    if (url.includes('/rpc/accept_legal_terms')) {
+      const body = JSON.parse(req.postData() ?? '{}');
+      wire.accepted = {
+        terms_version: body.p_terms_version,
+        privacy_version: body.p_privacy_version,
+      };
+      return route.fulfill(json(null));
+    }
+    if (req.method() !== 'GET') return route.fulfill(json([]));
+    if (url.includes('/legal_acceptances')) {
+      return route.fulfill(json(wire.accepted ? [wire.accepted] : []));
+    }
+    return route.fulfill(json([]));
+  });
+  return wire;
+}
+
+async function walkGuestSignup(page) {
+  const fail = (msg) => {
+    throw new Error(`smoke-auth-learning-path: guest sign-up — ${msg}`);
+  };
+  const wire = await routeNewAccountServer(page);
+  const posts = await captureProgressSync(page);
+
+  // A first visit: the gate, then the first-run placement, which a guest may skip.
+  await page.goto(BASE, { waitUntil: 'domcontentloaded' });
+  await page.locator('[data-entry="guest"]').click();
+  const skipPlacement = page.locator('[data-entry="placement-skip"]');
+  await skipPlacement.waitFor({ state: 'visible', timeout: 10000 });
+  await skipPlacement.click();
+  const skipTour = page.getByRole('button', { name: /skip tutorial/i });
+  await skipTour.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  await dismissEntryScreens(page);
+
+  // Three correct answers as a guest.
+  const nav = page.getByRole('navigation');
+  await nav.getByRole('button', { name: 'Vocab', exact: true }).click();
+  await page.getByRole('button', { name: /Food & Drink/i }).click();
+  const cards = foodDeck();
+  const ids = [];
+  for (let i = 0; i < 3; i += 1) {
+    await page.waitForFunction(
+      (des) => des.some((de) => (document.body.innerText || '').includes(de)),
+      cards.map((card) => card.de),
+      { timeout: 10000 }
+    );
+    const card = await visibleCard(page, cards);
+    ids.push(await answerAndCaptureId(page.getByRole('button', { name: card.en, exact: true })));
+    await page.getByRole('button', { name: 'GOOD', exact: true }).click();
+    await page.waitForTimeout(CLICK_LOCK_MS);
+  }
+  const before = await guestProgress(page);
+  if (before.xp <= 0) fail('the guest earned no XP, so there is nothing to carry over');
+  if (before.session) fail('a session exists before the guest signed up');
+  if (new Set(ids).size !== 3 || ids.includes(null)) fail(`answers enqueued ${ids}`);
+  if (posts.length) fail('progress reached the server before any account existed');
+
+  // The header chip opens the CREATE sheet, which still offers Sign in.
+  const save = page.getByRole('banner').getByRole('button', { name: 'Save progress', exact: true });
+  await save.click();
+  const sheet = page.getByRole('dialog', { name: 'Create your account' });
+  try {
+    await sheet.waitFor({ state: 'visible', timeout: 5000 });
+  } catch {
+    fail('the header "Save" chip did not open "Create your account"');
+  }
+  if (!(await sheet.getByRole('button', { name: 'Already have an account? Sign in' }).count())) {
+    fail('the create sheet offers no way to Sign in instead');
+  }
+
+  // No code without consent; with it, one request for this address.
+  const send = sheet.getByRole('button', { name: 'Email me a sign-in code' });
+  await sheet.getByLabel('Email').fill(SIGNUP_EMAIL);
+  await send.click();
+  await page.waitForTimeout(400);
+  if (wire.otp.length) fail('a code was requested with the Terms box unticked');
+  await sheet.getByRole('checkbox').check();
+  await send.click();
+  await sheet.getByLabel('Code').waitFor({ state: 'visible', timeout: 5000 });
+  if (wire.otp.length !== 1 || wire.otp[0].email !== SIGNUP_EMAIL) {
+    fail(`expected one code request for ${SIGNUP_EMAIL}, saw ${JSON.stringify(wire.otp)}`);
+  }
+
+  await sheet.getByLabel('Code').fill('12345678');
+  await sheet.getByRole('button', { name: 'Verify code' }).click();
+  const account = mastheadAccountButton(page);
+  try {
+    await account.waitFor({ state: 'visible', timeout: 15000 });
+  } catch {
+    fail('the account chip never appeared after Verify code');
+  }
+  if (await save.isVisible().catch(() => false)) fail('"Save" still shows beside the account chip');
+
+  // Every guest answer reaches the wire under the new account, nothing is lost.
+  if (!(await waitForSyncedIds(page, posts, ids))) {
+    const seen = new Set(posts.map((p) => p.body?.id));
+    fail(`guest answers never reached the server: ${ids.filter((id) => !seen.has(id))}`);
+  }
+  const queued = await waitForQueueDrained(page);
+  if (queued !== 0) fail(`${queued} event(s) still queued after sign-up`);
+  const foreign = posts.filter((p) => ids.includes(p.body?.id) && p.auth !== EXPECTED_BEARER);
+  if (foreign.length) fail('a guest answer was sent without the new account bearer');
+  if (
+    wire.accepted?.terms_version !== TERMS_VERSION ||
+    wire.accepted?.privacy_version !== PRIVACY_VERSION
+  ) {
+    fail(`consent was not recorded at the current versions: ${JSON.stringify(wire.accepted)}`);
+  }
+  if (
+    await page
+      .locator('[role="alertdialog"]')
+      .isVisible()
+      .catch(() => false)
+  ) {
+    fail('an alert dialog (acceptance gate?) is covering the new account');
+  }
+  const after = await guestProgress(page);
+  if (after.xp !== before.xp) fail(`XP changed on sign-up: ${before.xp} → ${after.xp}`);
+  if (after.learned < before.learned) {
+    fail(`learned words dropped on sign-up: ${before.learned} → ${after.learned}`);
+  }
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  try {
+    await account.waitFor({ state: 'visible', timeout: 15000 });
+  } catch {
+    fail('signed out by a reload right after sign-up');
+  }
+  const reloaded = await guestProgress(page);
+  if (reloaded.xp !== before.xp) fail(`XP changed on reload: ${before.xp} → ${reloaded.xp}`);
+
+  console.log(
+    `  step 7: guest ${before.xp} XP / ${before.learned} word(s) → Save → account; ` +
+      `${ids.length} guest answer(s) synced, same XP after reload`
+  );
+}
+
 async function launchBrowser() {
   const args = ['--disable-dev-shm-usage'];
   try {
@@ -1620,12 +1816,33 @@ async function main() {
       }
       await context.close();
     }
+
+    const { name, width, height } = SIGNUP_VIEWPORT;
+    console.log(`→ ${name}@${width}`);
+    const context = await browser.newContext({ viewport: { width, height } });
+    const page = await context.newPage();
+    try {
+      await walkGuestSignup(page);
+    } catch (err) {
+      await dumpPage(page, `${name}@${width}`);
+      try {
+        const shot = `smoke-auth-failure-${name}-${width}.png`;
+        await page.screenshot({ path: shot, fullPage: true });
+        console.error(`smoke-auth-learning-path: screenshot written to ${shot}`);
+      } catch {
+        // a screenshot failure must not replace the real error
+      }
+      throw err;
+    }
+    await context.close();
+    console.log(`✓ ${name}@${width}`);
   } finally {
     await browser.close();
   }
 
   console.log(
-    `✓ authenticated learning path clean on ${VIEWPORTS.map((v) => `${v.name}@${v.width}`).join(', ')}`
+    `✓ authenticated learning path clean on ${VIEWPORTS.map((v) => `${v.name}@${v.width}`).join(', ')}` +
+      `; guest sign-up clean at ${SIGNUP_VIEWPORT.width}`
   );
   // The preview child keeps the event loop alive otherwise, so a clean walk
   // would hang until the job times out.

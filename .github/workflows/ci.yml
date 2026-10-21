@@ -188,7 +188,8 @@ jobs:
           npm run smoke:learning-path
 
   # The signed-in half of the same journey: sync wire, reconcile-after-wipe,
-  # leagues, account controls, sign-out. Its own job for the same reasons as
+  # leagues, account controls, sign-out, and a guest creating an account from
+  # the header "Save" chip without losing their practice. Its own job for the same reasons as
   # the guest smoke above, and a SEPARATE job rather than another step in it
   # because the two need incompatible builds — guest runs against a build with
   # no Supabase env, this one needs stub Supabase config or the seeded session
@@ -225,7 +226,7 @@ jobs:
       - name: Install Chromium
         run: npx --no -- playwright install --with-deps chromium
 
-      - name: Smoke restore → sync → reload → leagues → sign out
+      - name: Smoke restore → sync → reload → leagues → sign out → guest sign-up
         run: npm run smoke:auth-learning-path
 
       # The run writes smoke-auth-failure-<name>-<width>.png for the viewport
