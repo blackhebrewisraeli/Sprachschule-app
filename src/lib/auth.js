@@ -107,13 +107,22 @@ let clientPromise = null;
 function getClient() {
   if (!isAuthConfigured()) return Promise.resolve(null);
   if (!clientPromise) {
-    clientPromise = import('@supabase/supabase-js').then(({ createClient }) => {
-      const c = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        auth: { persistSession: true, autoRefreshToken: true, ...platformAuthOptions() },
+    clientPromise = import('@supabase/supabase-js')
+      .then(({ createClient }) => {
+        const c = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          auth: { persistSession: true, autoRefreshToken: true, ...platformAuthOptions() },
+        });
+        for (const fn of clientReadyListeners) fn(c);
+        return c;
+      })
+      .catch((error) => {
+        // A tab left open across a deployment can request a chunk whose hashed
+        // filename no longer exists. Never cache a rejected import forever:
+        // transient failures can retry, while the stale-chunk path offers the
+        // reload needed to fetch the current app and asset manifest.
+        clientPromise = null;
+        throw error;
       });
-      for (const fn of clientReadyListeners) fn(c);
-      return c;
-    });
   }
   return clientPromise;
 }
@@ -232,6 +241,11 @@ export function humanAuthError(error) {
     return SIGNUP_NOT_ALLOWED_MESSAGE;
   }
   const msg = raw.toLowerCase();
+  if (
+    /dynamically imported module|importing a module script|chunkloaderror|loading chunk/.test(msg)
+  ) {
+    return 'Sign-in could not load — reload the app and try again.';
+  }
   if (error.status === 429 || /rate.?limit|too many|over_email_send_rate_limit/.test(msg)) {
     return 'Too many attempts — try again in a minute.';
   }

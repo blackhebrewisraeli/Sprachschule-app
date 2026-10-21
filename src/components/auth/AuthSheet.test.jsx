@@ -146,6 +146,23 @@ describe('AuthSheet', () => {
   describe('with Google on', () => {
     beforeEach(() => isGoogleAuthConfigured.mockReturnValue(true));
 
+    it('can hide duplicate providers when the opener already offered them', () => {
+      isGitHubAuthConfigured.mockReturnValue(true);
+      render(
+        <AuthSheet
+          open
+          intent="signin"
+          showProviders={false}
+          onClose={() => {}}
+          onSuccess={() => {}}
+        />
+      );
+      expect(screen.queryByRole('button', { name: /continue with google/i })).toBeNull();
+      expect(screen.queryByRole('button', { name: /continue with github/i })).toBeNull();
+      expect(screen.queryByText(/^or$/i)).toBeNull();
+      expect(screen.getByTestId('magic-link-form')).toBeInTheDocument();
+    });
+
     it('puts Google above the email form, separated by an "or" divider', () => {
       render(<AuthSheet open intent="signin" onClose={() => {}} onSuccess={() => {}} />);
       const google = screen.getByRole('button', { name: /continue with google/i });

@@ -82,6 +82,20 @@ describe('MagicLinkForm', () => {
     expect(screen.queryByText(/GoTrueClient/i)).not.toBeInTheDocument();
   });
 
+  it('recovers when the lazy-loaded auth chunk fails and offers a reload', async () => {
+    signInWithMagicLink.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: /assets/dist-old.js')
+    );
+    render(<MagicLinkForm heading="Sign in" onSuccess={() => {}} />);
+    await userEvent.type(screen.getByRole('textbox', { name: /email/i }), 'a@b.com');
+    const sendButton = screen.getByRole('button', { name: /email me a sign-in code/i });
+    await userEvent.click(sendButton);
+
+    expect(await screen.findByText(/reload the app and try again/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /reload app/i })).toBeInTheDocument();
+    expect(sendButton).not.toBeDisabled();
+  });
+
   it('shows the closed-beta copy when send is rejected as signup_not_allowed', async () => {
     signInWithMagicLink.mockResolvedValueOnce({
       error: {

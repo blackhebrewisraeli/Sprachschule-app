@@ -47,6 +47,7 @@ export default function AuthSheet({
   gitHubBusy = false,
   onApple,
   appleBusy = false,
+  showProviders = true,
   draft,
   onDraftChange,
   onNavigateLegal,
@@ -121,7 +122,7 @@ export default function AuthSheet({
   // change this sheet in exactly the state that must stay identical to today.
   const googleOn = isGoogleAuthConfigured();
   const gitHubOn = isGitHubAuthConfigured();
-  const oauthOn = googleOn || gitHubOn || isAppleAuthConfigured();
+  const oauthOn = showProviders && (googleOn || gitHubOn || isAppleAuthConfigured());
 
   // One guard for every way to start an account flow from this sheet. On the
   // create sheet it refuses until the box is ticked and records the intent the

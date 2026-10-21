@@ -29,14 +29,14 @@ Owner-applied 2026-09-18, body re-pasted 2026-10-03:
 - **Email OTP / magic-link expiry** = 300 seconds (5 minutes). Repo
   `supabase/config.toml` `[auth.email] otp_expiry` matches. JWT expiry is
   unchanged.
-- **Confirm signup**: **not pasted yet.** The hosted template has no one-time
-  code (recorded 2026-10-14), so a first-time native or installed-PWA tester
-  cannot sign in. Status as of 2026-10-15:
+- **Confirm signup**: **pasted and saved by the owner on 2026-10-21.** The
+  remaining proof is a first-time address that has never had an Auth account;
+  testing an existing account exercises Magic Link instead. Status:
 
   | Part                                                                                     | Who        | Status                |
   | ---------------------------------------------------------------------------------------- | ---------- | --------------------- |
   | `[auth.email.template.confirmation]` in `config.toml` + `src/authEmailTemplates.test.js` | repository | **Done** (2026-10-15) |
-  | Paste subject + body into the hosted **Confirm signup** template ("Paste" below)         | owner      | **Not done**          |
+  | Paste subject + body into the hosted **Confirm signup** template ("Paste" below)         | owner      | **Done (2026-10-21)** |
   | New invited tester receives a working code and link ("Verify: Confirm signup" below)     | owner      | **Not done**          |
 
 Re-paste the template after any future `magic_link.html` edit — into **both**

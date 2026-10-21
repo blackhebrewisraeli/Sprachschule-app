@@ -91,8 +91,8 @@ const SECTIONS = [
         text: 'AI tutor responses, answer checking and practice content',
       },
       { term: 'Sentry —', text: 'error reports' },
-      // TODO(counsel): the Resend wording here and in "Account Information" is
-      // agent-drafted, not supplied copy. Hold the PR until counsel confirms it,
+      // TODO(counsel, post-beta): the Resend wording here and in "Account Information" is
+      // agent-drafted, not supplied copy. Before public release, confirm it,
       // the Resend DPA, whether transfers need naming, and that dropping the
       // "Supabase Auth — sending sign-in emails" line is right.
       { term: 'Resend —', text: 'sending sign-in and account emails' },

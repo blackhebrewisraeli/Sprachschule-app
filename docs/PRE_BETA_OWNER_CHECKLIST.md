@@ -71,6 +71,17 @@ future template change, re-paste via `docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`.
 Send one real magic-link email after any later template paste and confirm
 both the one-time code and the link still sign in.
 
+**2026-10-21:** the owner pasted and saved the matching **Confirm signup**
+template. Verification with a never-before-used invited address is still due;
+the successful existing-account test proved the Magic Link template only.
+
+## Beta legal-review timing — owner decision 2026-10-21
+
+Qualified-counsel review and the Resend DPA are deliberately deferred until
+**after the controlled beta**. They are not blockers to inviting closed-beta
+testers. They remain required before public store release; this records
+release sequencing, not legal advice.
+
 ## 4. Auth custom domain / Google OAuth branding
 
 Google's consent screen and redirect currently show

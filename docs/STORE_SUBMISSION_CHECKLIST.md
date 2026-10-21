@@ -361,10 +361,11 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
 
 1. **Owner:** paste the Confirm signup template into hosted Supabase Auth and
    verify one new invited account receives both the one-time code and link.
-2. **Owner + counsel:** finish the Resend DPA and counsel's review of the
-   Resend wording, which is already live (#499, `PRIVACY_VERSION`
-   `2026-10-19`). If counsel changes it, an agent applies the edit with
-   another `PRIVACY_VERSION` bump. Do this before any outside tester joins.
+2. **Owner decision, 2026-10-21:** the Resend DPA and qualified-counsel review
+   are deferred until after the controlled beta. They do not block recruiting
+   closed-beta testers. Finish both before public store release; if counsel
+   changes the live Resend wording (#499, `PRIVACY_VERSION` `2026-10-19`), an
+   agent applies the edit with another `PRIVACY_VERSION` bump.
 
 **Google Play closed beta**
 
@@ -388,9 +389,10 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
    Testing. Do not upload it again; install it on the iPhone.
 9. **Owner, on the iPhone:** run only the remaining P0-4 and P1-4 checks,
    including Apple/Hide My Email and account deletion.
-10. **Owner + counsel:** finish Apple App Privacy/listing fields, uploaded-asset
-    review and legal sign-off. Open sign-up (P1-8, runbook "Opening sign-up at
-    launch"), then submit with `store-metadata/app-review-notes.md`.
+10. **Owner + counsel, after the controlled beta:** finish the Resend DPA,
+    Apple App Privacy/listing fields, uploaded-asset review and legal sign-off.
+    Open sign-up (P1-8, runbook "Opening sign-up at launch"), then submit with
+    `store-metadata/app-review-notes.md`.
 
 Keep push, Premium, ads and saved conversations out of the submitted builds so
 the existing form answers stay true.
@@ -434,12 +436,14 @@ device or counsel work.
    day's Production deployment serves it: §5 names Resend instead of Supabase
    Auth as the email sender, §2 says what Resend receives, and
    `PRIVACY_VERSION` is `2026-10-19`. It merged before the DPA and counsel
-   review it was held for, so counsel reviews the live wording against the
+   review it was held for, so counsel reviews the live wording after the
+   controlled beta and before public store release, against the
    seven points in #499's description. Any change they ask for is a new PR
    with another bump. Remove the `TODO(counsel)` comment in
    `src/components/legal/PrivacyPolicy.jsx` once the wording is approved.
 
-3. **Have qualified counsel review** the final Privacy Policy and Terms,
+3. **After the controlled beta, have qualified counsel review** the final
+   Privacy Policy and Terms before public store release,
    including international transfers, the minimum age (Terms say 13), and
    whether the optional AI clause is wanted.
 

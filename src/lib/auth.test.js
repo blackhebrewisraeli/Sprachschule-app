@@ -62,6 +62,20 @@ describe('auth actions', () => {
     });
   });
 
+  it('retries loading the auth client after a stale deployment chunk fails', async () => {
+    const { createClient } = await import('@supabase/supabase-js');
+    createClient.mockImplementationOnce(() => {
+      throw new TypeError('Failed to fetch dynamically imported module: /assets/dist-old.js');
+    });
+    const { signInWithMagicLink } = await import('./auth.js');
+
+    await expect(signInWithMagicLink('a@b.com')).rejects.toThrow(/dynamically imported module/i);
+    await expect(signInWithMagicLink('a@b.com')).resolves.toEqual(
+      expect.objectContaining({ error: null })
+    );
+    expect(mockAuth.signInWithOtp).toHaveBeenCalledTimes(1);
+  });
+
   it('verifyCode verifies the email one-time code as typed', async () => {
     const { verifyCode } = await import('./auth.js');
     await verifyCode('a@b.com', '12345678');

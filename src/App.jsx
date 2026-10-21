@@ -523,6 +523,10 @@ export default function App() {
   // there a session", so it comes back on the next load for anyone without one.
   const [gateDismissed, setGateDismissed] = useState(false);
   const [authModal, setAuthModal] = useState(null); // 'create' | 'signin' | null
+  // WelcomeGate already exposes every enabled provider. Its Sign in action
+  // opens only the email/code alternative; in-app sign-in entry points still
+  // open the complete sheet because they have no provider buttons alongside.
+  const [authModalEmailOnly, setAuthModalEmailOnly] = useState(false);
   // Shared by the create sheet, the trial wall and the acceptance gate. Patches
   // merge FUNCTIONALLY: MagicLinkForm reports `{ sent: true }` after an await,
   // by which time a spread over the render-time value would be stale.
@@ -538,6 +542,7 @@ export default function App() {
   // later sign-in.
   const closeAuthSheet = () => {
     setAuthModal(null);
+    setAuthModalEmailOnly(false);
     resetAuthDraft();
     clearIntent();
   };
@@ -548,6 +553,7 @@ export default function App() {
   };
   const handleAuthDone = () => {
     setAuthModal(null);
+    setAuthModalEmailOnly(false);
     resetAuthDraft();
     setGateDismissed(true);
     // Nothing reads this key any more; kept because AGENTS.md forbids removing
@@ -580,7 +586,12 @@ export default function App() {
   // test would assert nothing except that the line is green.
   const requestSignIn = () => {
     if (!isAuthConfigured()) return;
+    setAuthModalEmailOnly(false);
     setAuthModal('signin');
+  };
+  const openWelcomeAuth = (intent) => {
+    setAuthModalEmailOnly(intent === 'signin');
+    setAuthModal(intent);
   };
 
   // One entry point per provider for all three surfaces — the sheet, the gate
@@ -599,9 +610,14 @@ export default function App() {
   const startOAuth = async (provider, signIn) => {
     if (oauthBusy) return;
     setOAuthBusy(provider);
-    const { error } = await signIn();
-    if (error || isNativeApp()) setOAuthBusy(null);
-    if (error) showToast(humanAuthError(error));
+    try {
+      const { error } = await signIn();
+      if (error || isNativeApp()) setOAuthBusy(null);
+      if (error) showToast(humanAuthError(error));
+    } catch (error) {
+      setOAuthBusy(null);
+      showToast(humanAuthError(error));
+    }
   };
   // The welcome screen's buttons and the Sign-in sheet are sign-in surfaces
   // (spec D3): a stale intent from an abandoned create must not ride along.
@@ -1417,6 +1433,7 @@ export default function App() {
       <AuthSheet
         open={Boolean(authModal)}
         intent={authModal ?? 'signin'}
+        showProviders={!authModalEmailOnly}
         onClose={closeAuthSheet}
         onSuccess={handleAuthDone}
         onGoogle={authModal === 'create' ? handleGoogleCreate : handleGoogle}
@@ -1527,7 +1544,7 @@ export default function App() {
       <>
         <WelcomeGate
           onGuest={handleGuest}
-          onAuth={(intent) => setAuthModal(intent)}
+          onAuth={openWelcomeAuth}
           onGoogle={handleGoogle}
           googleBusy={googleBusy}
           onGitHub={handleGitHub}
