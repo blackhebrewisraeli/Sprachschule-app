@@ -523,9 +523,9 @@ export default function App() {
   // there a session", so it comes back on the next load for anyone without one.
   const [gateDismissed, setGateDismissed] = useState(false);
   const [authModal, setAuthModal] = useState(null); // 'create' | 'signin' | null
-  // WelcomeGate already exposes every enabled provider. Its Sign in action
-  // opens only the email/code alternative; in-app sign-in entry points still
-  // open the complete sheet because they have no provider buttons alongside.
+  // WelcomeGate already exposes every enabled provider, so both of its sheets
+  // open only the email/code alternative; in-app entry points still open the
+  // complete sheet because they have no provider buttons alongside.
   const [authModalEmailOnly, setAuthModalEmailOnly] = useState(false);
   // Shared by the create sheet, the trial wall and the acceptance gate. Patches
   // merge FUNCTIONALLY: MagicLinkForm reports `{ sent: true }` after an await,
@@ -590,7 +590,7 @@ export default function App() {
     setAuthModal('signin');
   };
   const openWelcomeAuth = (intent) => {
-    setAuthModalEmailOnly(intent === 'signin');
+    setAuthModalEmailOnly(true);
     setAuthModal(intent);
   };
 
@@ -1434,6 +1434,9 @@ export default function App() {
         open={Boolean(authModal)}
         intent={authModal ?? 'signin'}
         showProviders={!authModalEmailOnly}
+        // A signed-in learner only meets this sheet to re-prove the account
+        // they hold, so only a visitor without one may switch to creating.
+        onSwitchIntent={rawAuth.status === 'authenticated' ? undefined : setAuthModal}
         onClose={closeAuthSheet}
         onSuccess={handleAuthDone}
         onGoogle={authModal === 'create' ? handleGoogleCreate : handleGoogle}
