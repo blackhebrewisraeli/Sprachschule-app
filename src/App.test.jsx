@@ -805,10 +805,10 @@ describe('in-app AuthSheet', () => {
     vi.resetModules();
   });
 
-  it('opens from Stats without resurfacing the WelcomeGate', async () => {
+  const mockAuth = ({ googleOn = false } = {}) =>
     vi.doMock('./lib/auth.js', () => ({
       isAuthConfigured: () => true,
-      isGoogleAuthConfigured: () => false,
+      isGoogleAuthConfigured: () => googleOn,
       isGitHubAuthConfigured: () => false,
       isAppleAuthConfigured: () => false,
       signInWithGoogle: vi.fn(() => Promise.resolve({ error: null })),
@@ -826,24 +826,69 @@ describe('in-app AuthSheet', () => {
       getSupabase: () => Promise.resolve(null),
     }));
 
+  // The Profile page's own sign-in — scoped to <main>, because the header's
+  // account chip carries a "Sign in" of its own.
+  async function openProfileSignIn(user) {
+    await user.click(
+      within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
+    );
+    const main = screen.getByRole('main');
+    expect(await within(main).findAllByRole('button', { name: /sign in/i })).toHaveLength(1);
+    await user.click(within(main).getByRole('button', { name: /^sign in$/i }));
+  }
+
+  it('opens from Stats without resurfacing the WelcomeGate', async () => {
+    mockAuth();
     const { default: AppWithAuth } = await import('./App.jsx');
     setViewportWidth(1280);
     const user = userEvent.setup();
     renderPastEntry(<AppWithAuth />);
-
-    await user.click(
-      within(screen.getByRole('navigation')).getByRole('button', { name: 'Profile' })
-    );
-    // The Profile page's own sign-in — scoped to <main>, because the header's
-    // account chip carries a "Sign in" of its own.
-    const main = screen.getByRole('main');
-    expect(await within(main).findAllByRole('button', { name: /sign in/i })).toHaveLength(1);
-    await user.click(within(main).getByRole('button', { name: /^sign in$/i }));
+    await openProfileSignIn(user);
 
     expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /email me a sign-in code/i })).toBeInTheDocument();
     // Gate brand lives on the dark full-screen WelcomeGate — must stay gone.
     expect(screen.queryByText(/Learn German with an AI tutor/i)).not.toBeInTheDocument();
+  });
+
+  // A guest past the gate had only "Sign in" sheets, so creating an account by
+  // email was invisible unless they ran the trial dry.
+  it('lets a guest turn the sign-in sheet into the create sheet', async () => {
+    mockAuth({ googleOn: true });
+    const { default: AppWithAuth } = await import('./App.jsx');
+    setViewportWidth(1280);
+    const user = userEvent.setup();
+    renderPastEntry(<AppWithAuth />);
+    await openProfileSignIn(user);
+
+    await user.click(screen.getByRole('button', { name: 'New here? Create an account' }));
+
+    const sheet = screen.getByRole('dialog', { name: 'Create your account' });
+    expect(within(sheet).getByRole('checkbox', { name: /i agree/i })).toBeInTheDocument();
+    // Nothing behind an in-app sheet offers a provider, so it keeps its own.
+    expect(within(sheet).getByRole('button', { name: 'Continue with Google' })).toBeInTheDocument();
+  });
+
+  // The welcome screen lists every provider itself; its sheets repeating them
+  // was the duplicate #507 removed from "Sign in" but left on "Create account".
+  it("leaves the providers to the welcome screen in both of the gate's sheets", async () => {
+    mockAuth({ googleOn: true });
+    const { default: AppWithAuth } = await import('./App.jsx');
+    const user = userEvent.setup();
+    render(<AppWithAuth />);
+
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    const sheet = screen.getByRole('dialog', { name: 'Create your account' });
+    expect(within(sheet).queryByRole('button', { name: 'Continue with Google' })).toBeNull();
+
+    await user.click(
+      within(sheet).getByRole('button', { name: 'Already have an account? Sign in' })
+    );
+    expect(
+      within(screen.getByRole('dialog', { name: 'Sign in' })).queryByRole('button', {
+        name: 'Continue with Google',
+      })
+    ).toBeNull();
   });
 });
 
@@ -2410,6 +2455,8 @@ describe('account deletion wiring', () => {
     await waitFor(() =>
       expect(screen.getByRole('dialog', { name: /sign in/i })).toBeInTheDocument()
     );
+    // A re-auth proves THIS account; starting another one there is no answer.
+    expect(screen.queryByRole('button', { name: /create an account/i })).toBeNull();
     // The phrase stays typed so retrying after re-auth is one click.
     expect(screen.getByRole('textbox', { name: /type delete to confirm/i })).toHaveValue('DELETE');
   });

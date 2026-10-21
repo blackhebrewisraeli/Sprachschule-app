@@ -108,6 +108,40 @@ describe('AuthSheet', () => {
     expect(screen.getByTestId('magic-link-form')).toHaveTextContent('Create your account');
   });
 
+  // Every opener but one offered only "Sign in", so a guest had no visible way
+  // to create an account by email from inside the app.
+  it('offers the other intent when the opener can switch', async () => {
+    const onSwitchIntent = vi.fn();
+    const { rerender } = render(
+      <AuthSheet
+        open
+        intent="signin"
+        onSwitchIntent={onSwitchIntent}
+        onClose={() => {}}
+        onSuccess={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'New here? Create an account' }));
+    expect(onSwitchIntent).toHaveBeenLastCalledWith('create');
+
+    rerender(
+      <AuthSheet
+        open
+        intent="create"
+        onSwitchIntent={onSwitchIntent}
+        onClose={() => {}}
+        onSuccess={() => {}}
+      />
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
+    expect(onSwitchIntent).toHaveBeenLastCalledWith('signin');
+  });
+
+  it('offers no switch when the opener cannot', () => {
+    render(<AuthSheet open intent="signin" onClose={() => {}} onSuccess={() => {}} />);
+    expect(screen.queryByRole('button', { name: /create an account/i })).toBeNull();
+  });
+
   it('dismisses on Escape and via the close button', async () => {
     const onClose = vi.fn();
     render(<AuthSheet open intent="signin" onClose={onClose} onSuccess={() => {}} />);

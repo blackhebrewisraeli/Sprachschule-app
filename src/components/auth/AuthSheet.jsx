@@ -31,6 +31,10 @@ import LegalConsent from './LegalConsent';
  * email half is forwarded to MagicLinkForm only when the caller supplied both
  * props, otherwise the form keeps its own state.
  *
+ * `onSwitchIntent` lets every opener reach both intents: without it a guest
+ * past the welcome screen only ever met "Sign in". Openers that must not start
+ * a different account (a re-auth) leave it out and the switch is not drawn.
+ *
  * Keyboard loop: because a single instance in App serves five different
  * triggers, the opener is captured from `document.activeElement` rather than
  * held as a ref — no ref can know which of the five opened it.
@@ -48,6 +52,7 @@ export default function AuthSheet({
   onApple,
   appleBusy = false,
   showProviders = true,
+  onSwitchIntent,
   draft,
   onDraftChange,
   onNavigateLegal,
@@ -292,6 +297,9 @@ export default function AuthSheet({
           </div>
         )}
         <MagicLinkForm
+          // Remount per intent so an error from the other sheet never greets
+          // this one; the typed email is lifted to App and survives.
+          key={intent}
           heading={heading}
           onSuccess={onSuccess}
           beforeStart={guard}
@@ -299,6 +307,33 @@ export default function AuthSheet({
             ? { draft: { email: draft.email, sent: draft.sent }, onDraftChange }
             : {})}
         />
+        {onSwitchIntent && (
+          <div style={{ textAlign: 'center', marginTop: SPACE[3] }}>
+            <button
+              // Opts into the app's one focus ring, defined in injectGlobalStyles.
+              data-ui="button"
+              type="button"
+              onClick={() => {
+                setConsentInvalid(false);
+                onSwitchIntent(creating ? 'signin' : 'create');
+              }}
+              style={{
+                background: 'none',
+                border: 'none',
+                borderRadius: SPACE[1],
+                color: COLORS.ink,
+                fontFamily: FONTS.mono,
+                fontSize: FONT_SIZE.tag,
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                padding: SPACE[2],
+                minHeight: 44,
+              }}
+            >
+              {creating ? 'Already have an account? Sign in' : 'New here? Create an account'}
+            </button>
+          </div>
+        )}
       </dialog>
     </div>
   );
