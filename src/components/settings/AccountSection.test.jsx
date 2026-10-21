@@ -39,19 +39,24 @@ async function armDeletion(phrase = 'DELETE') {
 }
 
 describe('AccountSection', () => {
-  it('prompts guests to sign in', async () => {
+  it('gives guests separate create-account and sign-in paths', async () => {
+    const onCreateAccount = vi.fn();
     const onSignIn = vi.fn();
-    renderAccount({ user: null, onSignIn });
-    await userEvent.click(screen.getByRole('button', { name: /sign in to sync/i }));
+    renderAccount({ user: null, onCreateAccount, onSignIn });
+    await userEvent.click(screen.getByRole('button', { name: /create.*save progress/i }));
+    expect(onCreateAccount).toHaveBeenCalledOnce();
+    expect(onSignIn).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
     expect(onSignIn).toHaveBeenCalled();
   });
 
   // It sits under the Profile subsection's centred guest note, and a
   // left-aligned prompt there read as a second, misaligned block.
   it('centres the guest sign-in prompt', () => {
-    renderAccount({ user: null });
-    const prompt = screen.getByRole('button', { name: /sign in to sync/i }).parentElement;
-    expect(prompt).toHaveTextContent('Sign in to sync your progress across devices.');
+    renderAccount({ user: null, onCreateAccount: () => {} });
+    const prompt = screen.getByRole('button', { name: /create.*save progress/i }).parentElement;
+    expect(prompt).toHaveTextContent('Create a free account to save this progress across devices.');
     expect(prompt).toHaveStyle({ alignItems: 'center', textAlign: 'center' });
   });
 

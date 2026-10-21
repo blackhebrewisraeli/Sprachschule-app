@@ -9,11 +9,11 @@ import { resetTimeText } from '../../lib/quotaReset';
 // bubble. Each button renders only when its callback is passed AND the error
 // allows it, so Track B (onPremium) and Track C (onRewarded) opt in by wiring
 // a prop, not by editing this file.
-export default function QuotaNote({ error, onSignIn, onPremium, onRewarded }) {
+export default function QuotaNote({ error, onCreateAccount, onPremium, onRewarded }) {
   const time = resetTimeText(error.resetsAt);
   const resetText = time && `Your allowance resets at ${time}.`;
 
-  const showSignIn = error.tier === 'guest' && onSignIn;
+  const showCreate = error.tier === 'guest' && onCreateAccount;
   const showPremium = error.tier === 'free' && onPremium;
   const showRewarded = error.rewardedEligible && onRewarded;
 
@@ -36,10 +36,10 @@ export default function QuotaNote({ error, onSignIn, onPremium, onRewarded }) {
           {resetText}
         </Body>
       )}
-      {(showSignIn || showPremium || showRewarded) && (
+      {(showCreate || showPremium || showRewarded) && (
         <Row gap={2}>
-          {showSignIn && (
-            <Button variant="primary" onClick={onSignIn}>
+          {showCreate && (
+            <Button variant="primary" onClick={onCreateAccount}>
               Create a free account
             </Button>
           )}

@@ -589,6 +589,11 @@ export default function App() {
     setAuthModalEmailOnly(false);
     setAuthModal('signin');
   };
+  const requestCreateAccount = () => {
+    if (!isAuthConfigured()) return;
+    setAuthModalEmailOnly(false);
+    setAuthModal('create');
+  };
   const openWelcomeAuth = (intent) => {
     setAuthModalEmailOnly(true);
     setAuthModal(intent);
@@ -1350,6 +1355,7 @@ export default function App() {
     preferredModel,
     onPreferredModelChange: handlePreferredModelChange,
     levelBoost: authStatus === 'authenticated',
+    onCreateAccount: requestCreateAccount,
     onSignIn: requestSignIn,
     onSignOut: handleSignOut,
     onExport: handleExport,
@@ -1745,6 +1751,7 @@ export default function App() {
               <AccountChip
                 user={user}
                 profile={profile}
+                onCreateAccount={requestCreateAccount}
                 onSignIn={requestSignIn}
                 onSignOut={handleSignOut}
                 onOpenSettings={openSettings}
@@ -1939,6 +1946,7 @@ export default function App() {
                           preferredModel={preferredModel}
                           onPreferredModelChange={handlePreferredModelChange}
                           user={user}
+                          onCreateAccount={requestCreateAccount}
                           onSignIn={requestSignIn}
                         />
                       </ViewIn>
@@ -1999,7 +2007,7 @@ export default function App() {
                   <TrialWall
                     roundsUsed={game.trial.roundsUsed}
                     mobile={mobile}
-                    onCreateAccount={() => setAuthModal('create')}
+                    onCreateAccount={requestCreateAccount}
                     onSignIn={requestSignIn}
                     onGoogle={handleGoogleCreate}
                     googleBusy={googleBusy}
@@ -2023,6 +2031,7 @@ export default function App() {
                   user={user}
                   profile={profile}
                   tokens={tokens}
+                  onCreateAccount={requestCreateAccount}
                   onSignIn={requestSignIn}
                   view={profileView}
                   onViewChange={handleProfileView}

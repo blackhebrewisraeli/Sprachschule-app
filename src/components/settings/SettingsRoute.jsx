@@ -121,6 +121,7 @@ export default function SettingsRoute({
   preferredModel = 'auto',
   onPreferredModelChange,
   levelBoost = false,
+  onCreateAccount,
   onSignIn,
   onSignOut,
   onExport,
@@ -207,6 +208,7 @@ export default function SettingsRoute({
               <Subsection title="Account controls">
                 <AccountSection
                   user={user}
+                  onCreateAccount={onCreateAccount}
                   onSignIn={onSignIn}
                   onSignOut={onSignOut}
                   onExport={onExport}

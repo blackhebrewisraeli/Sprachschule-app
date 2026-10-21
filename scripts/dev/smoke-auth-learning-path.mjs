@@ -649,8 +649,8 @@ async function waitForReconcile(page, seen, timeoutMs = 20000) {
  * What this asserts is that the app ACCEPTED it. "A header exists" is not
  * that test: the header renders for a guest too, and an earlier draft of
  * this file passed on the guest shell for exactly that reason. AccountChip
- * is the discriminator — signed out it renders a "Sign in" button, signed in
- * it renders a `aria-label="Account"` avatar button with the email initial.
+ * is the discriminator — signed out it renders a "Save progress" button, signed
+ * in it renders a `aria-label="Account"` avatar button with the email initial.
  * Both directions are asserted, so a chip that renders BOTH (a half-restored
  * session) fails too.
  */
@@ -659,7 +659,9 @@ async function stepRestoreSession(context, page, seed) {
   void seed;
 
   const account = mastheadAccountButton(page);
-  const signIn = page.getByRole('button', { name: 'Sign in', exact: true });
+  const guestChip = page
+    .getByRole('banner')
+    .getByRole('button', { name: 'Save progress', exact: true });
 
   try {
     await account.waitFor({ state: 'visible', timeout: 10000 });
@@ -677,9 +679,9 @@ async function stepRestoreSession(context, page, seed) {
     );
   }
 
-  if (await signIn.isVisible().catch(() => false)) {
+  if (await guestChip.isVisible().catch(() => false)) {
     throw new Error(
-      'smoke-auth-learning-path: "Sign in" is showing alongside the account chip — ' +
+      'smoke-auth-learning-path: the guest "Save" chip is showing alongside the account chip — ' +
         'the session restored only partially.'
     );
   }

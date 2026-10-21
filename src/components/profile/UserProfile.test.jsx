@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 
 // The standings table fetches on its own and is covered by its own suite; this
 // page only has to PLACE it. Stubbing it keeps these assertions about layout
@@ -329,6 +330,26 @@ describe('UserProfile — the consolidated profile page', () => {
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
     expect(screen.queryByTestId('profile-metrics')).toBeNull();
     expect(leagues.fetchProfile).not.toHaveBeenCalled();
+  });
+
+  it('gives a guest direct create-account and returning-account paths', async () => {
+    const onCreateAccount = vi.fn();
+    const onSignIn = vi.fn();
+    render(
+      <UserProfile
+        user={null}
+        local={local}
+        onCreateAccount={onCreateAccount}
+        onSignIn={onSignIn}
+      />
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /create free account/i }));
+    expect(onCreateAccount).toHaveBeenCalledOnce();
+    expect(onSignIn).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: /^sign in$/i }));
+    expect(onSignIn).toHaveBeenCalledOnce();
   });
 
   it('leaves the guest sign-in out, rather than dead, when there is no backend', () => {

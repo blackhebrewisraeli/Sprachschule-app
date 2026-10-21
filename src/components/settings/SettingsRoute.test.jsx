@@ -39,6 +39,7 @@ const routeElement = (props = {}) => (
     profile={profile}
     level="a2"
     goal={50}
+    onCreateAccount={() => {}}
     onSignIn={() => {}}
     onSignOut={() => {}}
     onExport={() => {}}
@@ -309,10 +310,12 @@ describe('SettingsRoute — guest Account panel', () => {
     expect(screen.queryByRole('heading', { name: /^email$/i })).not.toBeInTheDocument();
   });
 
-  it('keeps exactly one way in: the Account controls sign-in', () => {
+  it('offers guests separate account-creation and returning-account paths', () => {
     renderRoute({ user: null, profile: null });
-    expect(screen.getAllByRole('button', { name: /sign in/i })).toHaveLength(1);
-    expect(screen.getByRole('button', { name: /sign in to sync/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /create account · save progress/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument();
   });
 
   it('still gives a signed-in learner the full editor and Email section', () => {

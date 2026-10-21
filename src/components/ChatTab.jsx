@@ -48,6 +48,7 @@ export default function ChatTab({
   preferredModel = 'auto',
   onPreferredModelChange,
   user = null,
+  onCreateAccount = null,
   onSignIn = null,
 }) {
   // Classified CEFR is the source of truth. A `level` prop (still passed by
@@ -448,7 +449,7 @@ export default function ChatTab({
           {quotaError && (
             <QuotaNote
               error={quotaError}
-              onSignIn={onSignIn}
+              onCreateAccount={onCreateAccount}
               // Shown only when the server marks the learner eligible, too.
               onRewarded={adsAllowed({ tier: getAccessTier() }) ? showRewardedAd : undefined}
             />

@@ -178,6 +178,7 @@ export default function UserProfile({
   profile: ownProfile = null,
   tokens = null,
   local = {},
+  onCreateAccount,
   onSignIn,
   onSelectUser,
   onOpenSettings,
@@ -234,9 +235,11 @@ export default function UserProfile({
   // the old "sign in to earn badges" promised something they already had.
   if (!user) {
     const leagueClause = LEAGUES_ENABLED ? ' and join a weekly league' : '';
-    const guestNote = onSignIn
-      ? `Your progress is saved on this device. Sign in to sync it across devices${leagueClause}.`
-      : 'Your progress is saved on this device.';
+    const guestNote = onCreateAccount
+      ? `Your progress is saved on this device. Create a free account to sync it across devices${leagueClause}.`
+      : onSignIn
+        ? `Your progress is saved on this device. Sign in to sync it across devices${leagueClause}.`
+        : 'Your progress is saved on this device.';
     return (
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: SPACE[6] }}>
         {/* The title stays where every tab's title sits; the placeholder under
@@ -251,7 +254,12 @@ export default function UserProfile({
           <div
             style={{ display: 'flex', gap: SPACE[3], flexWrap: 'wrap', justifyContent: 'center' }}
           >
-            {onSignIn && <Button onClick={onSignIn}>Sign in</Button>}
+            {onCreateAccount && <Button onClick={onCreateAccount}>Create free account</Button>}
+            {onSignIn && (
+              <Button variant={onCreateAccount ? 'secondary' : 'primary'} onClick={onSignIn}>
+                Sign in
+              </Button>
+            )}
             {/* A guest still needs Settings — level, daily goal and sound all
                 live there, and none of them require an account. The segmented
                 control this page replaced was their ONLY way in; the account
