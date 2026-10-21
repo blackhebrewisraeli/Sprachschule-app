@@ -1214,11 +1214,16 @@ describe('guest trial wall', () => {
     await user.click(button);
 
     expect(await screen.findByText('Something went wrong — try again.')).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Continue with Google' })).not.toHaveAttribute(
-        'aria-busy',
-        'true'
-      )
+    // The wall stands down while any toast is up (`trialWallUp` waits for
+    // `toasts.length === 0`), so the button returns only once the error toast
+    // goes. Dismiss it: waiting out its 3.2s ttl inside the 5s asyncUtilTimeout
+    // lost the race on loaded CI runners.
+    await user.click(
+      screen.getByRole('button', { name: 'Dismiss Something went wrong — try again.' })
+    );
+    expect(await screen.findByRole('button', { name: 'Continue with Google' })).not.toHaveAttribute(
+      'aria-busy',
+      'true'
     );
   });
 
