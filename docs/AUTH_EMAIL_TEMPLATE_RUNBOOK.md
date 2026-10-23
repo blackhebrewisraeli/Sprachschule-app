@@ -34,15 +34,17 @@ Owner-applied 2026-09-18, body re-pasted 2026-10-03 and again after #484
   unchanged.
 - **Confirm signup**: **pasted and saved by the owner on 2026-10-21.** On
   2026-10-22 the hosted body matched `supabase/templates/magic_link.html` byte
-  for byte; the subject was not checked. The remaining proof is a first-time
-  address that has never had an Auth account; testing an existing account
-  exercises Magic Link instead. Status:
+  for byte; the subject was not checked. On 2026-10-22 a first-time address
+  that had never had an Auth account proved the code path in production. The
+  email arrived with the brand, an 8-digit code, a link and the five-minutes
+  footer, and the code signed in on the web. The link was not opened. Testing
+  an existing account exercises Magic Link instead. Status:
 
-  | Part                                                                                     | Who        | Status                |
-  | ---------------------------------------------------------------------------------------- | ---------- | --------------------- |
-  | `[auth.email.template.confirmation]` in `config.toml` + `src/authEmailTemplates.test.js` | repository | **Done** (2026-10-15) |
-  | Paste subject + body into the hosted **Confirm signup** template ("Paste" below)         | owner      | **Done (2026-10-21)** |
-  | New invited tester receives a working code and link ("Verify: Confirm signup" below)     | owner      | **Not done**          |
+  | Part                                                                                     | Who        | Status                                      |
+  | ---------------------------------------------------------------------------------------- | ---------- | ------------------------------------------- |
+  | `[auth.email.template.confirmation]` in `config.toml` + `src/authEmailTemplates.test.js` | repository | **Done** (2026-10-15)                       |
+  | Paste subject + body into the hosted **Confirm signup** template ("Paste" below)         | owner      | **Done (2026-10-21)**                       |
+  | New invited tester receives a working code and link ("Verify: Confirm signup" below)     | owner      | **Code done (2026-10-22)**; link not opened |
 
 Re-paste the template after any future `magic_link.html` edit — into **both**
 Magic Link and Confirm signup. Hosted Auth does not read the file
