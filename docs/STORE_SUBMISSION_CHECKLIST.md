@@ -87,6 +87,18 @@ plus a read-only console check on 2026-10-18)
   Mac:** build 9 is processed and available as an update in Internal Testing,
   version 1.0.1 (9), released 2026-10-18 and expiring 2027-01-16. An iPhone
   install and device pass are **not yet verified**.
+- **External TestFlight: build 9 approved, public link live.** Read in App
+  Store Connect on 2026-10-23. The **External Testers** group holds 1.0.1 (9)
+  with status **Approved** (Beta App Review), expiring in 85 days. Codex had
+  stopped at the Test Information step on 2026-10-22. Who submitted the build
+  for review, and when, is not recorded. The public link
+  `https://testflight.apple.com/join/TwMVCGGY` is enabled, with no tester
+  limit and no criteria. Its join page says "Join the Deutsch Sprachschule
+  beta". The group has 0 testers. Sign-in required is off. On 2026-10-23 the
+  Beta App Review notes were replaced with the App Store notes from
+  `store-metadata/app-review-notes.md` (saved, and checked after a reload).
+  They apply from the next build's review. Not yet verified: an install from
+  the link on an iPhone.
 
 **OWNER CONFIRMATION REQUIRED** (dashboard or device only)
 
@@ -110,9 +122,10 @@ plus a read-only console check on 2026-10-18)
   started.
 - **Counsel:** review of the Privacy Policy and Terms, plus the IP-address and
   AI-text form lines (P1-1, P1-2).
-- **Apple:** build 9 is processed and available in TestFlight Internal
-  Testing. It still needs iPhone installation and the current privacy/listing
-  verdicts. App Review only starts after submission.
+- **Apple:** build 9 is in TestFlight Internal Testing and is approved for
+  External Testing through the public link (2026-10-23). It still needs iPhone
+  installation and the current privacy/listing verdicts. App Store Review only
+  starts after submission.
 
 ## Current next actions — no-repeat queue (audited 2026-10-20)
 
@@ -148,9 +161,10 @@ are historical evidence, not permission to repeat completed work.
    Google, Apple (including Hide My Email), magic link, sign out/in, all six
    tabs and Delete account. Do not repeat the Android learning/progress/audio
    checks recorded below.
-5. **Bring iOS to the current candidate:** build 9 is processed and available
-   in TestFlight Internal Testing. Install it on the iPhone. Do not upload
-   build 9 again.
+5. **Bring iOS to the current candidate:** build 9 is in TestFlight Internal
+   Testing and approved for External Testing. iPhone testers join through
+   `https://testflight.apple.com/join/TwMVCGGY`. Install it on the iPhone. Do
+   not upload build 9 again.
 6. **Store review:** complete the Apple App Privacy/listing fields, final asset
    review and counsel sign-off. Sign-up is already open (P1-8, since
    2026-10-23). Submit only after the device passes above and the rest of the
@@ -403,8 +417,9 @@ it is not banned (P1-8).
 
 **iOS beta and store review, in parallel**
 
-8. **Owner:** build 9 is processed and available in TestFlight Internal
-   Testing. Do not upload it again; install it on the iPhone.
+8. **Owner:** build 9 is in TestFlight Internal Testing and approved for
+   External Testing (public link `https://testflight.apple.com/join/TwMVCGGY`,
+   2026-10-23). Do not upload it again; install it on the iPhone.
 9. **Owner, on the iPhone:** run only the remaining P0-4 and P1-4 checks,
    including Apple/Hide My Email and account deletion.
 10. **Owner + counsel, after the controlled beta:** finish the Resend DPA,
