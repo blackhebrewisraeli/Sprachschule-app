@@ -96,8 +96,9 @@ plus a read-only console check on 2026-10-18)
   P1-4). The previously recorded Android learning/progress checks must not be
   repeated; see "Completed manual checks" below.
 - Apple App Privacy and App Store listing state, the final screenshot review,
-  opening sign-up before the first store submission (P1-8, decided
-  2026-10-19), what Play Console's App access text currently says, and the
+  the rest of the open-sign-up check (P1-8: sign-up has been open since
+  2026-10-23; unlisted Google, Hide My Email and Delete account are
+  unproven), what Play Console's App access text currently says, and the
   Apple Services ID, key and client-secret renewal date (P1-4). Google OAuth
   was checked on 2026-10-18: **In production**, External, no sensitive scopes
   (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Adding beta testers").
@@ -118,26 +119,27 @@ plus a read-only console check on 2026-10-18)
 This is the canonical short queue. Earlier build-7/build-8 instructions below
 are historical evidence, not permission to repeat completed work.
 
-1. **Before inviting outside testers:** verify the hosted Confirm signup
-   email template with one new invited account that has never signed in. It
-   must receive both a code and a link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`,
-   "Verify: Confirm signup"). The paste itself is done: the owner saved it on
-   2026-10-21, and on 2026-10-22 the hosted body matched the repository
-   template byte for byte. **Owner decision 2026-10-21:** the Resend DPA and
-   qualified-counsel review are deferred until after the controlled beta and
-   do not block recruiting closed-beta testers; finish both before public
-   store release. The policy already names Resend: #499 merged on 2026-10-19
-   and the same day's Production deployment serves it (`PRIVACY_VERSION`
-   `2026-10-19`, so every signed-in user re-accepts once). Counsel reviews the
-   live wording against the seven points in #499's description. Any change
-   they ask for needs another `PRIVACY_VERSION` bump and another re-accept.
+1. ✅ **Confirm signup email verified, and sign-up is open (2026-10-22/23).**
+   The paste was saved 2026-10-21, and the hosted body matched the repository
+   byte for byte. On 2026-10-22 a never-listed address got the email with a
+   code and a link. The code signed in on the web, and onboarding opened. The
+   link was not opened (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`). Sign-up has
+   been open since 2026-10-23: the hook is disabled, `SIGNUP_EMAIL_ALLOWLIST`
+   is deleted and Production redeployed. The same account then saved its
+   profile (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, Evidence). Testers no longer
+   need to be allowlisted. **Owner decision 2026-10-21:** the Resend DPA and
+   qualified-counsel review are deferred until after the controlled beta and do
+   not block recruiting closed-beta testers; finish both before public store
+   release. The policy already names Resend: #499 merged on 2026-10-19 and the
+   same day's Production deployment serves it (`PRIVACY_VERSION` `2026-10-19`,
+   so every signed-in user re-accepts once). Counsel reviews the live wording
+   against the seven points in #499's description. Any change they ask for
+   needs another `PRIVACY_VERSION` bump and another re-accept.
 2. ✅ **Closed Android track:** Closed Testing Alpha serves **Build 9 - audio
    fix** (approved and live 2026-10-18). Recruiting can start.
 3. **Start the Play clock:** grow the selected list from 2 to at least 12
-   Google accounts. For testers who will sign in, add each sign-in address to
-   the allowlist table **and** to `SIGNUP_EMAIL_ALLOWLIST`
-   (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Adding beta testers"). Then add the
-   support feedback address and send the web opt-in link
+   Google accounts. Sign-in needs no allowlisting since 2026-10-23. Then add
+   the support feedback address and send the web opt-in link
    `https://play.google.com/apps/testing/com.sprachschule.deutsch`, and verify
    the dashboard reaches at least 12 opted-in testers. Keep at least 12 opted
    in continuously for 14 days, then apply for production access.
@@ -150,10 +152,11 @@ are historical evidence, not permission to repeat completed work.
    in TestFlight Internal Testing. Install it on the iPhone. Do not upload
    build 9 again.
 6. **Store review:** complete the Apple App Privacy/listing fields, final asset
-   review and counsel sign-off. Then open sign-up (P1-8, decided 2026-10-19:
-   `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Opening sign-up at launch"). Submit
-   only after the device passes above and that runbook's never-listed sign-up
-   and delete check.
+   review and counsel sign-off. Sign-up is already open (P1-8, since
+   2026-10-23). Submit only after the device passes above and the rest of the
+   never-listed sign-up and delete check (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`,
+   "Opening sign-up at launch" step 3). Unlisted Google, Hide My Email and
+   Delete account are still unproven.
 7. ✅ **Optional Google account chooser (#502).** Merged 2026-10-19 as
    `df8a31d3`. It adds `prompt=select_account` to Google OAuth on web and
    native so a previous Google session cannot silently choose the wrong
@@ -215,7 +218,14 @@ either file.
   against 47 applied" and passed. `719792ed` changed no migration. Uptime run
   `38724294155` passed on 2026-10-15.
 - `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent from Vercel. Four unwanted accounts
-  are banned until 2026-11-13, not deleted.
+  are banned until 2026-11-13, not deleted (still true on 2026-10-23).
+- **2026-10-22/23: sign-up is open.** On 2026-10-22, with the owner's approval,
+  Codex disabled the before-user-created hook; the dashboard shows DISABLED.
+  `SIGNUP_EMAIL_ALLOWLIST` was deleted from Production and Preview on
+  2026-10-23, and Production was redeployed (`6qz0wqxno`). A never-listed
+  email address signed up through the hosted Confirm signup email, using its
+  code on the web. It then saved Edit Profile, and its `profiles` row changed.
+  Evidence: `docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, Evidence table.
 - Custom SMTP through Resend is live, and its sending domain is verified.
 - The live security advisors on 2026-10-15 are unchanged: five SECURITY DEFINER
   warnings and leaked-password protection.
@@ -229,15 +239,14 @@ either file.
 
 **OWNER CONFIRMATION REQUIRED**
 
-- **Not done (owner-only):** paste the template into the hosted **Confirm
-  signup** template, then check that a new invited tester receives a working
-  one-time code and link (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify:
-  Confirm signup"). Until then, a first-time native or installed-PWA tester
-  gets no code.
+- The Confirm signup **link** was not opened, and the code was proven only on
+  the web, not in the native app or the installed PWA
+  (`docs/AUTH_EMAIL_TEMPLATE_RUNBOOK.md`, "Verify: Confirm signup").
 - The **Continue as guest** control on the denial landing (runbook 6c).
-- The value of `SIGNUP_EMAIL_ALLOWLIST`, a Vercel Secret in Production and
-  Preview.
-- The deletion review of the four banned accounts, around 2026-10-21.
+- The deletion review of the four banned accounts. It was due around
+  2026-10-21 and is still open on 2026-10-23. With `SIGNUP_EMAIL_ALLOWLIST`
+  gone, a kept account gets full API access back when its ban lapses on
+  2026-11-13.
 
 **BLOCKED / EXTERNAL DEPENDENCY**
 
@@ -277,13 +286,15 @@ device can show it, so it is not assumed either way. Needs: **code**,
   Alpha, the iOS build-9 upload, Play App content/setup
   declarations, P1-3, P1-5, P2-3 and P2-4. Sign in with Apple is switched on in
   `build:mobile` (#442).
-- **Blocks starting the external closed-beta cohort cleanly:** hosted Confirm
-  signup template verification (the paste is done) and at least 12 real
-  Google accounts. The Resend DPA and counsel review of the already-live
-  Resend disclosure (#499) moved to before public release (owner decision
-  2026-10-21). Closed Alpha serves Build 9 with 2 listed / 0
-  opted-in testers.
-- **Blocks public release/store review:** opening sign-up (P1-8); the
+- **Blocks starting the external closed-beta cohort cleanly:** at least 12 real
+  Google accounts. The Confirm signup check passed on 2026-10-22, and sign-up
+  has been open since 2026-10-23. The Resend DPA and counsel review of the
+  already-live Resend disclosure (#499) moved to before public release (owner
+  decision 2026-10-21). Closed Alpha serves Build 9 with 2 listed / 0 opted-in
+  testers.
+- **Blocks public release/store review:** the rest of P1-8's open-sign-up
+  check (unlisted Google, Hide My Email, Delete account) and the deletion of
+  the four banned accounts; the
   remaining device-auth and account deletion checks; P1-4's Apple proof; P1-1
   counsel and the Resend DPA; Apple App Privacy/listing forms; the final screenshot review; and P1-9's 12-tester/14-day clock.
 - **Post-launch:** the P2 rows, and Premium and ads (Tracks B/C, `BACKLOG.md`
@@ -334,7 +345,7 @@ has a $10 monthly spend ceiling, auto-reload off, and alerts at $5 / $8 / $9
 | P1-5 | ✅ **Fixed (#415).** `PrivacyInfo.xcprivacy` is bundled in the App target and `ITSAppUsesNonExemptEncryption` is `false`. Apple's verdict only shows on the first TestFlight upload.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | —                                                 | —                                                                                                                              | First upload shows no ITMS privacy or export-compliance warnings                                                                                                                                                                 | device                       |
 | P1-6 | **Play assets were submitted; final visual review and Apple assets remain.** The 2026-10-17 Play setup submission included the filled store listing. #487 fixed the Wi-Fi demo indicator and regenerated the Play set. The pipeline produces the required iPhone, iPad and Play sizes plus the feature graphic and byte-checks them; scene 5 still needs the fictional signed-in account. The owner must visually confirm exactly which generated/manual files are uploaded in each store.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Agent (pipeline), owner (review, scene 5, upload) | Current generated sets; fictional account for scene 5                                                                          | Uploaded store previews match the current files; no focus ring, cropped quest, personal data or stale Wi-Fi indicator.                                                                                                           | dashboard + device           |
 | P1-7 | **Play listing and policy fields are published; App Store state is unverified.** Play has no unpublished changes and App content is all caught up. The Privacy Policy and deletion routes validate there. Apple category, support contact, listing text and URLs still need a dashboard check. The three compliance routes return crawlable static HTML; see `scripts/lib/legalShells.js`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Owner                                             | P1-3                                                                                                                           | Play remains published with no pending setup; App Store fields match the tracked listing and `/delete-account` validates signed out.                                                                                             | dashboard                    |
-| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. _owner decision, 2026-10-19_: **sign-up opens at launch.** Before the first store submission, the owner deletes the four banned accounts, deletes `SIGNUP_EMAIL_ALLOWLIST` and redeploys, then disables the hook, so reviewers use their own accounts, Hide My Email included. The other postures considered were a pre-listed review Google account, a hook exception for Apple sign-ins, and opening only during each review. `store-metadata/app-review-notes.md` already describes the open state. _prod-read, 2026-10-18_: the table holds five rows, but `SIGNUP_EMAIL_ALLOWLIST` was last changed 2026-10-14, so a tester must be added to both (runbook "Adding beta testers"). Google Auth Platform shows **In production**, External, with no sensitive scopes, so Google runs the OAuth flow for any Google account. Getting an account still requires the address to be on the allowlist, because the before-user-created hook refuses unlisted ones. The consent screen still names `xcnnlczvxmuwcqwychox.supabase.co`. | Owner                                             | Runbook "Opening sign-up at launch" and its prerequisites: Resend disclosure, Confirm signup template, banned-account deletion | Before submission, on the submitted build: never-listed email, Google and Hide My Email accounts each sign up without "This email isn't invited" and delete themselves. Google publishing status: **In production** (2026-10-18) | dashboard                    |
+| P1-8 | **The sign-up allowlist blocks review and external testers.** _repo, 2026-10-11_: admission moves to Supabase Auth. A before-user-created hook refuses any email missing from `private.beta_signup_allowlist`, on web and native alike, before an account exists, and the client list `VITE_SIGNUP_EMAIL_ALLOWLIST` is removed (it published the testers in the bundle). An unlisted App Reviewer, Hide My Email address or tester now sees "This email isn't invited" and gets no account, instead of a half-working one. _prod-read, 2026-10-04/05 (historical)_: both env variables were set on Vercel Production and Preview. _prod-read, 2026-10-14_: **verified in production.** The migrations are applied, the list holds three rows (admin, tester, support), the hook is on, and `VITE_SIGNUP_EMAIL_ALLOWLIST` is absent; four unwanted accounts are banned until 2026-11-13 (`docs/AUTH_BETA_ALLOWLIST_RUNBOOK.md`, "Production state — 2026-10-14"). The 6c **Continue as guest** control: **owner confirmation required**. _owner decision, 2026-10-19_: **sign-up opens at launch.** Before the first store submission, the owner deletes the four banned accounts, deletes `SIGNUP_EMAIL_ALLOWLIST` and redeploys, then disables the hook, so reviewers use their own accounts, Hide My Email included. The other postures considered were a pre-listed review Google account, a hook exception for Apple sign-ins, and opening only during each review. `store-metadata/app-review-notes.md` already describes the open state. _prod-read, 2026-10-18_: the table holds five rows, but `SIGNUP_EMAIL_ALLOWLIST` was last changed 2026-10-14, so a tester must be added to both (runbook "Adding beta testers"). Google Auth Platform shows **In production**, External, with no sensitive scopes, so Google runs the OAuth flow for any Google account. Getting an account still requires the address to be on the allowlist, because the before-user-created hook refuses unlisted ones. The consent screen still names `xcnnlczvxmuwcqwychox.supabase.co`. _prod, 2026-10-22/23_: **sign-up is open.** The hook was disabled on 2026-10-22, with the owner's approval. On 2026-10-23 the owner deleted `SIGNUP_EMAIL_ALLOWLIST`, and Production was redeployed. That reverses the decided order, so the one account created in between was gated out of `/api` until the redeploy. The four banned accounts are not deleted. A never-listed email address signed up and saved its profile. Unlisted Google, Hide My Email and Delete account are **not yet proven** (runbook Evidence). | Owner                                             | Runbook "Opening sign-up at launch" and its prerequisites: Resend disclosure, Confirm signup template, banned-account deletion | Before submission, on the submitted build: never-listed email, Google and Hide My Email accounts each sign up without "This email isn't invited" and delete themselves. Google publishing status: **In production** (2026-10-18) | dashboard                    |
 | P1-9 | **Play Console closed-testing rule applies and is not yet counting.** The dashboard requires at least 12 testers continuously opted in for 14 days. Closed Alpha serves Build 9 (live 2026-10-18), the selected list has 2 users, and the dashboard says 0 testers currently opted in. Reach and retain 12+.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Owner                                             | Tester-readiness items; Build 9 on Closed Alpha                                                                                | Dashboard shows 12+ opted in and the 14-day requirement complete; then the production-access button enables.                                                                                                                     | dashboard                    |
 
 ### P2 — post-launch polish
@@ -357,16 +368,17 @@ device credentials, with the reason recorded in code). `delete.test.js` and
 `export.test.js` cover both. Web `/delete-account` exists for Google's
 external-deletion requirement. Gap: none found in code. The device pass in P0-4
 is the proof. Once the beta hook is enabled, an unlisted person never gets an
-account, so nothing is stranded. An unlisted account that predates the hook
-still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
+account, so nothing is stranded. `SIGNUP_EMAIL_ALLOWLIST` was deleted on
+2026-10-23, so an account that predates the hook can reach both endpoints once
+it is not banned (P1-8).
 
 ### Shortest safe path (ordered by dependency, 2026-10-18)
 
 **Tester readiness — do these once**
 
-1. **Owner:** verify one new invited account receives both the one-time code
-   and link from the hosted Confirm signup template. The paste is done
-   (saved 2026-10-21; source matched the repository on 2026-10-22).
+1. ✅ **Confirm signup verified (2026-10-22).** A never-listed address got
+   the code and a link, and the code signed in on the web. The link was not
+   opened. Sign-up has been open since 2026-10-23.
 2. **Owner decision, 2026-10-21:** the Resend DPA and qualified-counsel review
    are deferred until after the controlled beta. They do not block recruiting
    closed-beta testers. Finish both before public store release; if counsel
@@ -379,8 +391,8 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
    on a Samsung phone and its audio fix is proven.
 4. ✅ **Closed Alpha:** Build 9 approved and live on 2026-10-18.
 5. **Owner:** expand the selected tester list from 2 to at least 12 Google
-   accounts. Allowlist each sign-in address in both places (runbook "Adding
-   beta testers"). Then set the feedback address, send the existing web opt-in
+   accounts. Sign-up is open, so nothing needs allowlisting. Then set the
+   feedback address, send the existing web opt-in
    link and verify that at least 12 actually opt in. Being listed is not
    enough.
 6. **Owner:** keep at least 12 testers continuously opted in for 14 days. Use
@@ -397,8 +409,8 @@ still cannot reach either endpoint while `SIGNUP_EMAIL_ALLOWLIST` is set (P1-8).
    including Apple/Hide My Email and account deletion.
 10. **Owner + counsel, after the controlled beta:** finish the Resend DPA,
     Apple App Privacy/listing fields, uploaded-asset review and legal sign-off.
-    Open sign-up (P1-8, runbook "Opening sign-up at launch"), then submit with
-    `store-metadata/app-review-notes.md`.
+    Sign-up is already open (P1-8, since 2026-10-23). Finish that runbook's
+    step 3 check, then submit with `store-metadata/app-review-notes.md`.
 
 Keep push, Premium, ads and saved conversations out of the submitted builds so
 the existing form answers stay true.

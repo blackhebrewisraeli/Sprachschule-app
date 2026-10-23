@@ -15,8 +15,16 @@ Checklist.md`, sign-off rule).
 **Decision 2026-10-19 (owner, P1-8): sign-up opens at launch.** Before the
 first store submission, the owner retires both gates so that any reviewer,
 Hide My Email address included, can create and delete an account. See
-**Opening sign-up at launch** below. Not done yet: the closed beta stays
-invite-only until then.
+**Opening sign-up at launch** below.
+
+**Status 2026-10-23: sign-up is OPEN in production.** The hook was disabled
+on 2026-10-22, and `SIGNUP_EMAIL_ALLOWLIST` was deleted and Production
+redeployed on 2026-10-23. That reversed the runbook order. The server gate
+would have refused every `/api` call from the one account created in between.
+Hobby keeps logs for only one hour, so nothing proves the refusals happened.
+Since the redeploy, that account works: a never-listed email address signed
+up and saved its profile. Google, Hide My Email and **Delete account** are not
+yet proven, and the four banned accounts are not deleted. Details are in the **Evidence** table.
 
 ## What the repository does
 
@@ -24,7 +32,7 @@ invite-only until then.
 | --- | --- | --- |
 | **Supabase Auth hook (authority)** | `public.hook_restrict_signup_to_beta_allowlist` runs before every `auth.users` insert made through a public Auth path (magic link / OTP, password signup, OAuth and OIDC, SAML, invites, generated links, anonymous). It admits an email only if `private.beta_signup_allowlist` lists it, after trimming and lowercasing. Missing, unlisted, malformed or errored all get the same `403 Sign-up is invite-only during the beta.` Nothing is written: no auth user, no profile. | `supabase/migrations/20261011120000_beta_signup_allowlist_hook.sql` |
 | **Allowlist table** | `private` schema, which the Data API does not expose. RLS on. `supabase_auth_admin` gets `SELECT` only. `anon`, `authenticated`, `service_role` and `PUBLIC` get nothing. Addresses must be stored lowercase and trimmed (a check constraint rejects anything else). | same migration |
-| **Server gate (existing accounts)** | `SIGNUP_EMAIL_ALLOWLIST` in `requireAuth` still rejects a verified email that is not listed. It matters only for accounts created **before** the hook was on. | `api/_lib/auth-middleware.js` |
+| **Server gate (existing accounts)** | `SIGNUP_EMAIL_ALLOWLIST` in `requireAuth` rejects a verified email that is not listed. It matters only for accounts created **before** the hook was on. Off since 2026-10-23: the variable was deleted from Vercel, and unset means no gate. | `api/_lib/auth-middleware.js` |
 | **Client** | No list. It turns the hook's 403 (magic-link form) or `error_description` (OAuth callback) into "This email isn't invited to the beta". | `src/lib/signupAllowlist.js`, `src/lib/auth.js`, `src/components/auth/AuthCallbackLanding.jsx` |
 | **Profiles** | Clients can no longer INSERT or UPDATE `profiles`. Only the account API (service role) writes it. `avatar_path` must stay in the owner's folder, and `handle` must be 1–24 characters, for every writer. | `supabase/migrations/20261011120100_profiles_server_only_writes.sql` |
 
@@ -179,6 +187,9 @@ removed.
 
 ## Adding beta testers
 
+**Not needed since 2026-10-23: sign-up is open.** Keep this section for the
+case where the hook is enabled again.
+
 Owner-only, like every step above. Repeat for each batch.
 
 **While `SIGNUP_EMAIL_ALLOWLIST` is set, a tester must be on both lists.** The
@@ -241,6 +252,9 @@ apply. The consent screen names the Supabase domain
 that. Fixing it needs a Supabase custom domain, which is not a beta blocker.
 
 ## Opening sign-up at launch
+
+**Steps 1 and 2 done (2026-10-22/23), in the reverse order. Step 3 is
+partial.** See the Evidence table.
 
 **Owner decision 2026-10-19 (P1-8).** Store reviewers sign in with their own
 accounts, so every address must be able to create an account. Do this before
@@ -408,8 +422,10 @@ Fixtures created through the admin API (the RLS suite) are not affected.
 | 4 Hook enabled | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**: a listed sign-up passed, and unlisted magic-link and Google sign-ups were refused |
 | 5 `VITE_SIGNUP_EMAIL_ALLOWLIST` deleted + redeploy | 2026-10-14 (checked) | Vercel Production, Preview | **VERIFIED IN PRODUCTION**: the variable is absent, and no private mailbox is in the live bundle |
 | 6a–6i | 2026-10-14 (checked) | Production | **VERIFIED IN PRODUCTION**, except the 6c **Continue as guest** control: **OWNER CONFIRMATION REQUIRED** |
-| 7 Pre-existing accounts decided | 2026-10-14 | Production | Under way: 4 accounts banned until 2026-11-13, not deleted; deletion review around 2026-10-21 |
+| 7 Pre-existing accounts decided | 2026-10-14; re-checked 2026-10-23 | Production | Under way: 4 accounts banned until 2026-11-13, not deleted (still true on 2026-10-23). With `SIGNUP_EMAIL_ALLOWLIST` gone, an account that is kept gets full API access back when its ban lapses |
 | Postgres upgrade re-check | 2026-10-14 | Production | **VERIFIED IN PRODUCTION**: `17.11.0.003`, `ACTIVE_HEALTHY`; hook, allowlist and profiles unchanged (Production state above) |
 | Migrations and advisors re-check | 2026-10-15 | Production | **VERIFIED IN PRODUCTION**: 47 migrations, identical to the repo; Migration Drift run `38736350948` 47/47; no unindexed FK, no `auth_rls_initplan`, seven `unused_index` (re-check above) |
-| Confirm signup template | 2026-10-21 (paste); 2026-10-22 (source checked) | Production | **Hosted paste DONE**: saved by the owner; the hosted body matched `supabase/templates/magic_link.html` byte for byte (subject not checked). **New-invited-tester check NOT DONE (owner-only)**. The repo side is #472 |
-| Sign-up opened at launch | — | Vercel Production, Preview; Production | **NOT DONE (owner-only)**: decided 2026-10-19 (P1-8). Done means: variable deleted and redeployed, hook disabled, and never-listed email, Google and Hide My Email sign-ups each created and deleted an account ("Opening sign-up at launch") |
+| Confirm signup template | 2026-10-21 (paste); 2026-10-22 (source checked) | Production | **Hosted paste DONE**: saved by the owner; the hosted body matched `supabase/templates/magic_link.html` byte for byte (subject not checked). **First-time-address code path VERIFIED IN PRODUCTION 2026-10-22**: a never-listed address got the email in Gmail with the brand, an 8-digit code, a link and the five-minutes footer, and the code signed in on the web (private browser window, not native or installed PWA). The link was not opened. The repo side is #472 |
+| Sign-up opened at launch: hook disabled | 2026-10-22 | Production | **DONE, VERIFIED IN PRODUCTION**: Codex switched the hook off in the dashboard after the owner's explicit approval. Authentication → Hooks shows Before User Created **DISABLED** after a refresh. A never-listed email address then created an account, and onboarding opened. Function and table kept |
+| Sign-up opened at launch: `SIGNUP_EMAIL_ALLOWLIST` deleted + redeploy | 2026-10-23 | Vercel Production, Preview | **DONE, VERIFIED IN PRODUCTION**: the owner deleted the variable, and `vercel env ls` no longer lists it. Claude Code then redeployed Production `cdxpe59z3`, with the owner's approval, as `6qz0wqxno`, aliased to `www.sprachschule-app.com`. **Out of order:** the hook went first, so until this redeploy the server gate refused `/api` calls from the one account created on 2026-10-22. That follows from the code. Logs are kept for only one hour, so there is no log proof |
+| Sign-up opened at launch: verify | 2026-10-23 (partial) | Production, web | **Email path VERIFIED IN PRODUCTION**: the never-listed account saved Edit Profile, and its `profiles` row changed (only the account API writes it). **NOT DONE:** unlisted Google, Apple Hide My Email, Delete account, and the check on the submitted native build |
