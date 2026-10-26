@@ -15,7 +15,6 @@
     "lint:fix": "eslint src/ api/ supabase/ --fix",
     "test:rls": "vitest run --config vitest.rls.config.js",
     "format": "prettier --write src/",
-    "start": "echo \"Apify Actor Started Successfully\"",
     "format:check": "prettier --check src/",
     "test": "vitest run",
     "test:watch": "vitest",
