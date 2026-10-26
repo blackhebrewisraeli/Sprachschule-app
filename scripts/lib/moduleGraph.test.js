@@ -21,6 +21,15 @@ describe('parseImports', () => {
     expect(parseImports(src)).toEqual(['./Foo', '../lib/x', 'pkg', './side-effect.css', './y']);
   });
 
+  it('captures dynamic import() specifiers, e.g. React.lazy routes', () => {
+    const src = [
+      "import { lazy } from 'react';",
+      "const ChatTab = lazy(() => import('./components/ChatTab'));",
+      "void import( './VitalsOverlay.jsx' ).then(() => {});",
+    ].join('\n');
+    expect(parseImports(src)).toEqual(['react', './components/ChatTab', './VitalsOverlay.jsx']);
+  });
+
   it('handles multi-line named imports', () => {
     const src = "import {\n  one,\n  two,\n} from './multi';\n";
     expect(parseImports(src)).toEqual(['./multi']);
@@ -135,5 +144,34 @@ describe('findOrphans', () => {
     };
     const g = buildGraph(files);
     expect(findOrphans(files, g)).toEqual(['src/orphan.js']);
+  });
+
+  it('counts a lazy import() as a dependent', () => {
+    const files = {
+      'src/main.jsx': "const Tab = lazy(() => import('./Tab'));\n",
+      'src/Tab.jsx': 'export default function Tab() {}\n',
+    };
+    expect(findOrphans(files, buildGraph(files))).toEqual([]);
+  });
+
+  it('counts importers outside src/, resolved through ../', () => {
+    const files = {
+      'api/_lib/handler.js': "import { clamp } from '../../src/lib/policy.js';\n",
+      'src/lib/policy.js': 'export const clamp = 1;\n',
+    };
+    const g = buildGraph(files);
+    expect(g['src/lib/policy.js'].dependents).toEqual(['api/_lib/handler.js']);
+  });
+
+  it('with ignoreDependents, flags modules only those importers keep alive', () => {
+    const files = {
+      'src/main.jsx': "import './used';\n",
+      'src/used.js': 'export const x = 1;\n',
+      'src/kit.js': 'export const y = 2;\n',
+      'src/a.test.js': "import './kit';\nimport './used';\n",
+    };
+    const g = buildGraph(files);
+    expect(findOrphans(files, g)).toEqual([]);
+    expect(findOrphans(files, g, { ignoreDependents: /\.test\.js$/ })).toEqual(['src/kit.js']);
   });
 });

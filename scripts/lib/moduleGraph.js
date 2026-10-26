@@ -4,14 +4,16 @@
 
 // ── Static parsing ───────────────────────────────────────────
 
-// Specifiers from `import ... from '…'`, side-effect `import '…'`, and
-// `export … from '…'`, in source order. Heuristic (regex), good enough for the
-// app's tidy top-of-file imports — not a full parser.
+// Specifiers from `import ... from '…'`, side-effect `import '…'`,
+// `export … from '…'`, and string-literal `import('…')` (the lazy tab routes),
+// in source order. Heuristic (regex), good enough for the app's tidy imports —
+// not a full parser; a template-literal `import()` is not resolved.
 export function parseImports(source) {
-  const re = /(?:import|export)\s+(?:[\w*{},\s]+\s+from\s+)?['"]([^'"]+)['"]/g;
+  const re =
+    /(?:import|export)\s+(?:[\w*{},\s]+\s+from\s+)?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g;
   const out = [];
   let m;
-  while ((m = re.exec(source))) out.push(m[1]);
+  while ((m = re.exec(source))) out.push(m[1] ?? m[2]);
   return out;
 }
 
@@ -158,11 +160,14 @@ export function analyze(query, files, graph = {}) {
 const DEFAULT_ENTRY = [/(^|\/)main\.jsx?$/, /\.test\.(js|jsx)$/];
 
 // Modules nothing imports (excluding entrypoints + tests) — candidate dead code.
+// `ignoreDependents` (RegExp) discounts matching importers, so passing the test
+// pattern finds modules that only tests keep alive.
 export function findOrphans(files, graph, opts = {}) {
   const entry = opts.entryPatterns ?? DEFAULT_ENTRY;
   const isEntry = (p) => entry.some((re) => re.test(p));
+  const counts = (d) => !(opts.ignoreDependents && opts.ignoreDependents.test(d));
   return Object.keys(files)
     .filter((p) => !isEntry(p))
-    .filter((p) => ((graph[p] && graph[p].dependents) || []).length === 0)
+    .filter((p) => ((graph[p] && graph[p].dependents) || []).filter(counts).length === 0)
     .sort();
 }

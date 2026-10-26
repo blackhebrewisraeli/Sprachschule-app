@@ -63,6 +63,10 @@ coverage/
 supabase/.temp/
 supabase/.branches/
 
+# Python bytecode (no Python in the repo today; keeps a one-off script's cache out)
+__pycache__/
+*.pyc
+
 # Lexicon raw-download cache
 .cache/
 .bench-baseline.json
